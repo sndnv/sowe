@@ -1,9 +1,12 @@
 package owe.map
 
 import owe.EntityID
+import owe.map.Cell.{Modifiers, Properties}
 
-case class Cell(
-  entities: Map[EntityID, GridEntity]
+case class Cell[E](
+  entities: Map[EntityID, GridEntity[E]],
+  properties: Properties,
+  modifiers: Modifiers
 )
 
 object Cell {
@@ -20,7 +23,15 @@ object Cell {
 
   }
 
-  def empty(): Cell = {
-    Cell(Map.empty)
+  case class Properties(desirability: Int, fertility: Int, water: Int, buildingAllowed: Boolean)
+
+  case class Modifiers(desirability: Int, fertility: Int, water: Int)
+
+  def empty[E](): Cell[E] = {
+    Cell(
+      Map.empty,
+      Properties(desirability = 0, fertility = 0, water = 0, buildingAllowed = true),
+      Modifiers(desirability = 100, fertility = 100, water = 100)
+    )
   }
 }

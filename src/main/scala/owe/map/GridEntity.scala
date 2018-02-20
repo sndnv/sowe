@@ -1,5 +1,5 @@
 package owe.map
 
-import akka.actor.ActorRef
+import owe.entities.EntityType
 
-case class GridEntity(entity: ActorRef, parent: Location)
+case class GridEntity[E](entity: E, entityType: EntityType, parentCell: Location)
