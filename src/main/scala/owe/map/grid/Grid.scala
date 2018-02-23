@@ -11,6 +11,18 @@ class Grid[A: ClassTag](private val data: Array[Array[A]]) {
 
   def map[B: ClassTag](f: A => B): Grid[B] = new Grid(data.map(_.map(f).toArray))
 
+  def mapIndexed[B: ClassTag](f: (Point, A) => B): Grid[B] = {
+    new Grid(
+      data.zipWithIndex.map {
+        case (row, rowIndex) =>
+          row.zipWithIndex.map {
+            case (col, colIndex) =>
+              f((rowIndex, colIndex), col)
+          }
+      }
+    )
+  }
+
   def foreach[U](f: A => U): Unit = data.foreach(_.foreach(f))
 
   def foreachIndexed[U](f: (Point, A) => U): Unit = {
@@ -51,6 +63,8 @@ class Grid[A: ClassTag](private val data: Array[Array[A]]) {
 
   def table: Seq[Seq[A]] = rows
 
+  def list: Seq[A] = data.flatMap(_.toSeq)
+
   def getUnsafe(point: Point): A = data(point.x)(point.y)
 
   def get(point: Point): Option[A] = Try(getUnsafe(point)).toOption
@@ -76,8 +90,8 @@ class Grid[A: ClassTag](private val data: Array[Array[A]]) {
   def collect[B: ClassTag](pf: PartialFunction[A, B]): Seq[B] = data.flatMap(_.collect(pf))
 
   def window(point: Point, radius: Int): Grid[A] = {
-    val cols = Math.max(point.x - radius, 0) to Math.min(point.x + radius, width)
-    val rows = Math.max(point.y - radius, 0) to Math.min(point.y + radius, height)
+    val cols = Math.max(point.x - radius, 0) to Math.min(point.x + radius, width - 1)
+    val rows = Math.max(point.y - radius, 0) to Math.min(point.y + radius, height - 1)
 
     slice(rows, cols)
   }
@@ -94,6 +108,22 @@ class Grid[A: ClassTag](private val data: Array[Array[A]]) {
   def slide[U](radius: Int, f: A => U): Unit = slide(radius, step = 1, f)
 
   def transpose: Grid[A] = new Grid(data.transpose)
+
+  def debugString(): String = {
+    val header = s" \t${(0 until width).mkString("\t")}\tX"
+    val headerSep = s" \t${(0 until width).map(_ => "--").mkString("\t")}"
+
+    val body = table.zipWithIndex
+      .map {
+        case (row, index) =>
+          s"$index|\t${row.mkString("\t")}"
+      }
+      .mkString("\n")
+
+    val footerSep = s"Y \t${(0 until width).map(_ => "--").mkString("\t")}"
+
+    s"$header\n$headerSep\n$body\n$footerSep"
+  }
 }
 
 object Grid {
