@@ -5,29 +5,30 @@ import java.util.UUID
 import breeze.linalg.DenseMatrix
 import owe.EntityID
 import owe.entities.{EntitySize, EntityType}
+import owe.map.grid.Point
 
-trait Grid[E] {
+trait GameMap[E] {
   val height: Int
   val width: Int
 
   private val grid = DenseMatrix.zeros[Cell[E]](height, width)
 
   //TODO - refactor
-  private def addEntityToCells(cells: Seq[Location], entity: E, entityId: EntityID, entityType: EntityType): Unit = {
+  private def addEntityToCells(cells: Seq[Point], entity: E, entityId: EntityID, entityType: EntityType): Unit = {
     cells.foreach { cell =>
       val gridCell = grid(cell.x, cell.y)
       grid.update(
         cell.x,
         cell.y,
         gridCell.copy(
-          entities = gridCell.entities + (entityId -> GridEntity(entity, entityType, cell))
+          entities = gridCell.entities + (entityId -> MapEntity(entity, entityType, cell))
         )
       )
     }
   }
 
   //TODO - refactor
-  private def removeEntityFromCells(cells: Seq[Location], entityId: EntityID): Unit = {
+  private def removeEntityFromCells(cells: Seq[Point], entityId: EntityID): Unit = {
     cells.foreach { cell =>
       val gridCell = grid(cell.x, cell.y)
       grid.update(
@@ -45,14 +46,14 @@ trait Grid[E] {
     entity: E,
     entityType: EntityType,
     entitySize: EntitySize,
-    cell: Location
-  ): Either[Grid.Error, (EntityID, Cell.State)] = {
+    cell: Point
+  ): Either[GameMap.Error, (EntityID, Cell.State)] = {
     val cellState = getCellState(cell)
     cellState match {
       case Cell.State.AvailableEmpty | Cell.State.AvailableOccupied =>
         entityType match {
           case EntityType.Structure =>
-            val entityCells = Grid.entityCells(entitySize, cell)
+            val entityCells = GameMap.entityCells(entitySize, cell)
             val cellsAvailable = entityCells.map(getCellState).forall { state =>
               state == Cell.State.AvailableEmpty || state == Cell.State.AvailableOccupied
             }
@@ -62,7 +63,7 @@ trait Grid[E] {
               addEntityToCells(entityCells, entity, entityId, entityType)
               Right((entityId, cellState))
             } else {
-              Left(Grid.Error.CellUnavailable)
+              Left(GameMap.Error.CellUnavailable)
             }
 
           case _ =>
@@ -72,7 +73,7 @@ trait Grid[E] {
         }
 
       case _ =>
-        Left(Grid.Error.CellUnavailable)
+        Left(GameMap.Error.CellUnavailable)
     }
   }
 
@@ -81,14 +82,14 @@ trait Grid[E] {
     entityId: EntityID,
     entityType: EntityType,
     entitySize: EntitySize,
-    cell: Location
-  ): Either[Grid.Error, Cell.State] = {
+    cell: Point
+  ): Either[GameMap.Error, Cell.State] = {
     val cellState = getCellState(cell)
     cellState match {
       case Cell.State.AvailableOccupied | Cell.State.UnavailableOccupied =>
         entityType match {
           case EntityType.Structure =>
-            removeEntityFromCells(Grid.entityCells(entitySize, cell), entityId)
+            removeEntityFromCells(GameMap.entityCells(entitySize, cell), entityId)
             Right(cellState)
 
           case _ =>
@@ -97,27 +98,27 @@ trait Grid[E] {
         }
 
       case _ =>
-        Left(Grid.Error.CellUnavailable)
+        Left(GameMap.Error.CellUnavailable)
     }
   }
 
   //TODO - refactor
-  def getEntity(entityId: EntityID, cell: Location): Either[Grid.Error, E] = {
+  def getEntity(entityId: EntityID, cell: Point): Either[GameMap.Error, E] = {
     val cellState = getCellState(cell)
     cellState match {
       case Cell.State.AvailableEmpty | Cell.State.AvailableOccupied =>
         grid(cell.x, cell.y).entities.get(entityId) match {
           case Some(gridEntity) => Right(gridEntity.entity)
-          case None             => Left(Grid.Error.EntityMissing)
+          case None             => Left(GameMap.Error.EntityMissing)
         }
 
       case _ =>
-        Left(Grid.Error.CellUnavailable)
+        Left(GameMap.Error.CellUnavailable)
     }
   }
 
   //TODO - refactor
-  def getCellState(cell: Location): Cell.State = {
+  def getCellState(cell: Point): Cell.State = {
     if (isCellInGrid(cell)) {
       val entities = grid(cell.x, cell.y).entities
       if (entities.isEmpty) {
@@ -140,11 +141,11 @@ trait Grid[E] {
     }
   }
 
-  def isCellInGrid(cell: Location): Boolean = {
+  def isCellInGrid(cell: Point): Boolean = {
     cell.x > 0 && cell.y > 0 && width > cell.x && height > cell.y
   }
 
-  def isCellPassable(cell: Location): Boolean = {
+  def isCellPassable(cell: Point): Boolean = {
     isCellInGrid(cell) && !grid(cell.x, cell.y).entities.exists {
       case (_, entity) =>
         entity.entityType match {
@@ -156,21 +157,21 @@ trait Grid[E] {
     }
   }
 
-  def passableNeighboursOf(cell: Location): Seq[Location] = {
+  def passableNeighboursOf(cell: Point): Seq[Point] = {
     //TODO - allow corner neighbours only for specific walkers that don't need roads
-    Grid
+    GameMap
       .neighboursOf(cell, withCornerNeighbours = true)
       .collect {
-        case Some(location) if isCellPassable(location) => location
+        case Some(point) if isCellPassable(point) => point
       }
   }
 
-  def pathBetween(start: Location, end: Location): Option[Seq[Location]] //TODO
+  def pathBetween(start: Point, end: Point): Option[Seq[Point]] //TODO
 
   //TODO - effects
 }
 
-object Grid {
+object GameMap {
   sealed trait Error
   object Error {
 
@@ -184,8 +185,8 @@ object Grid {
 
   }
 
-  def neighboursOf(cell: Location, withCornerNeighbours: Boolean): Seq[Option[Location]] = {
-    val Location(x, y) = cell
+  def neighboursOf(cell: Point, withCornerNeighbours: Boolean): Seq[Option[Point]] = {
+    val Point(x, y) = cell
 
     Seq(
       /* top    left   */ if (withCornerNeighbours && x > 0 && y > 0) Some((x - 1, y - 1)) else None,
@@ -199,14 +200,14 @@ object Grid {
     )
   }
 
-  def entityCells(entitySize: EntitySize, parentCell: Location): Seq[Location] = {
+  def entityCells(entitySize: EntitySize, parentCell: Point): Seq[Point] = {
     (parentCell.x to entitySize.width)
       .flatMap(
-        x => (parentCell.y to entitySize.height).map(y => Location(x, y))
+        x => (parentCell.y to entitySize.height).map(y => Point(x, y))
       )
   }
 
-  def distanceBetween(cell1: Location, cell2: Location): Double = {
+  def distanceBetween(cell1: Point, cell2: Point): Double = {
     val x = (cell2.x - cell1.x).abs
     val y = (cell2.y - cell1.y).abs
 

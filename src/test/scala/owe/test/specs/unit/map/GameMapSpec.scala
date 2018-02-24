@@ -3,14 +3,14 @@ package owe.test.specs.unit.map
 import org.scalatest.Outcome
 import owe.test.specs.unit.UnitSpec
 
-class GridSpec extends UnitSpec {
+class GameMapSpec extends UnitSpec {
   case class FixtureParam()
 
   def withFixture(test: OneArgTest): Outcome = {
     withFixture(test.toNoArgTest(FixtureParam()))
   }
 
-  "A Grid" should "add entities to cell" in { _ =>
+  "A GameMap" should "add entities to cell" in { _ =>
     //TODO
   }
 
@@ -54,7 +54,7 @@ class GridSpec extends UnitSpec {
     //TODO
   }
 
-  "A Grid without entities" should "report correct cell neighbors" in { _ =>
+  "A GameMap without entities" should "report correct cell neighbors" in { _ =>
     //TODO
   }
 
@@ -62,7 +62,7 @@ class GridSpec extends UnitSpec {
     //TODO
   }
 
-  "A Grid with entities" should "report correct cell neighbors" in { _ =>
+  "A GameMap with entities" should "report correct cell neighbors" in { _ =>
     //TODO
   }
 

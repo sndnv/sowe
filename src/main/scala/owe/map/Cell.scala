@@ -4,7 +4,7 @@ import owe.EntityID
 import owe.map.Cell.{Modifiers, Properties}
 
 case class Cell[E](
-  entities: Map[EntityID, GridEntity[E]],
+  entities: Map[EntityID, MapEntity[E]],
   properties: Properties,
   modifiers: Modifiers
 )
