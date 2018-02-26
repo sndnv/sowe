@@ -96,16 +96,19 @@ class Grid[A: ClassTag](private val data: Array[Array[A]]) {
     slice(rows, cols)
   }
 
-  def slide[U](start: Point, end: Point, radius: Int, step: Int, f: A => U): Unit = {
-    //TODO
+  def slide[U](start: Point, end: Point, radius: Int, f: A => U): Unit = {
+    mapIndexed { case (p, _) => p }
+      .slice(start.x to end.x, start.y to end.y)
+      .list
+      .foreach { point =>
+        window(point, radius).foreach(f)
+      }
   }
 
-  def slide[U](start: Point, radius: Int, step: Int, f: A => U): Unit =
-    slide(start, end = Point(Math.max(width - 1, 0), Math.max(height - 1, 0)), radius, step, f)
+  def slide[U](start: Point, radius: Int, f: A => U): Unit =
+    slide(start, end = Point(Math.max(width - 1, 0), Math.max(height - 1, 0)), radius, f)
 
-  def slide[U](radius: Int, step: Int, f: A => U): Unit = slide(start = Point(0, 0), radius, step, f)
-
-  def slide[U](radius: Int, f: A => U): Unit = slide(radius, step = 1, f)
+  def slide[U](radius: Int, f: A => U): Unit = slide(start = Point(0, 0), radius, f)
 
   def transpose: Grid[A] = new Grid(data.transpose)
 
