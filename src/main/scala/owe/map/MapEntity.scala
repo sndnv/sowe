@@ -1,6 +1,6 @@
 package owe.map
 
-import owe.entities.EntityType
+import owe.entities.Entity
 import owe.map.grid.Point
 
-case class MapEntity[E](entity: E, entityType: EntityType, parentCell: Point)
+case class MapEntity[E <: Entity](entity: E, parentCell: Point)

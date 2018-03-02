@@ -10,4 +10,10 @@ package object owe {
   }
 
   type EntityID = UUID
+  type EffectID = UUID
+
+  /**
+    * Parent trait for all messages used by the engine.
+    */
+  trait Message
 }

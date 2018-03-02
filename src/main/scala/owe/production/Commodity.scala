@@ -1,3 +1,3 @@
 package owe.production
 
-trait Commodity {}
+final case class Commodity(name: String) extends AnyVal
