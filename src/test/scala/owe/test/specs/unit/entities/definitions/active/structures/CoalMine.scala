@@ -1,5 +1,6 @@
 package owe.test.specs.unit.entities.definitions.active.structures
 
+import owe.effects.Effect
 import owe.entities.active.Structure
 import owe.{entities, EffectID}
 
@@ -30,7 +31,7 @@ object CoalMine extends Structure {
     production = Some(Structure.ProductionModifier(rate = 0))
   )
 
-  override protected def createEffects(): Map[EffectID, Effect] = Map.empty
+  override protected def createEffects(): Seq[((Structure.Properties, Structure.State) => Boolean, Effect)] = Seq.empty
 
   override protected def processCommodities(
     tickSize: Int,

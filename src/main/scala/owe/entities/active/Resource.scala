@@ -6,20 +6,23 @@ trait Resource
     extends ActiveEntity[
       Resource.Properties,
       Resource.State,
-      Resource.StateModifiers
+      Resource.StateModifiers,
+      Resource.ActorRefTag
     ] {
   override def `size`: Entity.Size = Entity.Size(height = 1, width = 1)
   override def `type`: Entity.Type = Entity.Type.Resource
 
-  protected def tick(
+  override protected def tick(
     tickSize: Int,
     state: Resource.State,
     modifiers: Resource.StateModifiers
-  ): Resource.State
+  ): Resource.State = ??? //TODO
 }
 
 object Resource {
-  type Effect = Entity.Effect[Properties, State, StateModifiers]
+  trait ActorRefTag extends ActiveEntity.ActorRefTag
+
+  type Effect = ActiveEntity.Effect[Properties, State, StateModifiers]
 
   case class Properties(
     name: String,

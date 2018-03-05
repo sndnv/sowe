@@ -2,8 +2,9 @@ package owe.test.specs.unit.effects.definitions
 
 import owe.entities.active.Walker
 
-trait IncreaseMovementSpeed extends Walker.Effect {
+class IncreaseMovementSpeed extends Walker.Effect {
   override def apply(
+    tickSize: Int,
     properties: Walker.Properties,
     state: Walker.State,
     modifiers: Walker.StateModifiers

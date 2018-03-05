@@ -6,12 +6,6 @@ trait Entity {
 }
 
 object Entity {
-  trait Effect[
-    P <: Entity.Properties,
-    S <: Entity.State,
-    M <: Entity.StateModifiers
-  ] extends owe.effects.Effect[P, S, M]
-
   trait Properties
 
   trait State

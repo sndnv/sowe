@@ -1,28 +1,127 @@
 package owe.map
 
+import java.util.UUID
+
 import akka.actor.Actor
 import owe.EntityID
-import owe.entities.Entity
+import owe.entities.{ActiveEntity, Entity, PassiveEntity}
+import owe.entities.active.{Resource, Structure}
+import owe.entities.passive.Doodad
 import owe.map.grid.{Grid, Point}
+import owe.Tagging._
 
-trait GameMap[E <: Entity] extends Actor {
+trait GameMap extends Actor {
   val height: Int
   val width: Int
 
-  private val grid = Grid[MapCell[E]](height, width, MapCell.empty[E])
+  private val grid = Grid[MapCell](height, width, MapCell.empty)
+  private var entities: Map[EntityID, Point] = Map.empty
 
-  private def addEntity(entity: E, cell: Point): Either[GameMap.Error, (EntityID, MapCell.State)] = ??? //TODO
+  private def createEntity(entity: Entity, cell: Point): Either[GameMap.Error, (EntityID, MapCell.Availability)] =
+    grid.get(cell) match {
+      case Some(mapCell) =>
+        cellAvailability(mapCell) match {
+          case availability @ (MapCell.Availability.AvailableEmpty | MapCell.Availability.AvailableOccupied) =>
+            val cells = GameMap.entityCells(entity.`size`, cell)
+            if (cells.forall(isCellPassable)) {
+              val entityID = UUID.randomUUID()
+              val mapEntity: MapEntity = entity match {
+                case entity: ActiveEntity[_, _, _, _] =>
+                  ActiveMapEntity(
+                    context.system.actorOf(entity.props()).tag[entity.Tag],
+                    cell,
+                    entity.`size`
+                  )
 
-  private def removeEntity(entityId: EntityID, cell: Point): Either[GameMap.Error, MapCell.State] = ??? //TODO
+                case entity: PassiveEntity =>
+                  PassiveMapEntity(entity, cell)
+              }
 
-  private def entity(entityId: EntityID, cell: Point): Either[GameMap.Error, E] = ??? //TODO
+              entities += entityID -> cell
 
-  private def cellState(cell: Point): MapCell.State = ??? //TODO
+              cells
+                .flatMap(grid.get)
+                .foreach(_.addEntity(entityID, mapEntity))
 
-  private def isCellInGrid(cell: Point): Boolean =
-    cell.x > 0 && cell.y > 0 && width > cell.x && height > cell.y
+              Right((entityID, availability))
+            } else {
+              Left(GameMap.Error.CellUnavailable)
+            }
 
-  private def isCellPassable(cell: Point): Boolean = ??? //TODO
+          case _ => Left(GameMap.Error.CellUnavailable)
+        }
+
+      case None => Left(GameMap.Error.CellUnavailable)
+    }
+
+  private def destroyEntity(entityID: EntityID): Either[GameMap.Error, MapCell.Availability] =
+    entities.get(entityID).flatMap(grid.get) match {
+      case Some(mapCell) =>
+        cellAvailability(mapCell) match {
+          case availability @ (MapCell.Availability.AvailableOccupied | MapCell.Availability.UnavailableOccupied) =>
+            mapCell.entities.get(entityID) match {
+              case Some(mapEntity) =>
+                GameMap
+                  .entityCells(mapEntity.size, mapEntity.parentCell)
+                  .flatMap(grid.get)
+                  .foreach(_.removeEntity(entityID))
+
+                entities -= entityID
+
+                Right(availability)
+
+              case None => Left(GameMap.Error.EntityMissing)
+            }
+
+          case _ => Left(GameMap.Error.EntityMissing)
+        }
+
+      case None => Left(GameMap.Error.CellUnavailable)
+    }
+
+  private def cellAvailability(cell: MapCell): MapCell.Availability =
+    cell.entities
+      .find {
+        case (_, mapEntity) =>
+          mapEntity match {
+            case PassiveMapEntity(entity, _) =>
+              entity match {
+                case _: Doodad => true
+                case _         => false
+              }
+
+            case ActiveMapEntity(entity, _, _) =>
+              entity match {
+                case _: Structure.ActorRefTag => true
+                case _: Resource.ActorRefTag  => true
+                case _                        => false
+              }
+          }
+      } match {
+      case Some(_) =>
+        MapCell.Availability.UnavailableOccupied
+
+      case None =>
+        if (cell.entities.isEmpty) {
+          MapCell.Availability.AvailableEmpty
+        } else {
+          MapCell.Availability.AvailableOccupied
+        }
+    }
+
+  private def cellAvailability(cell: Point): MapCell.Availability =
+    grid
+      .get(cell)
+      .map(cellAvailability)
+      .getOrElse(MapCell.Availability.OutOfBounds)
+
+  private def isCellPassable(cell: Point): Boolean =
+    cellAvailability(cell) match {
+      case MapCell.Availability.AvailableEmpty      => true
+      case MapCell.Availability.AvailableOccupied   => true
+      case MapCell.Availability.UnavailableOccupied => false
+      case MapCell.Availability.OutOfBounds         => false
+    }
 
   private def passableNeighboursOf(cell: Point): Seq[Point] =
     //TODO - allow corner neighbours only for specific walkers that don't need roads
@@ -48,8 +147,8 @@ object GameMap {
   }
 
   sealed trait Message extends owe.Message
-  case class AddEntity() extends Message
-  case class RemoveEntity() extends Message
+  case class CreateEntity() extends Message
+  case class DestroyEntity() extends Message
   case class AddEffect() extends Message
   case class RemoveEffect() extends Message
 

@@ -7,7 +7,8 @@ trait Structure
     extends ActiveEntity[
       Structure.Properties,
       Structure.State,
-      Structure.StateModifiers
+      Structure.StateModifiers,
+      Structure.ActorRefTag
     ] {
   override def `type`: Entity.Type = Entity.Type.Structure
   def `subtype`: Structure.Type
@@ -45,7 +46,7 @@ trait Structure
     modifiers: Option[Structure.ProductionModifier]
   ): Option[Structure.Production] = None
 
-  protected def tick(
+  override protected def tick(
     tickSize: Int,
     state: Structure.State,
     modifiers: Structure.StateModifiers
@@ -60,7 +61,9 @@ trait Structure
 }
 
 object Structure {
-  type Effect = Entity.Effect[Properties, State, StateModifiers]
+  trait ActorRefTag extends ActiveEntity.ActorRefTag
+
+  type Effect = ActiveEntity.Effect[Properties, State, StateModifiers]
 
   sealed trait Type
   object Type {

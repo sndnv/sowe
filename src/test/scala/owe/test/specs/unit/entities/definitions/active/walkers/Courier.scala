@@ -1,6 +1,7 @@
 package owe.test.specs.unit.entities.definitions.active.walkers
 
 import owe.EffectID
+import owe.effects.Effect
 import owe.entities.active.Walker
 
 object Courier extends Walker {
@@ -27,7 +28,7 @@ object Courier extends Walker {
     attackDamage = None
   )
 
-  override protected def createEffects(): Map[EffectID, Effect] = Map.empty
+  override protected def createEffects(): Seq[((Walker.Properties, Walker.State) => Boolean, Effect)] = Seq.empty
 
   override protected def tick(
     tickSize: Int,

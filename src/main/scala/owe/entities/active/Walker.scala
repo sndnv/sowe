@@ -8,16 +8,17 @@ trait Walker
     extends ActiveEntity[
       Walker.Properties,
       Walker.State,
-      Walker.StateModifiers
+      Walker.StateModifiers,
+      Walker.ActorRefTag
     ] {
   override def `size`: Entity.Size = Entity.Size(height = 1, width = 1)
   override def `type`: Entity.Type = Entity.Type.Walker
 
-  protected def tick(
+  override protected def tick(
     tickSize: Int,
     state: Walker.State,
     modifiers: Walker.StateModifiers
-  ): Walker.State
+  ): Walker.State = ??? //TODO
 
   protected def processMovement(
     tickSize: Int,
@@ -25,7 +26,7 @@ trait Walker
     modifiers: Walker.StateModifiers
   ): Seq[owe.Message]
 
-  override protected def afterTick(
+  override protected[entities] def internalAfterTick(
     tickSize: Int,
     state: Walker.State,
     modifiers: Walker.StateModifiers
@@ -33,7 +34,9 @@ trait Walker
 }
 
 object Walker {
-  type Effect = Entity.Effect[Properties, State, StateModifiers]
+  trait ActorRefTag extends ActiveEntity.ActorRefTag
+
+  type Effect = ActiveEntity.Effect[Properties, State, StateModifiers]
 
   case class Properties(
     name: String,

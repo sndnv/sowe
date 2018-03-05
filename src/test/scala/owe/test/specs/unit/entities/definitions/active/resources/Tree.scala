@@ -1,6 +1,7 @@
 package owe.test.specs.unit.entities.definitions.active.resources
 
 import owe.EffectID
+import owe.effects.Effect
 import owe.entities.active.Resource
 
 object Tree extends Resource {
@@ -20,11 +21,5 @@ object Tree extends Resource {
     replenishAmount = 100
   )
 
-  override protected def createEffects(): Map[EffectID, Effect] = Map.empty
-
-  override protected def tick(
-    tickSize: Int,
-    state: Resource.State,
-    modifiers: Resource.StateModifiers
-  ): Resource.State = ??? //TODO
+  override protected def createEffects(): Seq[((Resource.Properties, Resource.State) => Boolean, Effect)] = Seq.empty
 }

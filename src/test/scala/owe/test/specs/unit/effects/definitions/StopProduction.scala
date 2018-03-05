@@ -2,8 +2,9 @@ package owe.test.specs.unit.effects.definitions
 
 import owe.entities.active.Resource
 
-trait StopProduction extends Resource.Effect {
+class StopProduction extends Resource.Effect {
   override def apply(
+    tickSize: Int,
     properties: Resource.Properties,
     state: Resource.State,
     modifiers: Resource.StateModifiers

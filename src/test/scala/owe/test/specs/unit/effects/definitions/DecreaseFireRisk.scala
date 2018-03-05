@@ -2,8 +2,9 @@ package owe.test.specs.unit.effects.definitions
 
 import owe.entities.active.Structure
 
-trait DecreaseFireRisk extends Structure.Effect {
+class DecreaseFireRisk extends Structure.Effect {
   override def apply(
+    tickSize: Int,
     properties: Structure.Properties,
     state: Structure.State,
     modifiers: Structure.StateModifiers

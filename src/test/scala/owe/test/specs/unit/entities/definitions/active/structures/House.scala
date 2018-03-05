@@ -1,5 +1,6 @@
 package owe.test.specs.unit.entities.definitions.active.structures
 
+import owe.effects.Effect
 import owe.entities.active.Structure
 import owe.{entities, EffectID}
 
@@ -36,7 +37,7 @@ object House extends Structure {
     production = None
   )
 
-  override protected def createEffects(): Map[EffectID, Effect] = Map.empty
+  override protected def createEffects(): Seq[((Structure.Properties, Structure.State) => Boolean, Effect)] = Seq.empty
 
   override def `size`: entities.Entity.Size = entities.Entity.Size(height = 1, width = 1)
 
