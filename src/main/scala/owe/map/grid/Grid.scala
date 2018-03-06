@@ -11,7 +11,7 @@ class Grid[A: ClassTag](private val data: Array[Array[A]]) {
 
   def map[B: ClassTag](f: A => B): Grid[B] = new Grid(data.map(_.map(f).toArray))
 
-  def mapIndexed[B: ClassTag](f: (Point, A) => B): Grid[B] = {
+  def mapIndexed[B: ClassTag](f: (Point, A) => B): Grid[B] =
     new Grid(
       data.zipWithIndex.map {
         case (row, rowIndex) =>
@@ -21,11 +21,10 @@ class Grid[A: ClassTag](private val data: Array[Array[A]]) {
           }
       }
     )
-  }
 
   def foreach[U](f: A => U): Unit = data.foreach(_.foreach(f))
 
-  def foreachIndexed[U](f: (Point, A) => U): Unit = {
+  def foreachIndexed[U](f: (Point, A) => U): Unit =
     data.zipWithIndex.foreach {
       case (row, rowIndex) =>
         row.zipWithIndex.foreach {
@@ -33,9 +32,10 @@ class Grid[A: ClassTag](private val data: Array[Array[A]]) {
             f((rowIndex, colIndex), col)
         }
     }
-  }
 
-  def slice(cols: Range, rows: Range): Grid[A] = {
+  def indexes(): Grid[Point] = mapIndexed { case (point, _) => point }
+
+  def slice(cols: Range, rows: Range): Grid[A] =
     new Grid(
       cols.map { x =>
         rows.flatMap { y =>
@@ -43,7 +43,6 @@ class Grid[A: ClassTag](private val data: Array[Array[A]]) {
         }.toArray
       }.toArray
     )
-  }
 
   def colUnsafe(x: Int): Seq[A] = data.map(_(x))
 
@@ -63,7 +62,7 @@ class Grid[A: ClassTag](private val data: Array[Array[A]]) {
 
   def table: Seq[Seq[A]] = rows
 
-  def list: Seq[A] = data.flatMap(_.toSeq)
+  def toSeq: Seq[A] = data.flatMap(_.toSeq)
 
   def getUnsafe(point: Point): A = data(point.x)(point.y)
 
@@ -96,14 +95,13 @@ class Grid[A: ClassTag](private val data: Array[Array[A]]) {
     slice(rows, cols)
   }
 
-  def slide[U](start: Point, end: Point, radius: Int, f: A => U): Unit = {
+  def slide[U](start: Point, end: Point, radius: Int, f: A => U): Unit =
     mapIndexed { case (p, _) => p }
       .slice(start.x to end.x, start.y to end.y)
-      .list
+      .toSeq
       .foreach { point =>
         window(point, radius).foreach(f)
       }
-  }
 
   def slide[U](start: Point, radius: Int, f: A => U): Unit =
     slide(start, end = Point(Math.max(width - 1, 0), Math.max(height - 1, 0)), radius, f)

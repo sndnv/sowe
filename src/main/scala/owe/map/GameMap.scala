@@ -2,17 +2,19 @@ package owe.map
 
 import java.util.UUID
 
-import akka.actor.Actor
+import akka.actor.{Actor, ActorLogging}
 import owe.EntityID
 import owe.entities.{ActiveEntity, Entity, PassiveEntity}
 import owe.entities.active.{Resource, Structure}
-import owe.entities.passive.Doodad
+import owe.entities.passive.{Doodad, Road}
 import owe.map.grid.{Grid, Point}
 import owe.Tagging._
 
-trait GameMap extends Actor {
-  val height: Int
+class GameMap(
+  val height: Int,
   val width: Int
+) extends Actor
+    with ActorLogging {
 
   private val grid = Grid[MapCell](height, width, MapCell.empty)
   private var entities: Map[EntityID, Point] = Map.empty
@@ -51,7 +53,7 @@ trait GameMap extends Actor {
           case _ => Left(GameMap.Error.CellUnavailable)
         }
 
-      case None => Left(GameMap.Error.CellUnavailable)
+      case None => Left(GameMap.Error.CellOutOfBounds)
     }
 
   private def destroyEntity(entityID: EntityID): Either[GameMap.Error, MapCell.Availability] =
@@ -76,7 +78,7 @@ trait GameMap extends Actor {
           case _ => Left(GameMap.Error.EntityMissing)
         }
 
-      case None => Left(GameMap.Error.CellUnavailable)
+      case None => Left(GameMap.Error.CellOutOfBounds)
     }
 
   private def cellAvailability(cell: MapCell): MapCell.Availability =
@@ -133,7 +135,38 @@ trait GameMap extends Actor {
 
   private def pathBetween(start: Point, end: Point): Option[Seq[Point]] = ??? //TODO
 
-  //TODO - effects & expiration
+  private def cellHasRoad(mapCell: MapCell): Boolean =
+    mapCell.entities.exists {
+      case (_, entity) =>
+        entity match {
+          case PassiveMapEntity(passiveEntity, _) => passiveEntity.isInstanceOf[Road]
+          case _                                  => false
+        }
+    }
+
+  private def findFirstAdjacentRoad(entityID: EntityID): Option[Point] = {
+    for {
+      parentCell <- entities.get(entityID)
+      mapCell <- grid.get(parentCell)
+      mapEntity <- mapCell.entities.get(entityID)
+    } yield {
+      val entityCells = GameMap.entityCells(mapEntity.size, parentCell)
+      entityCells
+        .flatMap(point => grid.indexes().window(point, radius = 1).toSeq)
+        .distinct
+        .flatMap(point => grid.get(point).map(cell => (point, cell)))
+        .collect {
+          case (point, cell) if !entityCells.contains(point) && cellHasRoad(cell) => point
+        }
+        .sorted
+        .headOption
+    }
+  }.flatten
+
+  override def receive: Receive = {
+    case GameMap.CreateEntity()  => //TODO
+    case GameMap.DestroyEntity() => //TODO
+  }
 }
 
 object GameMap {
@@ -141,16 +174,13 @@ object GameMap {
   sealed trait Error
   object Error {
     case object CellUnavailable extends Error
+    case object CellOutOfBounds extends Error
     case object EntityMissing extends Error
-    case object EffectPresent extends Error
-    case object EffectMissing extends Error
   }
 
   sealed trait Message extends owe.Message
   case class CreateEntity() extends Message
   case class DestroyEntity() extends Message
-  case class AddEffect() extends Message
-  case class RemoveEffect() extends Message
 
   def neighboursOf(cell: Point, withCornerNeighbours: Boolean): Seq[Option[Point]] = {
     val Point(x, y) = cell
