@@ -14,6 +14,7 @@ trait Resource
 
   override protected def tick(
     tickSize: Int,
+    properties: Resource.Properties,
     state: Resource.State,
     modifiers: Resource.StateModifiers
   ): Resource.State = ??? //TODO

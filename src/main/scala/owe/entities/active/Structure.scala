@@ -48,6 +48,7 @@ trait Structure
 
   override protected def tick(
     tickSize: Int,
+    properties: Structure.Properties,
     state: Structure.State,
     modifiers: Structure.StateModifiers
   ): Structure.State =

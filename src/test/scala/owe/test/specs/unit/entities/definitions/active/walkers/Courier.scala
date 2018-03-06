@@ -32,6 +32,7 @@ object Courier extends Walker {
 
   override protected def tick(
     tickSize: Int,
+    properties: Walker.Properties,
     state: Walker.State,
     modifiers: Walker.StateModifiers
   ): Walker.State = ??? //TODO

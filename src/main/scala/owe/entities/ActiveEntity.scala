@@ -1,7 +1,7 @@
 package owe.entities
 
 import scala.reflect.ClassTag
-import akka.actor.{Actor, ActorLogging, Props}
+import akka.actor.{Actor, FSM, Props}
 import owe.effects.Effect
 
 abstract class ActiveEntity[
@@ -21,7 +21,7 @@ abstract class ActiveEntity[
   protected def createState(): S
   protected def createStateModifiers(): M
   protected def createEffects(): Seq[((P, S) => Boolean, Effect)]
-  protected def tick(tickSize: Int, state: S, modifiers: M): S
+  protected def tick(tickSize: Int, properties: P, state: S, modifiers: M): S
 
   def props(): Props = Props(
     classOf[ActiveEntityActor],
@@ -31,21 +31,24 @@ abstract class ActiveEntity[
     createEffects()
   )
 
+  case class Data(state: S, modifiers: M)
+
   protected class ActiveEntityActor(
     val properties: P,
-    var state: S,
-    val modifiers: M,
-    var effects: Seq[((P, S) => Boolean, Effect)]
+    val initialState: S,
+    val initialModifiers: M,
+    val effects: Seq[((P, S) => Boolean, Effect)]
   ) extends Actor
-      with ActorLogging {
-    override def receive: Receive = {
-      case message: ActiveEntity.ProcessTick[P, S, M] =>
-        internalBeforeTick(message.tickSize, state, modifiers).foreach(msg => context.parent ! msg)
-        beforeTick(message.tickSize, state, modifiers).foreach(msg => context.parent ! msg)
+      with FSM[ActiveEntity.State, Data] {
+    import ActiveEntity._
 
-        val tickModifiers: M = message.externalEffects.foldLeft(modifiers) {
+    startWith(State.Idle, Data(initialState, initialModifiers))
+
+    whenUnhandled {
+      case Event(ApplyEffects(tickSize, externalEffects), data) =>
+        val tickModifiers: M = externalEffects.foldLeft(data.modifiers) {
           case (currentModifiers, effect) =>
-            effect(message.tickSize, properties, state, currentModifiers) match {
+            effect(tickSize, properties, data.state, currentModifiers) match {
               case updatedModifiers: M =>
                 updatedModifiers
 
@@ -60,16 +63,29 @@ abstract class ActiveEntity[
             }
         }
 
-        state = tick(message.tickSize, state, tickModifiers)
+        goto(State.Active).using(data.copy(modifiers = tickModifiers))
 
-        afterTick(message.tickSize, state, tickModifiers).foreach(msg => context.parent ! msg)
-        internalAfterTick(message.tickSize, state, tickModifiers).foreach(msg => context.parent ! msg)
+      case Event(ProcessTick(tickSize), data) =>
+        internalBeforeTick(tickSize, data.state, data.modifiers).foreach(msg => context.parent ! msg)
+        beforeTick(tickSize, data.state, data.modifiers).foreach(msg => context.parent ! msg)
 
+        val updatedState = tick(tickSize, properties, data.state, data.modifiers)
+
+        afterTick(tickSize, updatedState, data.modifiers).foreach(msg => context.parent ! msg)
+        internalAfterTick(tickSize, updatedState, data.modifiers).foreach(msg => context.parent ! msg)
+
+        goto(State.Idle).using(Data(updatedState, initialModifiers))
+    }
+
+    onTransition {
+      case _ -> State.Idle =>
         //TODO - send updates to parent
         val activeEffects = effects.collect {
-          case (p, effect) if p(properties, state) => effect
+          case (p, effect) if p(properties, nextStateData.state) => effect
         }
     }
+
+    initialize()
   }
 }
 
@@ -84,9 +100,19 @@ object ActiveEntity {
     def apply(tickSize: Int, properties: P, state: S, modifiers: M): M
   }
 
+  sealed trait State
+  object State {
+    case object Idle extends State
+    case object Active extends State
+  }
+
   sealed trait Message extends owe.Message
 
-  case class ProcessTick[
+  case class ProcessTick(
+    tickSize: Int
+  ) extends Message
+
+  case class ApplyEffects[
     P <: Entity.Properties,
     S <: Entity.State,
     M <: Entity.StateModifiers
