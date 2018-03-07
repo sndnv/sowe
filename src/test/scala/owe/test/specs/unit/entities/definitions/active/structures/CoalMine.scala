@@ -2,19 +2,20 @@ package owe.test.specs.unit.entities.definitions.active.structures
 
 import owe.effects.Effect
 import owe.entities.active.Structure
-import owe.{entities, EffectID}
+import owe.{entities, EffectID, EntityDesirability}
 
 object CoalMine extends Structure {
 
   override def `size`: entities.Entity.Size = entities.Entity.Size(height = 3, width = 2)
+
+  override def `desirability`: EntityDesirability = (-5, -5, -3, -3, -3, -3)
 
   override def `subtype`: Structure.Type = Structure.Type.Industry
 
   override protected def createProperties(): Structure.Properties = Structure.Properties(
     name = "CoalMine",
     maxPeople = 15,
-    cost = 500,
-    desirability = (-5, -5, -3, -3, -3, -3)
+    cost = 500
   )
 
   override protected def createState(): Structure.State = Structure.State(

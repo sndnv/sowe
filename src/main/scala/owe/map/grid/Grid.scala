@@ -108,6 +108,30 @@ class Grid[A: ClassTag](private val data: Array[Array[A]]) {
 
   def slide[U](radius: Int, f: A => U): Unit = slide(start = Point(0, 0), radius, f)
 
+  def nextPoint(point: Point): Option[Point] =
+    get(point).map { _ =>
+      if (point.x + 1 == width) {
+        //reached right-most col
+        Point(
+          //resets to first col
+          0,
+          if (point.y + 1 == height) {
+            //reached bottom row
+            0
+          } else {
+            //moves one row down
+            point.y + 1
+          }
+        )
+      } else {
+        //moves one col to the right on the current row
+        Point(
+          point.x + 1,
+          point.y
+        )
+      }
+    }
+
   def transpose: Grid[A] = new Grid(data.transpose)
 
   def debugString(): String = {

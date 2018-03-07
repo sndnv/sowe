@@ -75,14 +75,13 @@ abstract class ActiveEntity[
         internalAfterTick(tickSize, updatedState, data.modifiers).foreach(msg => context.parent ! msg)
 
         goto(State.Idle).using(Data(updatedState, initialModifiers))
-    }
 
-    onTransition {
-      case _ -> State.Idle =>
-        //TODO - send updates to parent
+      case Event(GetActiveEffects(), data) =>
         val activeEffects = effects.collect {
-          case (p, effect) if p(properties, nextStateData.state) => effect
+          case (p, effect) if p(properties, data.state) => effect
         }
+
+        stay().replying(activeEffects)
     }
 
     initialize()
@@ -120,4 +119,6 @@ object ActiveEntity {
     tickSize: Int,
     externalEffects: Seq[Effect[P, S, M]]
   ) extends Message
+
+  case class GetActiveEffects()
 }

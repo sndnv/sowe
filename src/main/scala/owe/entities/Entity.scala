@@ -1,8 +1,11 @@
 package owe.entities
 
+import owe.EntityDesirability
+
 trait Entity {
   def `size`: Entity.Size
   def `type`: Entity.Type
+  def `desirability`: EntityDesirability
 }
 
 object Entity {

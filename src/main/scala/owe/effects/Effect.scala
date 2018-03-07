@@ -1,3 +1,5 @@
 package owe.effects
 
-trait Effect
+trait Effect {
+  def radius: Int
+}

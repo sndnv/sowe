@@ -99,8 +99,7 @@ object Structure {
   case class Properties(
     name: String,
     maxPeople: Int,
-    cost: Int,
-    desirability: (Int, Int, Int, Int, Int, Int) //TODO - (own cells, r+1, r+2, r+3, r+4, r+5)
+    cost: Int
   ) extends Entity.Properties
 
   case class Risk(

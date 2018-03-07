@@ -1,5 +1,6 @@
 package owe.entities.active
 
+import owe.EntityDesirability
 import owe.entities.active.Structure.CommodityAmount
 import owe.entities._
 import owe.production.Commodity
@@ -13,6 +14,7 @@ trait Walker
     ] {
   override def `size`: Entity.Size = Entity.Size(height = 1, width = 1)
   override def `type`: Entity.Type = Entity.Type.Walker
+  override def `desirability`: EntityDesirability = EntityDesirability.Neutral
 
   override protected def tick(
     tickSize: Int,

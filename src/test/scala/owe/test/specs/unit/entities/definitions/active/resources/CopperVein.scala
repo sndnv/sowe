@@ -1,6 +1,5 @@
 package owe.test.specs.unit.entities.definitions.active.resources
 
-import owe.EffectID
 import owe.effects.Effect
 import owe.entities.active.Resource
 

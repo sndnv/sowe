@@ -2,18 +2,24 @@ package owe.map
 
 import java.util.UUID
 
+import akka.pattern.ask
 import akka.actor.{Actor, ActorLogging}
+import akka.util.Timeout
 import owe.EntityID
 import owe.entities.{ActiveEntity, Entity, PassiveEntity}
 import owe.entities.active.{Resource, Structure}
 import owe.entities.passive.{Doodad, Road}
 import owe.map.grid.{Grid, Point}
 import owe.Tagging._
+import owe.effects.Effect
+
+import scala.concurrent.{ExecutionContext, Future}
 
 class GameMap(
   val height: Int,
   val width: Int
-) extends Actor
+)(implicit ec: ExecutionContext, timeout: Timeout)
+    extends Actor
     with ActorLogging {
 
   private val grid = Grid[MapCell](height, width, MapCell.empty)
@@ -32,11 +38,12 @@ class GameMap(
                   ActiveMapEntity(
                     context.system.actorOf(entity.props()).tag[entity.Tag],
                     cell,
-                    entity.`size`
+                    entity.`size`,
+                    entity.`desirability`
                   )
 
                 case entity: PassiveEntity =>
-                  PassiveMapEntity(entity, cell)
+                  PassiveMapEntity(entity, cell, entity.`desirability`)
               }
 
               entities += entityID -> cell
@@ -86,13 +93,13 @@ class GameMap(
       .find {
         case (_, mapEntity) =>
           mapEntity match {
-            case PassiveMapEntity(entity, _) =>
+            case PassiveMapEntity(entity, _, _) =>
               entity match {
                 case _: Doodad => true
                 case _         => false
               }
 
-            case ActiveMapEntity(entity, _, _) =>
+            case ActiveMapEntity(entity, _, _, _) =>
               entity match {
                 case _: Structure.ActorRefTag => true
                 case _: Resource.ActorRefTag  => true
@@ -139,8 +146,8 @@ class GameMap(
     mapCell.entities.exists {
       case (_, entity) =>
         entity match {
-          case PassiveMapEntity(passiveEntity, _) => passiveEntity.isInstanceOf[Road]
-          case _                                  => false
+          case PassiveMapEntity(passiveEntity, _, _) => passiveEntity.isInstanceOf[Road]
+          case _                                     => false
         }
     }
 
@@ -162,6 +169,79 @@ class GameMap(
         .headOption
     }
   }.flatten
+
+  private def tick(tickSize: Int): Future[Int] = {
+    val start = Point(0, 0)
+
+    def processCell(currentCell: Point, processedCells: Int): Future[Int] =
+      grid
+        .get(currentCell)
+        .map { cell =>
+          Future
+            .sequence(
+              cell.entities.map {
+                case (_, mapEntity) =>
+                  mapEntity match {
+                    case PassiveMapEntity(_, _, desirability) =>
+                      Future.successful(desirability, Seq.empty)
+
+                    case ActiveMapEntity(entity, _, _, desirability) =>
+                      (entity ? ActiveEntity.GetActiveEffects()).mapTo[Seq[Effect]].map { effects =>
+                        (desirability, effects)
+                      }
+                  }
+              }
+            )
+            .flatMap { data =>
+              val (desirability, effects) = data.unzip
+
+              //TODO - apply desirability
+
+              effects.flatten.foreach { effect =>
+                grid.window(currentCell, effect.radius).foreach { cell =>
+                  effect match {
+                    case cellEffect: MapCell.Effect => //TODO - handle cell effects
+
+                    case entityEffect: ActiveEntity.Effect[_, _, _] =>
+                      cell.entities.foreach {
+                        case (_, mapEntity) =>
+                          mapEntity match {
+                            case ActiveMapEntity(entity, _, _, _) =>
+                              entity ! ActiveEntity.ApplyEffects(tickSize, Seq(entityEffect))
+
+                            case _ => () //do nothing
+                          }
+                      }
+                  }
+                }
+              }
+
+              cell.entities.foreach {
+                case (_, mapEntity) =>
+                  mapEntity match {
+                    case ActiveMapEntity(entity, _, _, _) =>
+                      entity ! ActiveEntity.ProcessTick(tickSize)
+
+                    case _ => () //do nothing
+                  }
+              }
+
+              grid
+                .nextPoint(currentCell)
+                .map { nextCell =>
+                  if (nextCell == start) {
+                    Future.successful(processedCells + 1)
+                  } else {
+                    processCell(nextCell, processedCells + 1)
+                  }
+                }
+                .getOrElse(Future.failed(new IllegalStateException(s"Failed to find next cell after [$currentCell]")))
+            }
+        }
+        .getOrElse(Future.failed(new IllegalArgumentException(s"Failed to find cell at [$currentCell]")))
+
+    processCell(currentCell = start, processedCells = 0)
+  }
 
   override def receive: Receive = {
     case GameMap.CreateEntity()  => //TODO

@@ -1,5 +1,6 @@
 package owe.entities.active
 
+import owe.EntityDesirability
 import owe.entities._
 
 trait Resource
@@ -11,6 +12,7 @@ trait Resource
     ] {
   override def `size`: Entity.Size = Entity.Size(height = 1, width = 1)
   override def `type`: Entity.Type = Entity.Type.Resource
+  override def `desirability`: EntityDesirability = EntityDesirability.Neutral
 
   override protected def tick(
     tickSize: Int,
