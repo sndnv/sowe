@@ -11,6 +11,7 @@ sealed trait MapEntity {
   def parentCell: Point
   def size: Entity.Size
   def desirability: EntityDesirability
+  def withNewParentCell(newParentCell: Point): MapEntity
 }
 
 final case class PassiveMapEntity(
@@ -19,6 +20,7 @@ final case class PassiveMapEntity(
   desirability: EntityDesirability
 ) extends MapEntity {
   override def size: Entity.Size = entity.`size`
+  override def withNewParentCell(newParentCell: Point): MapEntity = copy(parentCell = newParentCell)
 }
 
 final case class ActiveMapEntity(
@@ -26,4 +28,6 @@ final case class ActiveMapEntity(
   parentCell: Point,
   size: Entity.Size,
   desirability: EntityDesirability
-) extends MapEntity
+) extends MapEntity {
+  override def withNewParentCell(newParentCell: Point): MapEntity = copy(parentCell = newParentCell)
+}

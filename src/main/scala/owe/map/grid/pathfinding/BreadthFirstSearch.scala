@@ -9,7 +9,7 @@ object BreadthFirstSearch extends Search {
 
   override def calculate(start: Point, goal: Point, neighbours: Point => Seq[Point]): Option[Queue[Point]] = {
     @tailrec
-    def calculate(available: Queue[PathData], visited: Queue[Point]): Option[Queue[Point]] = {
+    def calculate(available: Queue[PathData], visited: Queue[Point]): Option[Queue[Point]] =
       available.dequeueOption match {
         case Some((PathData(point, path), remaining)) =>
           if (point == goal) {
@@ -26,7 +26,6 @@ object BreadthFirstSearch extends Search {
 
         case None => None
       }
-    }
 
     calculate(Queue(PathData(start, path = Queue(start))), Queue.empty)
   }

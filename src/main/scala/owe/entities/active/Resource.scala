@@ -2,6 +2,7 @@ package owe.entities.active
 
 import owe.EntityDesirability
 import owe.entities._
+import owe.map.MapCell
 
 trait Resource
     extends ActiveEntity[
@@ -10,12 +11,14 @@ trait Resource
       Resource.StateModifiers,
       Resource.ActorRefTag
     ] {
-  override def `size`: Entity.Size = Entity.Size(height = 1, width = 1)
-  override def `type`: Entity.Type = Entity.Type.Resource
-  override def `desirability`: EntityDesirability = EntityDesirability.Neutral
+  final override def `size`: Entity.Size = Entity.Size(height = 1, width = 1)
+  final override def `type`: Entity.Type = Entity.Type.Resource
+  final override def `desirability`: EntityDesirability = EntityDesirability.Neutral
 
   override protected def tick(
     tickSize: Int,
+    cellProperties: MapCell.Properties,
+    cellModifiers: MapCell.Modifiers,
     properties: Resource.Properties,
     state: Resource.State,
     modifiers: Resource.StateModifiers
@@ -23,9 +26,9 @@ trait Resource
 }
 
 object Resource {
-  trait ActorRefTag extends ActiveEntity.ActorRefTag
-
   type Effect = ActiveEntity.Effect[Properties, State, StateModifiers]
+
+  trait ActorRefTag extends ActiveEntity.ActorRefTag
 
   case class Properties(
     name: String,
@@ -34,12 +37,12 @@ object Resource {
 
   case class State(
     currentAmount: Int,
-    replenishRate: Int, //TODO - # of ticks to get `replenishAmount`
-    replenishAmount: Int //TODO - amount to replenish after `replenishRate` ticks
+    replenishRate: Int, //doc - # of ticks to get `replenishAmount`
+    replenishAmount: Int //doc - amount to replenish after `replenishRate` ticks
   ) extends Entity.State
 
   case class StateModifiers(
-    replenishRate: Int, //TODO - in pct of State.replenishRate
-    replenishAmount: Int //TODO - in pct of State.replenishAmount
+    replenishRate: Int, //doc - in pct of State.replenishRate
+    replenishAmount: Int //doc - in pct of State.replenishAmount
   ) extends Entity.StateModifiers
 }

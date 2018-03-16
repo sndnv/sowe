@@ -1,8 +1,9 @@
 package owe.entities.active
 
 import owe.EntityDesirability
-import owe.entities.active.Structure.CommodityAmount
 import owe.entities._
+import owe.entities.active.Structure.CommodityAmount
+import owe.map.MapCell
 import owe.production.Commodity
 
 trait Walker
@@ -12,12 +13,14 @@ trait Walker
       Walker.StateModifiers,
       Walker.ActorRefTag
     ] {
-  override def `size`: Entity.Size = Entity.Size(height = 1, width = 1)
-  override def `type`: Entity.Type = Entity.Type.Walker
-  override def `desirability`: EntityDesirability = EntityDesirability.Neutral
+  final override def `size`: Entity.Size = Entity.Size(height = 1, width = 1)
+  final override def `type`: Entity.Type = Entity.Type.Walker
+  final override def `desirability`: EntityDesirability = EntityDesirability.Neutral
 
   override protected def tick(
     tickSize: Int,
+    cellProperties: MapCell.Properties,
+    cellModifiers: MapCell.Modifiers,
     properties: Walker.Properties,
     state: Walker.State,
     modifiers: Walker.StateModifiers
@@ -25,15 +28,19 @@ trait Walker
 
   protected def processMovement(
     tickSize: Int,
+    cellProperties: MapCell.Properties,
+    cellModifiers: MapCell.Modifiers,
     state: Walker.State,
     modifiers: Walker.StateModifiers
   ): Seq[owe.Message]
 
   override protected[entities] def internalAfterTick(
     tickSize: Int,
+    cellProperties: MapCell.Properties,
+    cellModifiers: MapCell.Modifiers,
     state: Walker.State,
     modifiers: Walker.StateModifiers
-  ): Seq[owe.Message] = processMovement(tickSize, state, modifiers)
+  ): Seq[owe.Message] = processMovement(tickSize, cellProperties, cellModifiers, state, modifiers)
 }
 
 object Walker {

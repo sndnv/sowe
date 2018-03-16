@@ -2,6 +2,7 @@ package owe.test.specs.unit.entities.definitions.active.walkers
 
 import owe.effects.Effect
 import owe.entities.active.Walker
+import owe.map.MapCell
 
 object Courier extends Walker {
   override protected def createProperties(): Walker.Properties = Walker.Properties(
@@ -31,6 +32,8 @@ object Courier extends Walker {
 
   override protected def tick(
     tickSize: Int,
+    cellProperties: MapCell.Properties,
+    cellModifiers: MapCell.Modifiers,
     properties: Walker.Properties,
     state: Walker.State,
     modifiers: Walker.StateModifiers
@@ -38,6 +41,8 @@ object Courier extends Walker {
 
   override protected def processMovement(
     tickSize: Int,
+    cellProperties: MapCell.Properties,
+    cellModifiers: MapCell.Modifiers,
     state: Walker.State,
     modifiers: Walker.StateModifiers
   ): Seq[owe.Message] = ??? //TODO

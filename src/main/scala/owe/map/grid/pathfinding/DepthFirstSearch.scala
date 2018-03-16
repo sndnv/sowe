@@ -9,7 +9,7 @@ object DepthFirstSearch extends Search {
 
   override def calculate(start: Point, goal: Point, neighbours: Point => Seq[Point]): Option[Queue[Point]] = {
     @tailrec
-    def calculate(available: Vector[PathData], visited: Queue[Point]): Option[Queue[Point]] = {
+    def calculate(available: Vector[PathData], visited: Queue[Point]): Option[Queue[Point]] =
       available.lastOption match {
         case Some(PathData(point, path)) =>
           if (point == goal) {
@@ -26,7 +26,6 @@ object DepthFirstSearch extends Search {
 
         case None => None
       }
-    }
 
     calculate(Vector(PathData(start, path = Queue(start))), Queue.empty)
   }

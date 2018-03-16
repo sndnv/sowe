@@ -35,6 +35,8 @@ class Grid[A: ClassTag](private val data: Array[Array[A]]) {
 
   def indexes(): Grid[Point] = mapIndexed { case (point, _) => point }
 
+  def indexed(): Grid[(Point, A)] = mapIndexed { case (point, element) => (point, element) }
+
   def slice(cols: Range, rows: Range): Grid[A] =
     new Grid(
       cols.map { x =>
@@ -63,6 +65,15 @@ class Grid[A: ClassTag](private val data: Array[Array[A]]) {
   def table: Seq[Seq[A]] = rows
 
   def toSeq: Seq[A] = data.flatMap(_.toSeq)
+
+  def toMap: Map[Point, A] =
+    data.zipWithIndex.flatMap {
+      case (row, rowIndex) =>
+        row.zipWithIndex.map {
+          case (col, colIndex) =>
+            (Point(rowIndex, colIndex), col)
+        }
+    }.toMap
 
   def getUnsafe(point: Point): A = data(point.x)(point.y)
 

@@ -5,7 +5,7 @@ import owe.entities.Entity
 import owe.entities.PassiveEntity
 
 class Road extends PassiveEntity {
-  override def `type`: Entity.Type = Entity.Type.Road
+  final override def `type`: Entity.Type = Entity.Type.Road
 
   override def `desirability`: EntityDesirability = EntityDesirability.Neutral
 }

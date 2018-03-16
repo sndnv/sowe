@@ -2,36 +2,121 @@ package owe.map
 
 import java.util.UUID
 
-import akka.pattern.ask
-import akka.actor.{Actor, ActorLogging}
+import akka.actor.{Actor, ActorLogging, Stash, Timers}
+import akka.pattern.{ask, pipe}
 import akka.util.Timeout
-import owe.EntityID
-import owe.entities.{ActiveEntity, Entity, PassiveEntity}
-import owe.entities.active.{Resource, Structure}
-import owe.entities.passive.{Doodad, Road}
-import owe.map.grid.{Grid, Point}
 import owe.Tagging._
 import owe.effects.Effect
+import owe.entities.active.{Resource, Structure, Walker}
+import owe.entities.passive.{Doodad, Road, Roadblock}
+import owe.entities.{ActiveEntity, Entity, PassiveEntity}
+import owe.map.MapCell.Availability
+import owe.map.grid.{Grid, Point}
+import owe.events.Tracker
+import owe.map.grid.pathfinding.Search
+import owe.{EntityDesirability, EntityID}
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.collection.immutable.Queue
+import scala.concurrent.Future
+import scala.concurrent.duration._
 
-class GameMap(
-  val height: Int,
-  val width: Int
-)(implicit ec: ExecutionContext, timeout: Timeout)
-    extends Actor
-    with ActorLogging {
+trait GameMap extends Actor with ActorLogging with Stash with Timers {
+  import GameMap._
+  import context.dispatcher
+
+  private case object TickTimer
+
+  protected implicit val actionTimeout: Timeout
+
+  protected val height: Int
+  protected val width: Int
+  protected val tickInterval: FiniteDuration
+  protected val defaultTickSize: Int
+  protected val defaultTickStart: Point = Point(0, 0)
+  protected val defaultTickEnd: Point = defaultTickStart
+
+  protected val tracker: Tracker
+  protected val search: Search
 
   private val grid = Grid[MapCell](height, width, MapCell.empty)
   private var entities: Map[EntityID, Point] = Map.empty
 
-  private def createEntity(entity: Entity, cell: Point): Either[GameMap.Error, (EntityID, MapCell.Availability)] =
+  private def applyDesirability(entityDesirability: EntityDesirability, cells: Seq[Point], modifier: Int): Unit =
+    entityDesirability.toMap.foldLeft(Seq.empty[Point]) {
+      case (processedCells, (radius, desirability)) =>
+        val currentWindowCells =
+          cells.flatMap(grid.window(_, radius).toMap).filter {
+            case (point, _) => !processedCells.contains(point)
+          }
+
+        currentWindowCells.foreach {
+          case (_, affectedCell) =>
+            affectedCell.updateModifiers(
+              affectedCell.modifiers.copy(
+                desirability = affectedCell.modifiers.desirability + modifier * desirability
+              )
+            )
+        }
+
+        processedCells ++ currentWindowCells.map(_._1)
+    }
+
+  private def addDesirability(entityDesirability: EntityDesirability, cells: Seq[Point]): Unit =
+    applyDesirability(entityDesirability, cells, modifier = 1)
+
+  private def removeDesirability(entityDesirability: EntityDesirability, cells: Seq[Point]): Unit =
+    applyDesirability(entityDesirability, cells, modifier = -1)
+
+  private def associateMapEntity(mapEntity: MapEntity, entityID: EntityID, cell: Point): Unit = {
+    val cells = entityCells(mapEntity.size, mapEntity.parentCell)
+    cells.flatMap(grid.get).foreach(_.addEntity(entityID, mapEntity))
+
+    entities += entityID -> cell
+
+    mapEntity match {
+      case PassiveMapEntity(entity, _, desirability) =>
+        entity match {
+          case _: Doodad | _: Road => addDesirability(desirability, cells)
+          case _                   => () //do nothing
+        }
+
+      case ActiveMapEntity(entity, _, _, desirability) =>
+        entity match {
+          case _: Structure.ActorRefTag => addDesirability(desirability, cells)
+          case _                        => () //do nothing
+        }
+    }
+  }
+
+  private def dissociateMapEntity(mapEntity: MapEntity, entityID: EntityID, cell: Point): Unit = {
+    val cells = entityCells(mapEntity.size, mapEntity.parentCell)
+    cells.flatMap(grid.get).foreach(_.removeEntity(entityID))
+
+    entities -= entityID
+
+    mapEntity match {
+      case PassiveMapEntity(entity, _, desirability) =>
+        entity match {
+          case _: Doodad | _: Road => removeDesirability(desirability, cells)
+          case _                   => () //do nothing
+        }
+
+      case ActiveMapEntity(entity, _, _, desirability) =>
+        entity match {
+          case _: Structure.ActorRefTag => removeDesirability(desirability, cells)
+          case _                        => () //do nothing
+        }
+    }
+  }
+
+  private def createEntity(entity: Entity, cell: Point): Either[Error, (EntityID, Availability)] =
     grid.get(cell) match {
       case Some(mapCell) =>
+        val targetDesirability = requiredAvailability(entity.`type`)
         cellAvailability(mapCell) match {
-          case availability @ (MapCell.Availability.AvailableEmpty | MapCell.Availability.AvailableOccupied) =>
-            val cells = GameMap.entityCells(entity.`size`, cell)
-            if (cells.forall(isCellPassable)) {
+          case availability if availability == targetDesirability =>
+            val cells = entityCells(entity.`size`, cell)
+            if (cells.map(cellAvailability).forall(_ == targetDesirability)) {
               val entityID = UUID.randomUUID()
               val mapEntity: MapEntity = entity match {
                 case entity: ActiveEntity[_, _, _, _] =>
@@ -46,49 +131,84 @@ class GameMap(
                   PassiveMapEntity(entity, cell, entity.`desirability`)
               }
 
-              entities += entityID -> cell
-
-              cells
-                .flatMap(grid.get)
-                .foreach(_.addEntity(entityID, mapEntity))
+              associateMapEntity(mapEntity, entityID, cell)
 
               Right((entityID, availability))
             } else {
-              Left(GameMap.Error.CellUnavailable)
+              Left(Error.CellUnavailable)
             }
 
-          case _ => Left(GameMap.Error.CellUnavailable)
+          case _ => Left(Error.CellUnavailable)
         }
 
-      case None => Left(GameMap.Error.CellOutOfBounds)
+      case None => Left(Error.CellOutOfBounds)
     }
 
-  private def destroyEntity(entityID: EntityID): Either[GameMap.Error, MapCell.Availability] =
-    entities.get(entityID).flatMap(grid.get) match {
-      case Some(mapCell) =>
+  private def destroyEntity(entityID: EntityID): Either[Error, Availability] =
+    entities
+      .get(entityID)
+      .flatMap { point =>
+        grid.get(point).map(mapCell => (point, mapCell))
+      } match {
+      case Some((point, mapCell)) =>
         cellAvailability(mapCell) match {
-          case availability @ (MapCell.Availability.AvailableOccupied | MapCell.Availability.UnavailableOccupied) =>
+          case availability @ (Availability.Occupied | Availability.Passable) =>
             mapCell.entities.get(entityID) match {
               case Some(mapEntity) =>
-                GameMap
-                  .entityCells(mapEntity.size, mapEntity.parentCell)
-                  .flatMap(grid.get)
-                  .foreach(_.removeEntity(entityID))
-
-                entities -= entityID
-
+                dissociateMapEntity(mapEntity, entityID, point)
                 Right(availability)
 
-              case None => Left(GameMap.Error.EntityMissing)
+              case None =>
+                Left(Error.EntityMissing)
             }
 
-          case _ => Left(GameMap.Error.EntityMissing)
+          case _ => Left(Error.EntityMissing)
         }
 
-      case None => Left(GameMap.Error.CellOutOfBounds)
+      case None => Left(Error.CellOutOfBounds)
     }
 
-  private def cellAvailability(cell: MapCell): MapCell.Availability =
+  private def moveEntity(entityID: EntityID, newCell: Point): Either[Error, Availability] =
+    (for {
+      currentCell <- entities.get(entityID).toRight(Error.CellUnavailable): Either[Error, Point]
+      currentMapCell <- grid.get(currentCell).toRight(Error.EntityMissing): Either[Error, MapCell]
+      currentMapEntity <- currentMapCell.entities.get(entityID).toRight(Error.EntityMissing): Either[Error, MapEntity]
+      newMapCell <- grid.get(newCell).toRight(Error.CellUnavailable)
+    } yield {
+      val targetDesirability = requiredAvailability(entityTypeFromMapEntity(currentMapEntity))
+
+      cellAvailability(newMapCell) match {
+        case availability if availability == targetDesirability =>
+          val cells = entityCells(currentMapEntity.size, newCell)
+          if (cells.map(cellAvailability).forall(_ == targetDesirability)) {
+            dissociateMapEntity(currentMapEntity, entityID, currentCell)
+            associateMapEntity(currentMapEntity.withNewParentCell(newCell), entityID, newCell)
+
+            Right(availability)
+          } else {
+            Left(Error.CellUnavailable)
+          }
+      }
+    }).joinRight
+
+  private def entityTypeFromMapEntity(mapEntity: MapEntity): Entity.Type =
+    mapEntity match {
+      case PassiveMapEntity(entity, _, _) =>
+        entity match {
+          case _: Doodad    => Entity.Type.Doodad
+          case _: Road      => Entity.Type.Road
+          case _: Roadblock => Entity.Type.Roadblock
+        }
+
+      case ActiveMapEntity(entity, _, _, _) =>
+        entity match {
+          case _: Resource.ActorRefTag  => Entity.Type.Resource
+          case _: Structure.ActorRefTag => Entity.Type.Structure
+          case _: Walker.ActorRefTag    => Entity.Type.Walker
+        }
+    }
+
+  private def cellAvailability(cell: MapCell): Availability =
     cell.entities
       .find {
         case (_, mapEntity) =>
@@ -108,39 +228,42 @@ class GameMap(
           }
       } match {
       case Some(_) =>
-        MapCell.Availability.UnavailableOccupied
+        Availability.Occupied
 
       case None =>
         if (cell.entities.isEmpty) {
-          MapCell.Availability.AvailableEmpty
+          Availability.Buildable
         } else {
-          MapCell.Availability.AvailableOccupied
+          Availability.Passable
         }
     }
 
-  private def cellAvailability(cell: Point): MapCell.Availability =
+  private def cellAvailability(cell: Point): Availability =
     grid
       .get(cell)
       .map(cellAvailability)
-      .getOrElse(MapCell.Availability.OutOfBounds)
+      .getOrElse(Availability.OutOfBounds)
 
-  private def isCellPassable(cell: Point): Boolean =
-    cellAvailability(cell) match {
-      case MapCell.Availability.AvailableEmpty      => true
-      case MapCell.Availability.AvailableOccupied   => true
-      case MapCell.Availability.UnavailableOccupied => false
-      case MapCell.Availability.OutOfBounds         => false
-    }
+  private def requiredAvailability(entityType: Entity.Type): Availability = entityType match {
+    case Entity.Type.Doodad    => Availability.Buildable
+    case Entity.Type.Road      => Availability.Buildable
+    case Entity.Type.Roadblock => Availability.Passable //TODO - can be built only on roads w/o walkers
+    case Entity.Type.Resource  => Availability.Buildable
+    case Entity.Type.Structure => Availability.Buildable
+    case Entity.Type.Walker    => Availability.Passable
+  }
 
   private def passableNeighboursOf(cell: Point): Seq[Point] =
     //TODO - allow corner neighbours only for specific walkers that don't need roads
+    //TODO - handle roadblocks for specific walkers
     GameMap
       .neighboursOf(cell, withCornerNeighbours = true)
       .collect {
-        case Some(point) if isCellPassable(point) => point
+        case Some(point) if cellAvailability(point) == Availability.Passable => point
       }
 
-  private def pathBetween(start: Point, end: Point): Option[Seq[Point]] = ??? //TODO
+  private def pathBetween(start: Point, end: Point): Option[Queue[Point]] =
+    search.calculate(start, end, passableNeighboursOf)
 
   private def cellHasRoad(mapCell: MapCell): Boolean =
     mapCell.entities.exists {
@@ -157,100 +280,164 @@ class GameMap(
       mapCell <- grid.get(parentCell)
       mapEntity <- mapCell.entities.get(entityID)
     } yield {
-      val entityCells = GameMap.entityCells(mapEntity.size, parentCell)
-      entityCells
+      val cells = entityCells(mapEntity.size, parentCell)
+      cells
         .flatMap(point => grid.indexes().window(point, radius = 1).toSeq)
         .distinct
         .flatMap(point => grid.get(point).map(cell => (point, cell)))
         .collect {
-          case (point, cell) if !entityCells.contains(point) && cellHasRoad(cell) => point
+          case (point, cell) if !cells.contains(point) && cellHasRoad(cell) => point
         }
         .sorted
         .headOption
     }
   }.flatten
 
-  private def tick(tickSize: Int): Future[Int] = {
-    val start = Point(0, 0)
-
-    def processCell(currentCell: Point, processedCells: Int): Future[Int] =
-      grid
-        .get(currentCell)
-        .map { cell =>
+  //doc -> a map of points -> effects to be applied to those points
+  private def gatherActiveEffects(grid: Grid[MapCell]): Future[Map[Point, Seq[Effect]]] = {
+    val indexedGrid = grid.indexes()
+    Future
+      .traverse(
+        grid.toMap.mapValues { mapCell =>
           Future
             .sequence(
-              cell.entities.map {
-                case (_, mapEntity) =>
-                  mapEntity match {
-                    case PassiveMapEntity(_, _, desirability) =>
-                      Future.successful(desirability, Seq.empty)
-
-                    case ActiveMapEntity(entity, _, _, desirability) =>
-                      (entity ? ActiveEntity.GetActiveEffects()).mapTo[Seq[Effect]].map { effects =>
-                        (desirability, effects)
-                      }
-                  }
-              }
-            )
-            .flatMap { data =>
-              val (desirability, effects) = data.unzip
-
-              //TODO - apply desirability
-
-              effects.flatten.foreach { effect =>
-                grid.window(currentCell, effect.radius).foreach { cell =>
-                  effect match {
-                    case cellEffect: MapCell.Effect => //TODO - handle cell effects
-
-                    case entityEffect: ActiveEntity.Effect[_, _, _] =>
-                      cell.entities.foreach {
-                        case (_, mapEntity) =>
-                          mapEntity match {
-                            case ActiveMapEntity(entity, _, _, _) =>
-                              entity ! ActiveEntity.ApplyEffects(tickSize, Seq(entityEffect))
-
-                            case _ => () //do nothing
-                          }
-                      }
-                  }
-                }
-              }
-
-              cell.entities.foreach {
+              mapCell.entities.map {
                 case (_, mapEntity) =>
                   mapEntity match {
                     case ActiveMapEntity(entity, _, _, _) =>
-                      entity ! ActiveEntity.ProcessTick(tickSize)
+                      (entity ? ActiveEntity.GetActiveEffects()).mapTo[Seq[Effect]]
 
-                    case _ => () //do nothing
+                    case _: PassiveMapEntity =>
+                      Future.successful(Seq.empty)
+                  }
+              }
+            )
+            .map(_.flatten)
+        }
+      ) {
+        case (point, future) =>
+          future.map { result =>
+            result.map(effect => (effect, indexedGrid.window(point, effect.radius).toSeq))
+          }
+      }
+      .map { result =>
+        result.flatten.foldLeft(Map.empty[Point, Seq[Effect]]) {
+          case (map, (effect, points)) =>
+            val updates = points.map { point =>
+              (point, map.getOrElse(point, Seq.empty) :+ effect)
+            }
+
+            map ++ updates
+        }
+      }
+  }
+
+  //doc -> end is inclusive
+  private def processTick(
+    grid: Grid[MapCell],
+    activeEffects: Map[Point, Seq[Effect]],
+    tickSize: Int,
+    start: Point,
+    end: Point
+  ): Future[Int] = {
+    def processCell(currentCell: Point, processedCells: Int): Future[Int] =
+      grid
+        .get(currentCell)
+        .flatMap { cell =>
+          activeEffects.get(currentCell).map { effects =>
+            val (cellEffects, entityEffects) =
+              effects.foldLeft((Seq.empty[MapCell.Effect], Seq.empty[Effect])) {
+                case ((ce, ee), effect) =>
+                  effect match {
+                    case effect: MapCell.Effect => (ce :+ effect, ee)
+                    case _                      => (ce, ee :+ effect)
                   }
               }
 
-              grid
-                .nextPoint(currentCell)
-                .map { nextCell =>
-                  if (nextCell == start) {
-                    Future.successful(processedCells + 1)
-                  } else {
-                    processCell(nextCell, processedCells + 1)
-                  }
-                }
-                .getOrElse(Future.failed(new IllegalStateException(s"Failed to find next cell after [$currentCell]")))
+            val cellModifiers = cellEffects.foldLeft(cell.properties.toModifiers) {
+              case (modifiers, effect) =>
+                effect(cell.properties, modifiers)
             }
+
+            cell.entities.foreach {
+              case (_, mapEntity) =>
+                mapEntity match {
+                  case ActiveMapEntity(entity, _, _, _) =>
+                    entity ! ActiveEntity.ApplyEffects(tickSize, entityEffects)
+                    entity ! ActiveEntity.ProcessTick(tickSize, cell.properties, cellModifiers)
+
+                  case _ => () //do nothing
+                }
+            }
+
+            grid
+              .nextPoint(currentCell)
+              .map { nextCell =>
+                if (nextCell == end) {
+                  Future.successful(processedCells + 1)
+                } else {
+                  processCell(nextCell, processedCells + 1)
+                }
+              }
+              .getOrElse(Future.failed(new IllegalStateException(s"Failed to find next cell after [$currentCell]")))
+          }
         }
         .getOrElse(Future.failed(new IllegalArgumentException(s"Failed to find cell at [$currentCell]")))
 
     processCell(currentCell = start, processedCells = 0)
   }
 
-  override def receive: Receive = {
-    case GameMap.CreateEntity()  => //TODO
-    case GameMap.DestroyEntity() => //TODO
+  private def scheduleNextTick(): Unit =
+    timers.startSingleTimer(
+      TickTimer,
+      ProcessTick(defaultTickSize, defaultTickStart, defaultTickEnd),
+      tickInterval
+    )
+
+  private def idle: Receive = {
+    case CreateEntity(entity, cell) =>
+      log.debug("Creating entity of type [{}] with size [{}]...", entity.`type`, entity.`size`)
+      sender ! createEntity(entity, cell)
+
+    case DestroyEntity(entityID) =>
+      log.debug("Destroying entity with ID [{}]...", entityID)
+      sender ! destroyEntity(entityID)
+
+    case MoveEntity(entityID, cell) =>
+      log.debug("Moving entity with ID [{}] to [{}]...", entityID, cell)
+      sender ! moveEntity(entityID, cell)
+
+    case message: ProcessTick =>
+      self ! message
+      context.become(active)
   }
+
+  private def active: Receive = {
+    case ProcessTick(tickSize, start, end) =>
+      log.debug("Started processing tick with size [{}] from [{}] to [{}].", tickSize, start, end)
+      (for {
+        activeEffects <- gatherActiveEffects(grid)
+        processedCells <- processTick(grid, activeEffects, tickSize, start, end)
+      } yield {
+        TickProcessed(processedCells)
+      }).pipeTo(self)
+
+    case TickProcessed(processedCells) =>
+      log.debug("[{}] cells processed by tick.", processedCells)
+      scheduleNextTick()
+      unstashAll()
+      context.become(idle)
+
+    case _ => stash()
+  }
+
+  override def receive: Receive = idle
+
+  scheduleNextTick()
 }
 
 object GameMap {
-
+  //TODO - remove and use event tracking
   sealed trait Error
   object Error {
     case object CellUnavailable extends Error
@@ -259,8 +446,11 @@ object GameMap {
   }
 
   sealed trait Message extends owe.Message
-  case class CreateEntity() extends Message
-  case class DestroyEntity() extends Message
+  private case class ProcessTick(tickSize: Int, start: Point, end: Point) extends Message
+  private case class TickProcessed(processedCells: Int) extends Message
+  case class CreateEntity(entity: Entity, cell: Point) extends Message
+  case class DestroyEntity(entityID: EntityID) extends Message
+  case class MoveEntity(entityID: EntityID, cell: Point) extends Message
 
   def neighboursOf(cell: Point, withCornerNeighbours: Boolean): Seq[Option[Point]] = {
     val Point(x, y) = cell

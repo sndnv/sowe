@@ -1,6 +1,7 @@
 package owe.entities.active
 
 import owe.entities._
+import owe.map.MapCell
 import owe.production.Commodity
 
 trait Structure
@@ -10,11 +11,14 @@ trait Structure
       Structure.StateModifiers,
       Structure.ActorRefTag
     ] {
-  override def `type`: Entity.Type = Entity.Type.Structure
+  final override def `type`: Entity.Type = Entity.Type.Structure
+
   def `subtype`: Structure.Type
 
   protected def processRisk(
     tickSize: Int,
+    cellProperties: MapCell.Properties,
+    cellModifiers: MapCell.Modifiers,
     state: Option[Structure.Risk],
     modifiers: Option[Structure.RiskModifier]
   ): Option[Structure.Risk] =
@@ -30,34 +34,66 @@ trait Structure
 
   protected def processHousing(
     tickSize: Int,
+    cellProperties: MapCell.Properties,
+    cellModifiers: MapCell.Modifiers,
     state: Option[Structure.Housing],
     modifiers: Option[Structure.HousingModifier]
   ): Option[Structure.Housing] = None
 
   protected def processCommodities(
     tickSize: Int,
+    cellProperties: MapCell.Properties,
+    cellModifiers: MapCell.Modifiers,
     state: Option[Structure.Commodities],
     modifiers: Option[Structure.CommoditiesModifier]
   ): Option[Structure.Commodities] = None
 
   protected def processProduction(
     tickSize: Int,
+    cellProperties: MapCell.Properties,
+    cellModifiers: MapCell.Modifiers,
     state: Option[Structure.Production],
     modifiers: Option[Structure.ProductionModifier]
   ): Option[Structure.Production] = None
 
   override protected def tick(
     tickSize: Int,
+    cellProperties: MapCell.Properties,
+    cellModifiers: MapCell.Modifiers,
     properties: Structure.Properties,
     state: Structure.State,
     modifiers: Structure.StateModifiers
   ): Structure.State =
     //TODO - only do partial updates/copy (lenses?)
     state.copy(
-      risk = processRisk(tickSize, state.risk, modifiers.risk),
-      production = processProduction(tickSize, state.production, modifiers.production),
-      commodities = processCommodities(tickSize, state.commodities, modifiers.commodities),
-      housing = processHousing(tickSize, state.housing, modifiers.housing)
+      risk = processRisk(
+        tickSize,
+        cellProperties,
+        cellModifiers,
+        state.risk,
+        modifiers.risk
+      ),
+      production = processProduction(
+        tickSize,
+        cellProperties,
+        cellModifiers,
+        state.production,
+        modifiers.production
+      ),
+      commodities = processCommodities(
+        tickSize,
+        cellProperties,
+        cellModifiers,
+        state.commodities,
+        modifiers.commodities
+      ),
+      housing = processHousing(
+        tickSize,
+        cellProperties,
+        cellModifiers,
+        state.housing,
+        modifiers.housing
+      )
     )
 }
 
@@ -138,7 +174,7 @@ object Structure {
   )
 
   case class ProductionModifier(
-    rate: Int //TODO - in pct of Production.rate
+    rate: Int //doc - in pct of Production.rate
   )
 
   case class State(

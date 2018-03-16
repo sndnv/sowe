@@ -5,7 +5,7 @@ import owe.entities.Entity
 import owe.entities.PassiveEntity
 
 class Roadblock extends PassiveEntity {
-  override def `type`: Entity.Type = Entity.Type.Roadblock
+  final override def `type`: Entity.Type = Entity.Type.Roadblock
 
-  override def `desirability`: EntityDesirability = EntityDesirability.Neutral
+  final override def `desirability`: EntityDesirability = EntityDesirability.Neutral
 }

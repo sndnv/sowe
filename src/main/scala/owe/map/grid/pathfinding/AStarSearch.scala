@@ -10,9 +10,8 @@ object AStarSearch extends Search {
   private case class PathData(point: Point, actualCost: Double, expectedCost: Double, path: Queue[Point])
   private def orderingByExpectedCost[A <: PathData]: Ordering[A] = Ordering.by(_.expectedCost)
 
-  def heuristic(point: Point, goal: Point): Double = {
+  def heuristic(point: Point, goal: Point): Double =
     Math.abs(goal.x - point.x) + Math.abs(goal.y - point.y)
-  }
 
   override def calculate(start: Point, goal: Point, neighbours: Point => Seq[Point]): Option[Queue[Point]] = {
     val available: mutable.PriorityQueue[PathData] =
@@ -20,7 +19,7 @@ object AStarSearch extends Search {
     available.enqueue(PathData(start, 0, heuristic(start, goal), Queue(start)))
 
     @tailrec
-    def calculate(visited: Queue[Point]): Option[Queue[Point]] = {
+    def calculate(visited: Queue[Point]): Option[Queue[Point]] =
       if (available.nonEmpty) {
         val PathData(point, actualCost, _, path) = available.dequeue()
 
@@ -41,7 +40,6 @@ object AStarSearch extends Search {
       } else {
         None
       }
-    }
 
     calculate(Queue.empty)
   }

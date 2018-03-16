@@ -1,40 +1,59 @@
 package owe.map
 
-import owe.EntityID
 import owe.entities.Entity
+import owe.{CellDesirability, EntityID}
 
-class MapCell(
+private[map] class MapCell(
   private var cellEntities: Map[EntityID, MapEntity],
-  private val properties: MapCell.Properties
+  private val cellProperties: MapCell.Properties,
+  private var cellModifiers: MapCell.Modifiers
 ) {
   def entities: Map[EntityID, MapEntity] = cellEntities
+  def properties: MapCell.Properties = cellProperties
+  def modifiers: MapCell.Modifiers = cellModifiers
   def addEntity(entityID: EntityID, entity: MapEntity): Unit = cellEntities += entityID -> entity
   def removeEntity(entityID: EntityID): Unit = cellEntities -= entityID
+  def updateModifiers(updatedModifiers: MapCell.Modifiers): Unit = cellModifiers = updatedModifiers
 }
 
 object MapCell {
-  trait Effect extends owe.effects.Effect {
-    def apply(properties: Properties): Properties
-  }
+  def empty[E <: Entity]: MapCell =
+    new MapCell(
+      Map.empty,
+      Properties(desirability = CellDesirability.Neutral, fertility = 0, water = 0, buildingAllowed = true),
+      Modifiers(desirability = CellDesirability.Neutral, fertility = 0, water = 0, buildingAllowed = true)
+    )
 
   sealed trait Availability
-  object Availability {
-    case object AvailableEmpty extends Availability
-    case object AvailableOccupied extends Availability
-    case object UnavailableOccupied extends Availability
-    case object OutOfBounds extends Availability
+  trait Effect extends owe.effects.Effect {
+    def apply(properties: Properties, modifiers: Modifiers): Modifiers
   }
 
   case class Properties(
-    desirability: Int,
+    desirability: CellDesirability,
+    fertility: Int,
+    water: Int,
+    buildingAllowed: Boolean
+  ) {
+    def toModifiers: Modifiers = Modifiers(
+      desirability,
+      fertility,
+      water,
+      buildingAllowed
+    )
+  }
+
+  case class Modifiers(
+    desirability: CellDesirability,
     fertility: Int,
     water: Int,
     buildingAllowed: Boolean
   )
 
-  def empty[E <: Entity]: MapCell =
-    new MapCell(
-      Map.empty,
-      Properties(desirability = 0, fertility = 0, water = 0, buildingAllowed = true)
-    )
+  object Availability {
+    case object Buildable extends Availability
+    case object Passable extends Availability
+    case object Occupied extends Availability
+    case object OutOfBounds extends Availability
+  }
 }

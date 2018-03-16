@@ -5,7 +5,7 @@ import owe.entities.Entity
 import owe.entities.PassiveEntity
 
 class Doodad extends PassiveEntity {
-  override def `type`: Entity.Type = Entity.Type.Doodad
+  final override def `type`: Entity.Type = Entity.Type.Doodad
 
   override def `desirability`: EntityDesirability = EntityDesirability.Neutral
 }

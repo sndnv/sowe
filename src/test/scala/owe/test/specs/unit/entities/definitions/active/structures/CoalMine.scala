@@ -2,13 +2,14 @@ package owe.test.specs.unit.entities.definitions.active.structures
 
 import owe.effects.Effect
 import owe.entities.active.Structure
+import owe.map.MapCell
 import owe.{entities, EffectID, EntityDesirability}
 
 object CoalMine extends Structure {
 
   override def `size`: entities.Entity.Size = entities.Entity.Size(height = 3, width = 2)
 
-  override def `desirability`: EntityDesirability = (-5, -5, -3, -3, -3, -3)
+  override def `desirability`: EntityDesirability = EntityDesirability(-5, -5, -3, -3, -3, -3)
 
   override def `subtype`: Structure.Type = Structure.Type.Industry
 
@@ -36,12 +37,16 @@ object CoalMine extends Structure {
 
   override protected def processCommodities(
     tickSize: Int,
+    cellProperties: MapCell.Properties,
+    cellModifiers: MapCell.Modifiers,
     state: Option[Structure.Commodities],
     modifiers: Option[Structure.CommoditiesModifier]
   ): Option[Structure.Commodities] = ??? //TODO
 
   override protected def processProduction(
     tickSize: Int,
+    cellProperties: MapCell.Properties,
+    cellModifiers: MapCell.Modifiers,
     state: Option[Structure.Production],
     modifiers: Option[Structure.ProductionModifier]
   ): Option[Structure.Production] = ??? //TODO

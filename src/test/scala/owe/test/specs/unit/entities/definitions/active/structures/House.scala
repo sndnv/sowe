@@ -2,11 +2,12 @@ package owe.test.specs.unit.entities.definitions.active.structures
 
 import owe.effects.Effect
 import owe.entities.active.Structure
+import owe.map.MapCell
 import owe.{entities, EffectID, EntityDesirability}
 
 object House extends Structure {
 
-  override def `desirability`: EntityDesirability = (-1, 0, 0, 0, 0, 0)
+  override def `desirability`: EntityDesirability = EntityDesirability(-1, 0, 0, 0, 0, 0)
 
   override def `subtype`: Structure.Type = Structure.Type.Housing
 
@@ -45,12 +46,16 @@ object House extends Structure {
 
   override protected def processHousing(
     tickSize: Int,
+    cellProperties: MapCell.Properties,
+    cellModifiers: MapCell.Modifiers,
     state: Option[Structure.Housing],
     modifiers: Option[Structure.HousingModifier]
   ): Option[Structure.Housing] = ??? //TODO
 
   override protected def processCommodities(
     tickSize: Int,
+    cellProperties: MapCell.Properties,
+    cellModifiers: MapCell.Modifiers,
     state: Option[Structure.Commodities],
     modifiers: Option[Structure.CommoditiesModifier]
   ): Option[Structure.Commodities] = ??? //TODO
