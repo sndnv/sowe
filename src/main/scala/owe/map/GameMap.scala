@@ -2,7 +2,7 @@ package owe.map
 
 import java.util.UUID
 
-import akka.actor.{Actor, ActorLogging, Stash, Timers}
+import akka.actor.{Actor, ActorLogging, ActorRef, Stash, Timers}
 import akka.pattern.{ask, pipe}
 import akka.util.Timeout
 import owe.Tagging._
@@ -10,9 +10,9 @@ import owe.effects.Effect
 import owe.entities.active.{Resource, Structure, Walker}
 import owe.entities.passive.{Doodad, Road, Roadblock}
 import owe.entities.{ActiveEntity, Entity, PassiveEntity}
+import owe.events.Event
 import owe.map.MapCell.Availability
 import owe.map.grid.{Grid, Point}
-import owe.events.Tracker
 import owe.map.grid.pathfinding.Search
 import owe.{EntityDesirability, EntityID}
 
@@ -35,7 +35,7 @@ trait GameMap extends Actor with ActorLogging with Stash with Timers {
   protected val defaultTickStart: Point = Point(0, 0)
   protected val defaultTickEnd: Point = defaultTickStart
 
-  protected val tracker: Tracker
+  protected val tracker: ActorRef
   protected val search: Search
 
   private val grid = Grid[MapCell](height, width, MapCell.empty)
@@ -109,14 +109,14 @@ trait GameMap extends Actor with ActorLogging with Stash with Timers {
     }
   }
 
-  private def createEntity(entity: Entity, cell: Point): Either[Error, (EntityID, Availability)] =
+  private def createEntity(entity: Entity, cell: Point): Unit =
     grid.get(cell) match {
       case Some(mapCell) =>
-        val targetDesirability = requiredAvailability(entity.`type`)
+        val targetAvailability = requiredAvailability(entity.`type`)
         cellAvailability(mapCell) match {
-          case availability if availability == targetDesirability =>
+          case availability if availability == targetAvailability =>
             val cells = entityCells(entity.`size`, cell)
-            if (cells.map(cellAvailability).forall(_ == targetDesirability)) {
+            if (cells.map(cellAvailability).forall(_ == targetAvailability)) {
               val entityID = UUID.randomUUID()
               val mapEntity: MapEntity = entity match {
                 case entity: ActiveEntity[_, _, _, _] =>
@@ -133,63 +133,78 @@ trait GameMap extends Actor with ActorLogging with Stash with Timers {
 
               associateMapEntity(mapEntity, entityID, cell)
 
-              Right((entityID, availability))
+              tracker ! Event(Event.System.EntityCreated, Some(cell))
             } else {
-              Left(Error.CellUnavailable)
+              tracker ! Event(Event.System.CellsUnavailable, Some(cell))
             }
 
-          case _ => Left(Error.CellUnavailable)
+          case _ =>
+            tracker ! Event(Event.System.CellsUnavailable, Some(cell))
         }
 
-      case None => Left(Error.CellOutOfBounds)
+      case None =>
+        tracker ! Event(Event.System.CellOutOfBounds, Some(cell))
     }
 
-  private def destroyEntity(entityID: EntityID): Either[Error, Availability] =
+  private def destroyEntity(entityID: EntityID): Unit =
     entities
       .get(entityID)
       .flatMap { point =>
         grid.get(point).map(mapCell => (point, mapCell))
       } match {
-      case Some((point, mapCell)) =>
+      case Some((cell, mapCell)) =>
         cellAvailability(mapCell) match {
-          case availability @ (Availability.Occupied | Availability.Passable) =>
+          case Availability.Occupied | Availability.Passable =>
             mapCell.entities.get(entityID) match {
               case Some(mapEntity) =>
-                dissociateMapEntity(mapEntity, entityID, point)
-                Right(availability)
+                dissociateMapEntity(mapEntity, entityID, cell)
+                tracker ! Event(Event.System.EntityDestroyed, Some(cell))
 
               case None =>
-                Left(Error.EntityMissing)
+                tracker ! Event(Event.System.EntityMissing, Some(cell))
             }
 
-          case _ => Left(Error.EntityMissing)
+          case _ =>
+            tracker ! Event(Event.System.EntityMissing, Some(cell))
         }
 
-      case None => Left(Error.CellOutOfBounds)
+      case None =>
+        tracker ! Event(Event.System.CellOutOfBounds, cell = None)
     }
 
-  private def moveEntity(entityID: EntityID, newCell: Point): Either[Error, Availability] =
-    (for {
-      currentCell <- entities.get(entityID).toRight(Error.CellUnavailable): Either[Error, Point]
-      currentMapCell <- grid.get(currentCell).toRight(Error.EntityMissing): Either[Error, MapCell]
-      currentMapEntity <- currentMapCell.entities.get(entityID).toRight(Error.EntityMissing): Either[Error, MapEntity]
-      newMapCell <- grid.get(newCell).toRight(Error.CellUnavailable)
+  private def moveEntity(entityID: EntityID, newCell: Point): Unit = {
+    val event = (for {
+      currentCell <- entities
+        .get(entityID)
+        .toRight(Event(Event.System.CellsUnavailable, cell = None)): Either[Event, Point]
+      currentMapCell <- grid
+        .get(currentCell)
+        .toRight(Event(Event.System.EntityMissing, Some(currentCell))): Either[Event, MapCell]
+      currentMapEntity <- currentMapCell.entities
+        .get(entityID)
+        .toRight(Event(Event.System.EntityMissing, Some(currentCell))): Either[Event, MapEntity]
+      newMapCell <- grid
+        .get(newCell)
+        .toRight(Event(Event.System.CellsUnavailable, Some(newCell))): Either[Event, MapCell]
     } yield {
-      val targetDesirability = requiredAvailability(entityTypeFromMapEntity(currentMapEntity))
+      val targetAvailability = requiredAvailability(entityTypeFromMapEntity(currentMapEntity))
 
       cellAvailability(newMapCell) match {
-        case availability if availability == targetDesirability =>
+        case availability if availability == targetAvailability =>
           val cells = entityCells(currentMapEntity.size, newCell)
-          if (cells.map(cellAvailability).forall(_ == targetDesirability)) {
+          if (cells.map(cellAvailability).forall(_ == targetAvailability)) {
             dissociateMapEntity(currentMapEntity, entityID, currentCell)
             associateMapEntity(currentMapEntity.withNewParentCell(newCell), entityID, newCell)
 
-            Right(availability)
+            Event(Event.System.EntityMoved, Some(newCell))
           } else {
-            Left(Error.CellUnavailable)
+            Event(Event.System.CellsUnavailable, Some(newCell))
           }
       }
-    }).joinRight
+    }).merge
+
+    tracker ! event
+  }
 
   private def entityTypeFromMapEntity(mapEntity: MapEntity): Entity.Type =
     mapEntity match {
@@ -397,15 +412,15 @@ trait GameMap extends Actor with ActorLogging with Stash with Timers {
   private def idle: Receive = {
     case CreateEntity(entity, cell) =>
       log.debug("Creating entity of type [{}] with size [{}]...", entity.`type`, entity.`size`)
-      sender ! createEntity(entity, cell)
+      createEntity(entity, cell)
 
     case DestroyEntity(entityID) =>
       log.debug("Destroying entity with ID [{}]...", entityID)
-      sender ! destroyEntity(entityID)
+      destroyEntity(entityID)
 
     case MoveEntity(entityID, cell) =>
       log.debug("Moving entity with ID [{}] to [{}]...", entityID, cell)
-      sender ! moveEntity(entityID, cell)
+      moveEntity(entityID, cell)
 
     case message: ProcessTick =>
       self ! message
@@ -437,14 +452,6 @@ trait GameMap extends Actor with ActorLogging with Stash with Timers {
 }
 
 object GameMap {
-  //TODO - remove and use event tracking
-  sealed trait Error
-  object Error {
-    case object CellUnavailable extends Error
-    case object CellOutOfBounds extends Error
-    case object EntityMissing extends Error
-  }
-
   sealed trait Message extends owe.Message
   private case class ProcessTick(tickSize: Int, start: Point, end: Point) extends Message
   private case class TickProcessed(processedCells: Int) extends Message
