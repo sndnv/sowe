@@ -1,9 +1,7 @@
 package owe.map
 
-import akka.actor.ActorRef
 import owe.EntityDesirability
-import owe.Tagging.@@
-import owe.entities.ActiveEntity.ActorRefTag
+import owe.entities.ActiveEntity.ActiveEntityActorRef
 import owe.entities.{Entity, PassiveEntity}
 import owe.map.grid.Point
 
@@ -24,7 +22,7 @@ final case class PassiveMapEntity(
 }
 
 final case class ActiveMapEntity(
-  entity: ActorRef @@ ActorRefTag,
+  entity: ActiveEntityActorRef,
   parentCell: Point,
   size: Entity.Size,
   desirability: EntityDesirability

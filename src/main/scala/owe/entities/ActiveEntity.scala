@@ -1,10 +1,11 @@
 package owe.entities
 
-import akka.actor.{Actor, FSM, Props}
+import akka.actor.{Actor, ActorRef, FSM, Props}
 import owe.effects.Effect
 import owe.map.MapCell
-
 import scala.reflect.ClassTag
+
+import owe.Tagging.@@
 
 abstract class ActiveEntity[
   P <: Entity.Properties,
@@ -150,6 +151,8 @@ abstract class ActiveEntity[
 }
 
 object ActiveEntity {
+  type ActiveEntityActorRef = ActorRef @@ ActorRefTag
+
   trait ActorRefTag
 
   trait Effect[

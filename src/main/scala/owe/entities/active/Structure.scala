@@ -2,7 +2,7 @@ package owe.entities.active
 
 import owe.entities._
 import owe.map.MapCell
-import owe.production.Commodity
+import owe.production.{Commodity, CommodityAmount, CommodityUsageRate}
 
 trait Structure
     extends ActiveEntity[
@@ -128,9 +128,6 @@ object Structure {
   final case class ReligionLevel(value: Int) extends AnyVal with HousingStatValue
   final case class HealthcareLevel(value: Int) extends AnyVal with HousingStatValue
   final case class CivilServiceLevel(value: Int) extends AnyVal with HousingStatValue
-
-  final case class CommodityAmount(value: Int) extends AnyVal
-  final case class CommodityUsageRate(value: Int) extends AnyVal
 
   case class Properties(
     name: String,

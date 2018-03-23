@@ -2,9 +2,8 @@ package owe.entities.active
 
 import owe.EntityDesirability
 import owe.entities._
-import owe.entities.active.Structure.CommodityAmount
 import owe.map.MapCell
-import owe.production.Commodity
+import owe.production.{Commodity, CommodityAmount}
 
 trait Walker
     extends ActiveEntity[
