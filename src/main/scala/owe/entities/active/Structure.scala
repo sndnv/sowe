@@ -1,100 +1,21 @@
 package owe.entities.active
 
+import owe.entities.ActiveEntity.StructureData
+import owe.{CellDesirability, EntityID}
 import owe.entities._
-import owe.map.MapCell
-import owe.production.{Commodity, CommodityAmount, CommodityUsageRate}
+import owe.entities.active.behaviour.structure.BaseStructure
+import owe.map.grid.Point
+import owe.production.{Commodity, CommodityAmount, CommodityAmountModifier}
 
 trait Structure
     extends ActiveEntity[
       Structure.Properties,
       Structure.State,
       Structure.StateModifiers,
+      BaseStructure,
       Structure.ActorRefTag
     ] {
   final override def `type`: Entity.Type = Entity.Type.Structure
-
-  def `subtype`: Structure.Type
-
-  protected def processRisk(
-    tickSize: Int,
-    cellProperties: MapCell.Properties,
-    cellModifiers: MapCell.Modifiers,
-    state: Option[Structure.Risk],
-    modifiers: Option[Structure.RiskModifier]
-  ): Option[Structure.Risk] =
-    for {
-      state <- state
-      modifiers <- modifiers
-    } yield {
-      Structure.Risk(
-        fire = state.fire + modifiers.fire * tickSize,
-        damage = state.damage + modifiers.damage * tickSize
-      )
-    }
-
-  protected def processHousing(
-    tickSize: Int,
-    cellProperties: MapCell.Properties,
-    cellModifiers: MapCell.Modifiers,
-    state: Option[Structure.Housing],
-    modifiers: Option[Structure.HousingModifier]
-  ): Option[Structure.Housing] = None
-
-  protected def processCommodities(
-    tickSize: Int,
-    cellProperties: MapCell.Properties,
-    cellModifiers: MapCell.Modifiers,
-    state: Option[Structure.Commodities],
-    modifiers: Option[Structure.CommoditiesModifier]
-  ): Option[Structure.Commodities] = None
-
-  protected def processProduction(
-    tickSize: Int,
-    cellProperties: MapCell.Properties,
-    cellModifiers: MapCell.Modifiers,
-    state: Option[Structure.Production],
-    modifiers: Option[Structure.ProductionModifier]
-  ): Option[Structure.Production] = None
-
-  override protected def tick(
-    tickSize: Int,
-    cellProperties: MapCell.Properties,
-    cellModifiers: MapCell.Modifiers,
-    properties: Structure.Properties,
-    state: Structure.State,
-    modifiers: Structure.StateModifiers
-  ): Structure.State =
-    //TODO - only do partial updates/copy (lenses?)
-    state.copy(
-      risk = processRisk(
-        tickSize,
-        cellProperties,
-        cellModifiers,
-        state.risk,
-        modifiers.risk
-      ),
-      production = processProduction(
-        tickSize,
-        cellProperties,
-        cellModifiers,
-        state.production,
-        modifiers.production
-      ),
-      commodities = processCommodities(
-        tickSize,
-        cellProperties,
-        cellModifiers,
-        state.commodities,
-        modifiers.commodities
-      ),
-      housing = processHousing(
-        tickSize,
-        cellProperties,
-        cellModifiers,
-        state.housing,
-        modifiers.housing
-      )
-    )
 }
 
 object Structure {
@@ -102,89 +23,144 @@ object Structure {
 
   type Effect = ActiveEntity.Effect[Properties, State, StateModifiers]
 
-  sealed trait Type
-  object Type {
-    case object Housing extends Type
-    case object Entertainment extends Type
-    case object Military extends Type
-    case object Industry extends Type
-    case object Monument extends Type
-    case object Religion extends Type
-    case object Education extends Type
-    case object HealthCare extends Type
-    case object CivilService extends Type
-  }
+  sealed trait PropertiesOnly
+  sealed trait StateOnly
+  sealed trait StateModifiersOnly
 
-  trait HousingStatEntry extends Any
-  final case class EducationEntry(name: String) extends AnyVal with HousingStatEntry
-  final case class EntertainmentEntry(name: String) extends AnyVal with HousingStatEntry
-  final case class ReligionEntry(name: String) extends AnyVal with HousingStatEntry
-  final case class HealthcareEntry(name: String) extends AnyVal with HousingStatEntry
-  final case class CivilServiceEntry(name: String) extends AnyVal with HousingStatEntry
+  sealed trait Risk
 
-  trait HousingStatValue extends Any
-  final case class EducationLevel(value: Int) extends AnyVal with HousingStatValue
-  final case class EntertainmentLevel(value: Int) extends AnyVal with HousingStatValue
-  final case class ReligionLevel(value: Int) extends AnyVal with HousingStatValue
-  final case class HealthcareLevel(value: Int) extends AnyVal with HousingStatValue
-  final case class CivilServiceLevel(value: Int) extends AnyVal with HousingStatValue
+  case object NoRisk extends Risk with StateOnly with StateModifiersOnly
 
-  case class Properties(
-    name: String,
-    maxPeople: Int,
-    cost: Int
-  ) extends Entity.Properties
-
-  case class Risk(
-    fire: Int,
-    damage: Int
-  )
+  case class RiskState(
+    fire: RiskAmount,
+    damage: RiskAmount
+  ) extends Risk
+      with StateOnly
 
   case class RiskModifier(
-    fire: Int,
-    damage: Int
-  )
+    fire: RiskAmount, //doc - per tick
+    damage: RiskAmount //doc - per tick
+  ) extends Risk
+      with StateModifiersOnly
 
-  case class Commodities(
-    available: Map[Commodity, CommodityAmount]
-  )
+  sealed trait Commodities
 
-  //TODO - controls consumption rate for houses && affects production rate
+  case object NoCommodities extends Commodities with StateOnly with StateModifiersOnly
+
+  case class CommoditiesState(
+    available: Map[Commodity, CommodityAmount],
+    limits: Map[Commodity, CommodityAmount]
+  ) extends Commodities
+      with StateOnly
+
+  //docs - controls consumption rate for houses && affects production rate
   case class CommoditiesModifier(
-    usageRates: Map[Commodity, CommodityUsageRate]
-  )
+    usageRates: Map[Commodity, CommodityAmount] //docs - per occupant or employee
+  ) extends Commodities
+      with StateModifiersOnly
 
-  case class Housing(
+  sealed trait Housing
+
+  case object NoHousing extends Housing with StateOnly with StateModifiersOnly
+
+  case class HousingState(
     occupants: Int,
+    commodityShortage: Int,
     education: Map[EducationEntry, EducationLevel],
     entertainment: Map[EntertainmentEntry, EntertainmentLevel],
     religion: Map[ReligionEntry, ReligionLevel],
     healthcare: Map[HealthcareEntry, HealthcareLevel],
     civilService: Map[CivilServiceEntry, CivilServiceLevel]
-  )
+  ) extends Housing
+      with StateOnly
 
-  case class HousingModifier() //TODO
+  case class HousingModifier(
+    education: Map[EducationEntry, EducationLevelModifier],
+    entertainment: Map[EntertainmentEntry, EntertainmentLevelModifier],
+    religion: Map[ReligionEntry, ReligionLevelModifier],
+    healthcare: Map[HealthcareEntry, HealthcareLevelModifier],
+    civilService: Map[CivilServiceEntry, CivilServiceLevelModifier]
+  ) extends Housing
+      with StateModifiersOnly
 
-  case class Production(
+  sealed trait LabourState
+  object LabourState {
+    case object None extends LabourState
+    case object Looking extends LabourState
+    case object Found extends LabourState
+  }
+
+  sealed trait WalkerState
+  object WalkerState {
+    case object NotAvailable extends WalkerState
+    case object Available extends WalkerState
+  }
+
+  sealed trait Walkers
+  case object NoWalkers extends Walkers with PropertiesOnly with StateOnly
+
+  case class WalkersProperties(
+    generators: Map[String, (StructureData) => Option[Walker]]
+  ) extends Walkers
+      with PropertiesOnly
+
+  case class WalkersState(
+    state: Map[String, WalkerState]
+  ) extends Walkers
+      with StateOnly
+
+  sealed trait Production
+
+  case object NoProduction extends Production with StateOnly with StateModifiersOnly
+
+  case class ProductionState(
     employees: Int,
-    rate: Int
-  )
+    labour: LabourState,
+    rates: Map[Commodity, CommodityAmount]
+  ) extends Production
+      with StateOnly
 
   case class ProductionModifier(
-    rate: Int //doc - in pct of Production.rate
+    rates: Map[Commodity, CommodityAmountModifier] //doc - in pct of Production.rate
+  ) extends Production
+      with StateModifiersOnly
+
+  case class StageProperties(
+    maxLife: Life,
+    maxPeople: Int,
+    minDesirability: CellDesirability,
+    commodityShortageLimit: Int
   )
 
+  sealed trait Stages
+  case class SingleStage(stage: StageProperties) extends Stages with PropertiesOnly
+  case class MultiStage(stages: Seq[StageProperties]) extends Stages with PropertiesOnly
+
+  case object DefaultStage extends Stages with StateOnly
+  case class CurrentStage(stage: Int) extends Stages with StateOnly
+
+  case class Properties(
+    id: EntityID,
+    homePosition: Point,
+    name: String,
+    walkers: Walkers with PropertiesOnly,
+    stages: Stages with PropertiesOnly
+  ) extends Entity.Properties
+
   case class State(
-    risk: Option[Risk],
-    commodities: Option[Commodities],
-    housing: Option[Housing],
-    production: Option[Production]
+    currentStage: Stages with StateOnly,
+    currentLife: Life,
+    walkers: Walkers with StateOnly,
+    risk: Risk with StateOnly,
+    commodities: Commodities with StateOnly,
+    housing: Housing with StateOnly,
+    production: Production with StateOnly
   ) extends Entity.State
 
   case class StateModifiers(
-    risk: Option[RiskModifier],
-    commodities: Option[CommoditiesModifier],
-    housing: Option[HousingModifier],
-    production: Option[ProductionModifier]
+    risk: Risk with StateModifiersOnly,
+    commodities: Commodities with StateModifiersOnly,
+    housing: Housing with StateModifiersOnly,
+    production: Production with StateModifiersOnly
   ) extends Entity.StateModifiers
 }

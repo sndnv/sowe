@@ -10,34 +10,34 @@ class ExchangeSpec extends UnitSpec {
     withFixture(test.toNoArgTest(FixtureParam()))
 
   "An Exchange" should "update required commodities" in { _ =>
-    //TODO
+    fail("Not Implemented", new NotImplementedError())
   }
 
   it should "update available commodities" in { _ =>
-    //TODO
+    fail("Not Implemented", new NotImplementedError())
   }
 
   it should "update in-transit commodities" in { _ =>
-    //TODO
+    fail("Not Implemented", new NotImplementedError())
   }
 
   it should "update state of commodities" in { _ =>
-    //TODO
+    fail("Not Implemented", new NotImplementedError())
   }
 
   it should "add producers" in { _ =>
-    //TODO
+    fail("Not Implemented", new NotImplementedError())
   }
 
   it should "remove producers" in { _ =>
-    //TODO
+    fail("Not Implemented", new NotImplementedError())
   }
 
   it should "add consumers" in { _ =>
-    //TODO
+    fail("Not Implemented", new NotImplementedError())
   }
 
   it should "remove consumers" in { _ =>
-    //TODO
+    fail("Not Implemented", new NotImplementedError())
   }
 }

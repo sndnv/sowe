@@ -1,45 +1,25 @@
 package owe.entities.active
 
-import owe.EntityDesirability
+import owe.entities.ActiveEntity.ActiveEntityData
 import owe.entities._
-import owe.map.MapCell
+import owe.entities.active.behaviour.walker.BaseWalker
+import owe.map.grid.Point
 import owe.production.{Commodity, CommodityAmount}
+import owe.{EntityDesirability, EntityID}
+
+import scala.collection.immutable.Queue
 
 trait Walker
     extends ActiveEntity[
       Walker.Properties,
       Walker.State,
       Walker.StateModifiers,
+      BaseWalker,
       Walker.ActorRefTag
     ] {
   final override def `size`: Entity.Size = Entity.Size(height = 1, width = 1)
   final override def `type`: Entity.Type = Entity.Type.Walker
   final override def `desirability`: EntityDesirability = EntityDesirability.Neutral
-
-  override protected def tick(
-    tickSize: Int,
-    cellProperties: MapCell.Properties,
-    cellModifiers: MapCell.Modifiers,
-    properties: Walker.Properties,
-    state: Walker.State,
-    modifiers: Walker.StateModifiers
-  ): Walker.State = ??? //TODO
-
-  protected def processMovement(
-    tickSize: Int,
-    cellProperties: MapCell.Properties,
-    cellModifiers: MapCell.Modifiers,
-    state: Walker.State,
-    modifiers: Walker.StateModifiers
-  ): Seq[owe.Message]
-
-  override protected[entities] def internalAfterTick(
-    tickSize: Int,
-    cellProperties: MapCell.Properties,
-    cellModifiers: MapCell.Modifiers,
-    state: Walker.State,
-    modifiers: Walker.StateModifiers
-  ): Seq[owe.Message] = processMovement(tickSize, cellProperties, cellModifiers, state, modifiers)
 }
 
 object Walker {
@@ -47,26 +27,66 @@ object Walker {
 
   type Effect = ActiveEntity.Effect[Properties, State, StateModifiers]
 
+  sealed trait PropertiesOnly
+  sealed trait StateOnly
+  sealed trait StateModifiersOnly
+
+  sealed trait Commodities
+  case object NoCommodities extends Commodities with StateOnly
+  case class CommoditiesState(available: Map[Commodity, CommodityAmount], limits: Map[Commodity, CommodityAmount])
+      extends Commodities
+      with StateOnly
+
+  sealed trait Attack
+
+  case object NoAttack extends Attack with PropertiesOnly with StateModifiersOnly
+
+  case class AttackProperties(
+    rate: AttackRate,
+    damage: AttackDamage,
+    distance: Distance,
+    target: (ActiveEntityData) => Boolean
+  ) extends Attack
+      with PropertiesOnly
+
+  case class AttackModifiers(
+    rate: AttackRateModifier,
+    damage: AttackDamageModifier,
+    distance: DistanceModifier
+  ) extends Attack
+      with StateModifiersOnly
+
+  sealed trait MovementMode
+  object MovementMode {
+    case object Roaming extends MovementMode
+    case object Advancing extends MovementMode
+    case object Returning extends MovementMode
+    case object Idling extends MovementMode
+  }
+
   case class Properties(
+    id: EntityID,
+    parent: Option[EntityID],
+    homePosition: Point,
     name: String,
-    interactionDistance: Int,
-    patrolDistance: Option[Int],
-    movementSpeed: Int,
-    maxLife: Int,
-    attackRate: Option[Int],
-    attackDamage: Option[Int],
+    maxLife: Life,
+    movementSpeed: Speed,
+    maxRoamingDistance: Distance,
+    attack: Attack with PropertiesOnly
   ) extends Entity.Properties
 
   case class State(
-    currentLife: Int,
-    availableCommodities: Map[Commodity, CommodityAmount]
+    currentLife: Life,
+    distanceCovered: Distance,
+    destinationPath: Queue[Point],
+    commodities: Commodities with StateOnly,
+    path: Queue[Point],
+    mode: MovementMode
   ) extends Entity.State
 
   case class StateModifiers(
-    interactionDistance: Int,
-    patrolDistance: Option[Int],
-    movementSpeed: Int,
-    attackRate: Option[Int],
-    attackDamage: Option[Int],
+    movementSpeed: SpeedModifier,
+    maxRoamingDistance: DistanceModifier,
+    attack: Attack with StateModifiersOnly
   ) extends Entity.StateModifiers
 }

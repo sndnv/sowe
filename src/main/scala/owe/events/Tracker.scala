@@ -3,6 +3,7 @@ package owe.events
 import akka.actor.{Actor, ActorRef, Props}
 import owe.events.Tracker.{AttachEventsObserver, ClearGameEventsLog, DetachEventsObserver, GetGameEventsLog}
 
+//TODO - use state instead of vars
 class Tracker() extends Actor {
   private var observers: Map[Event.Identifier, Seq[ActorRef]] = Map.empty
   private var gameEventsLog: Vector[Event.Game] = Vector.empty

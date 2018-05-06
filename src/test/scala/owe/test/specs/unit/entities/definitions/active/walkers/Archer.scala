@@ -1,49 +1,51 @@
 package owe.test.specs.unit.entities.definitions.active.walkers
 
 import owe.effects.Effect
-import owe.entities.active.Walker
-import owe.map.MapCell
+import owe.entities.ActiveEntity.{ActiveEntityData, WalkerData}
+import owe.entities.active.Walker._
+import owe.entities.active._
+import owe.entities.active.behaviour.walker.{BaseWalker, Military}
+import owe.map.grid.Point
 
-object Archer extends Walker {
-  override protected def createProperties(): Walker.Properties = Walker.Properties(
-    name = "Archer",
-    interactionDistance = 10,
-    patrolDistance = Some(25),
-    movementSpeed = 10,
-    maxLife = 500,
-    attackRate = Some(3),
-    attackDamage = Some(50)
+import scala.collection.immutable.Queue
+
+class Archer extends Walker {
+  override protected def createBehaviour(): BaseWalker = new Military {}
+
+  override protected def createActiveEntityData(): ActiveEntityData = WalkerData(
+    properties = Properties(
+      id = java.util.UUID.randomUUID(),
+      parent = None,
+      homePosition = Point(0, 0),
+      name = "Archer",
+      maxLife = Life(500),
+      movementSpeed = Speed(150),
+      maxRoamingDistance = Distance(50),
+      attack = AttackProperties(
+        rate = AttackRate(3),
+        damage = AttackDamage(50),
+        distance = Distance(25),
+        target = (_) => true
+      )
+    ),
+    state = State(
+      currentLife = Life(100),
+      distanceCovered = Distance(0),
+      destinationPath = Queue.empty,
+      commodities = NoCommodities,
+      path = Queue.empty,
+      mode = MovementMode.Advancing
+    ),
+    modifiers = StateModifiers(
+      movementSpeed = SpeedModifier(100),
+      maxRoamingDistance = DistanceModifier(100),
+      attack = AttackModifiers(
+        rate = AttackRateModifier(200),
+        damage = AttackDamageModifier(50),
+        distance = DistanceModifier(100)
+      )
+    )
   )
 
-  override protected def createState(): Walker.State = Walker.State(
-    currentLife = 100,
-    availableCommodities = Map.empty
-  )
-
-  override protected def createStateModifiers(): Walker.StateModifiers = Walker.StateModifiers(
-    interactionDistance = 50,
-    patrolDistance = None,
-    movementSpeed = 150,
-    attackRate = Some(200),
-    attackDamage = Some(50)
-  )
-
-  override protected def createEffects(): Seq[((Walker.Properties, Walker.State) => Boolean, Effect)] = Seq.empty
-
-  override protected def tick(
-    tickSize: Int,
-    cellProperties: MapCell.Properties,
-    cellModifiers: MapCell.Modifiers,
-    properties: Walker.Properties,
-    state: Walker.State,
-    modifiers: Walker.StateModifiers
-  ): Walker.State = ??? //TODO
-
-  override protected def processMovement(
-    tickSize: Int,
-    cellProperties: MapCell.Properties,
-    cellModifiers: MapCell.Modifiers,
-    state: Walker.State,
-    modifiers: Walker.StateModifiers
-  ): Seq[owe.Message] = ??? //TODO
+  override protected def createEffects(): Seq[(ActiveEntityData => Boolean, Effect)] = Seq.empty
 }

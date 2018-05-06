@@ -7,15 +7,19 @@ import akka.pattern.{ask, pipe}
 import akka.util.Timeout
 import owe.Tagging._
 import owe.effects.Effect
-import owe.entities.active.{Resource, Structure, Walker}
+import owe.entities.ActiveEntity.{ActiveEntityData, AddEntityMessage, GetData, MapData}
+import owe.entities.Entity._
+import owe.entities.active._
 import owe.entities.passive.{Doodad, Road, Roadblock}
 import owe.entities.{ActiveEntity, Entity, PassiveEntity}
 import owe.events.Event
 import owe.map.MapCell.Availability
-import owe.map.grid.{Grid, Point}
 import owe.map.grid.pathfinding.Search
-import owe.{EntityDesirability, EntityID}
+import owe.map.grid.{Grid, Point}
+import owe.production.{Commodity, CommodityAmount, Exchange}
+import owe.{CellDesirabilityModifier, EntityDesirability, EntityID}
 
+import scala.annotation.tailrec
 import scala.collection.immutable.Queue
 import scala.concurrent.Future
 import scala.concurrent.duration._
@@ -31,18 +35,19 @@ trait GameMap extends Actor with ActorLogging with Stash with Timers {
   protected val height: Int
   protected val width: Int
   protected val tickInterval: FiniteDuration
-  protected val defaultTickSize: Int
   protected val defaultTickStart: Point = Point(0, 0)
   protected val defaultTickEnd: Point = defaultTickStart
 
   protected val tracker: ActorRef
   protected val search: Search
 
+  protected val exchange: ActorRef
+
   private val grid = Grid[MapCell](height, width, MapCell.empty)
   private var entities: Map[EntityID, Point] = Map.empty
 
-  private def applyDesirability(entityDesirability: EntityDesirability, cells: Seq[Point], modifier: Int): Unit =
-    entityDesirability.toMap.foldLeft(Seq.empty[Point]) {
+  private def applyDesirability(entityDesirability: EntityDesirability, cells: Seq[Point], modifier: Int): Unit = {
+    val _ = entityDesirability.toMap.foldLeft(Seq.empty[Point]) {
       case (processedCells, (radius, desirability)) =>
         val currentWindowCells =
           cells.flatMap(grid.window(_, radius).toMap).filter {
@@ -51,15 +56,17 @@ trait GameMap extends Actor with ActorLogging with Stash with Timers {
 
         currentWindowCells.foreach {
           case (_, affectedCell) =>
+            val updatedModifier = affectedCell.modifiers.desirability.value + modifier * desirability.value
             affectedCell.updateModifiers(
               affectedCell.modifiers.copy(
-                desirability = affectedCell.modifiers.desirability + modifier * desirability
+                desirability = CellDesirabilityModifier(updatedModifier)
               )
             )
         }
 
         processedCells ++ currentWindowCells.map(_._1)
     }
+  }
 
   private def addDesirability(entityDesirability: EntityDesirability, cells: Seq[Point]): Unit =
     applyDesirability(entityDesirability, cells, modifier = 1)
@@ -119,7 +126,7 @@ trait GameMap extends Actor with ActorLogging with Stash with Timers {
             if (cells.map(cellAvailability).forall(_ == targetAvailability)) {
               val entityID = UUID.randomUUID()
               val mapEntity: MapEntity = entity match {
-                case entity: ActiveEntity[_, _, _, _] =>
+                case entity: ActiveEntity[_, _, _, _, _] =>
                   ActiveMapEntity(
                     context.system.actorOf(entity.props()).tag[entity.Tag],
                     cell,
@@ -230,15 +237,16 @@ trait GameMap extends Actor with ActorLogging with Stash with Timers {
           mapEntity match {
             case PassiveMapEntity(entity, _, _) =>
               entity match {
-                case _: Doodad => true
-                case _         => false
+                case _: Doodad    => true
+                case _: Road      => false
+                case _: Roadblock => false
               }
 
             case ActiveMapEntity(entity, _, _, _) =>
               entity match {
                 case _: Structure.ActorRefTag => true
                 case _: Resource.ActorRefTag  => true
-                case _                        => false
+                case _: Walker.ActorRefTag    => false
               }
           }
       } match {
@@ -277,15 +285,66 @@ trait GameMap extends Actor with ActorLogging with Stash with Timers {
         case Some(point) if cellAvailability(point) == Availability.Passable => point
       }
 
-  private def pathBetween(start: Point, end: Point): Option[Queue[Point]] =
+  //TODO - check if path should follow roads
+  private def generateAdvancePath(start: Point, end: Point): Option[Queue[Point]] =
     search.calculate(start, end, passableNeighboursOf)
+
+  //TODO - check if path should follow roads
+  private def generateRoamPath(start: Point, maxDistance: Distance): Option[Queue[Point]] = {
+    @tailrec
+    def extendPath(
+      currentCell: Point,
+      currentPath: Seq[Point],
+      examined: Seq[Point],
+      backtracked: Seq[Point]
+    ): Seq[Point] = {
+      val maxDistanceNotReached = currentPath.lengthCompare(maxDistance.value) < 0
+      if (maxDistanceNotReached) {
+        passableNeighboursOf(currentCell).filterNot { neighbour =>
+          examined.contains(neighbour)
+        }.headOption match {
+          case Some(nextCell) =>
+            extendPath(nextCell, currentPath :+ currentCell, examined :+ currentCell, backtracked)
+
+          case None =>
+            val backtrackedTooFar = backtracked.lengthCompare(maxDistance.value / 2) >= 0
+            if (backtrackedTooFar) {
+              currentPath ++ backtracked
+            } else {
+              currentPath.lastOption match {
+                case Some(previousCell) =>
+                  extendPath(previousCell,
+                             currentPath.dropRight(1),
+                             examined :+ currentCell,
+                             backtracked :+ currentCell)
+
+                case None =>
+                  Seq.empty
+              }
+            }
+        }
+      } else {
+        currentPath
+      }
+    }
+
+    extendPath(start, currentPath = Seq.empty, examined = Seq.empty, backtracked = Seq.empty) match {
+      case Nil  => None
+      case path => Some(path.to[Queue])
+    }
+  }
 
   private def cellHasRoad(mapCell: MapCell): Boolean =
     mapCell.entities.exists {
       case (_, entity) =>
         entity match {
-          case PassiveMapEntity(passiveEntity, _, _) => passiveEntity.isInstanceOf[Road]
-          case _                                     => false
+          case PassiveMapEntity(passiveEntity, _, _) =>
+            passiveEntity match {
+              case _: Road => true
+              case _       => false
+            }
+
+          case _ => false
         }
     }
 
@@ -351,7 +410,6 @@ trait GameMap extends Actor with ActorLogging with Stash with Timers {
   private def processTick(
     grid: Grid[MapCell],
     activeEffects: Map[Point, Seq[Effect]],
-    tickSize: Int,
     start: Point,
     end: Point
   ): Future[Int] = {
@@ -378,8 +436,8 @@ trait GameMap extends Actor with ActorLogging with Stash with Timers {
               case (_, mapEntity) =>
                 mapEntity match {
                   case ActiveMapEntity(entity, _, _, _) =>
-                    entity ! ActiveEntity.ApplyEffects(tickSize, entityEffects)
-                    entity ! ActiveEntity.ProcessTick(tickSize, cell.properties, cellModifiers)
+                    entity ! ActiveEntity.ApplyEffects(entityEffects)
+                    entity ! ActiveEntity.ProcessGameTick(MapData(mapEntity.parentCell, cell.properties, cellModifiers))
 
                   case _ => () //do nothing
                 }
@@ -405,37 +463,150 @@ trait GameMap extends Actor with ActorLogging with Stash with Timers {
   private def scheduleNextTick(): Unit =
     timers.startSingleTimer(
       TickTimer,
-      ProcessTick(defaultTickSize, defaultTickStart, defaultTickEnd),
+      ProcessTick(defaultTickStart, defaultTickEnd),
       tickInterval
     )
 
   private def idle: Receive = {
     case CreateEntity(entity, cell) =>
-      log.debug("Creating entity of type [{}] with size [{}]...", entity.`type`, entity.`size`)
+      log.debug("Creating entity of type [{}] with size [{}].", entity.`type`, entity.`size`)
       createEntity(entity, cell)
 
     case DestroyEntity(entityID) =>
-      log.debug("Destroying entity with ID [{}]...", entityID)
+      log.debug("Destroying entity with ID [{}.", entityID)
       destroyEntity(entityID)
 
     case MoveEntity(entityID, cell) =>
-      log.debug("Moving entity with ID [{}] to [{}]...", entityID, cell)
+      log.debug("Moving entity with ID [{}] to [{}].", entityID, cell)
       moveEntity(entityID, cell)
+
+    case DistributeCommodities(entityID, commodities) =>
+      forwardEntityMessage(entityID, ProcessCommodities(commodities))
+
+    case AttackEntity(entityID, damage) =>
+      forwardEntityMessage(entityID, ProcessAttack(damage))
+
+    case LabourFound(entityID) =>
+      forwardEntityMessage(entityID, ProcessLabourFound())
+
+    case OccupantsUpdate(entityID, occupants) =>
+      forwardEntityMessage(entityID, ProcessOccupantsUpdate(occupants))
+
+    case LabourUpdate(entityID, employees) =>
+      forwardEntityMessage(entityID, ProcessLabourUpdate(employees))
+
+    case ForwardExchangeMessage(message) =>
+      log.debug("Forwarding message [{}] to commodity exchange.", message)
+      exchange ! message
 
     case message: ProcessTick =>
       self ! message
       context.become(active)
   }
 
+  private def forwardEntityMessage(entityID: EntityID, message: Entity.Message): Unit = {
+    log.debug("Forwarding message [{}] to entity with ID [{}]", message, entityID)
+
+    (for {
+      parentCell <- entities.get(entityID)
+      mapCell <- grid.get(parentCell)
+      mapEntity <- mapCell.entities.get(entityID)
+    } yield {
+      mapEntity match {
+        case activeEntity: ActiveMapEntity =>
+          activeEntity.entity ! AddEntityMessage(message)
+
+        case _: PassiveMapEntity =>
+          log.error("Can't forward message [{}] to passive entity with ID [{}].", message, entityID)
+      }
+    }) match {
+      case Some(_) => log.debug("Message [{}] forwarded to entity with ID [{}].", message, entityID)
+      case None    => log.error("Failed to find entity with ID [{}] while processing message [{}].", entityID, message)
+    }
+  }
+
   private def active: Receive = {
-    case ProcessTick(tickSize, start, end) =>
-      log.debug("Started processing tick with size [{}] from [{}] to [{}].", tickSize, start, end)
+    case ProcessTick(start, end) =>
+      log.debug("Started processing tick from [{}] to [{}].", start, end)
       (for {
         activeEffects <- gatherActiveEffects(grid)
-        processedCells <- processTick(grid, activeEffects, tickSize, start, end)
+        processedCells <- processTick(grid, activeEffects, start, end)
       } yield {
         TickProcessed(processedCells)
       }).pipeTo(self)
+
+    case GetAdvancePath(entityID, destination) =>
+      log.debug("Generating advance path for entity [{}] to [{}].", entityID, destination)
+      sender() ! entities.get(entityID).flatMap(start => generateAdvancePath(start, destination))
+
+    case GetRoamingPath(entityID, length) =>
+      log.debug("Generating roaming path for entity [{}].", entityID)
+      sender() ! entities.get(entityID).flatMap(start => generateRoamPath(start, length))
+
+    case GetNeighbours(entityID, radius) =>
+      log.debug("Retrieving neighbours for entity [{}] in radius [{}].", entityID, radius)
+      val result: Future[Seq[(EntityID, ActiveEntityData)]] = Future
+        .traverse(
+          entities
+            .get(entityID)
+            .map { point =>
+              grid
+                .window(point, radius.value)
+                .toSeq
+                .flatMap { mapCell =>
+                  mapCell.entities.collect {
+                    case (k, v: ActiveMapEntity) => (k, (v.entity ? GetData()).mapTo[ActiveEntityData])
+                  }
+                }
+                .toMap
+            }
+            .getOrElse(Map.empty)
+        ) {
+          case (neighbourEntityID, future) =>
+            future.map { result =>
+              (neighbourEntityID, result)
+            }
+        }
+        .map(_.toSeq)
+
+      result.pipeTo(sender())
+
+    case GetEntities(point) =>
+      log.debug("Retrieving entities in cell [{}]", point)
+      val result: Future[Seq[(MapEntity, Option[ActiveEntityData])]] = Future
+        .sequence(
+          grid
+            .get(point)
+            .map { mapCell =>
+              mapCell.entities.values.toSeq.map {
+                case entity: ActiveMapEntity =>
+                  (entity.entity ? GetData()).mapTo[ActiveEntityData].map(data => (entity, Some(data)))
+                case entity: PassiveMapEntity => Future.successful(entity, None)
+              }
+            }
+            .getOrElse(Seq.empty)
+        )
+
+      result.pipeTo(sender())
+
+    case GetEntity(entityID) =>
+      log.debug("Retrieving data for entity [{}]", entityID)
+      (entities
+        .get(entityID)
+        .flatMap(grid.get)
+        .flatMap(_.entities.get(entityID))
+        .collect {
+          case ActiveMapEntity(entity, _, _, _) =>
+            entity ? GetData()
+        } match {
+        case Some(result) =>
+          result
+
+        case None =>
+          val message = s"Failed to find entity with ID [$entityID] while retrieving its data."
+          log.error(message)
+          Future.failed(new IllegalStateException(message))
+      }).pipeTo(sender())
 
     case TickProcessed(processedCells) =>
       log.debug("[{}] cells processed by tick.", processedCells)
@@ -453,11 +624,22 @@ trait GameMap extends Actor with ActorLogging with Stash with Timers {
 
 object GameMap {
   sealed trait Message extends owe.Message
-  private case class ProcessTick(tickSize: Int, start: Point, end: Point) extends Message
+  private case class ProcessTick(start: Point, end: Point) extends Message
   private case class TickProcessed(processedCells: Int) extends Message
+  case class GetAdvancePath(entityID: EntityID, destination: Point) extends Message
+  case class GetRoamingPath(entityID: EntityID, length: Distance) extends Message
+  case class GetNeighbours(entityID: EntityID, radius: Distance) extends Message
+  case class GetEntities(point: Point) extends Message
+  case class GetEntity(entityID: EntityID) extends Message
   case class CreateEntity(entity: Entity, cell: Point) extends Message
   case class DestroyEntity(entityID: EntityID) extends Message
   case class MoveEntity(entityID: EntityID, cell: Point) extends Message
+  case class DistributeCommodities(entityID: EntityID, commodities: Seq[(Commodity, CommodityAmount)]) extends Message
+  case class AttackEntity(entityID: EntityID, damage: AttackDamage) extends Message
+  case class LabourFound(entityID: EntityID) extends Message
+  case class OccupantsUpdate(entityID: EntityID, occupants: Int) extends Message
+  case class LabourUpdate(entityID: EntityID, employees: Int) extends Message
+  case class ForwardExchangeMessage(message: Exchange.Message) extends Message
 
   def neighboursOf(cell: Point, withCornerNeighbours: Boolean): Seq[Option[Point]] = {
     val Point(x, y) = cell

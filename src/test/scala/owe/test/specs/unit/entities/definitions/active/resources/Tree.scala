@@ -1,24 +1,32 @@
 package owe.test.specs.unit.entities.definitions.active.resources
 
 import owe.effects.Effect
+import owe.entities.ActiveEntity.{ActiveEntityData, ResourceData}
 import owe.entities.active.Resource
+import owe.entities.active.Resource.{Properties, State, StateModifiers}
+import owe.entities.active.behaviour.resource.BaseResource
+import owe.map.grid.Point
+import owe.production.{Commodity, CommodityAmount, CommodityAmountModifier}
 
-object Tree extends Resource {
-  override protected def createProperties(): Resource.Properties = Resource.Properties(
-    name = "Tree",
-    maxAmount = 500
+class Tree extends Resource {
+  override protected def createActiveEntityData(): ActiveEntityData = ResourceData(
+    properties = Properties(
+      id = java.util.UUID.randomUUID(),
+      name = "Tree",
+      homePosition = Point(0, 0),
+      commodity = Commodity("Wood"),
+      maxAmount = CommodityAmount(500)
+    ),
+    state = State(
+      currentAmount = CommodityAmount(0),
+      replenishAmount = CommodityAmount(25)
+    ),
+    modifiers = StateModifiers(
+      replenishAmount = CommodityAmountModifier(100)
+    )
   )
 
-  override protected def createState(): Resource.State = Resource.State(
-    currentAmount = 0,
-    replenishRate = 1,
-    replenishAmount = 25
-  )
+  override protected def createBehaviour(): BaseResource = new BaseResource {}
 
-  override protected def createStateModifiers(): Resource.StateModifiers = Resource.StateModifiers(
-    replenishRate = 100,
-    replenishAmount = 100
-  )
-
-  override protected def createEffects(): Seq[((Resource.Properties, Resource.State) => Boolean, Effect)] = Seq.empty
+  override protected def createEffects(): Seq[(ActiveEntityData => Boolean, Effect)] = Seq.empty
 }

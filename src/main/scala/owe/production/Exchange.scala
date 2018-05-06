@@ -1,16 +1,16 @@
 package owe.production
 
 import akka.actor.Actor
-import owe.entities.ActiveEntity.ActiveEntityActorRef
+import owe.EntityID
 import owe.production.Exchange._
 
 class Exchange() extends Actor {
-  private var producers: Map[Commodity, Seq[ActiveEntityActorRef]] = Map.empty
-  private var consumers: Map[Commodity, Seq[ActiveEntityActorRef]] = Map.empty
+  private var producers: Map[Commodity, Seq[EntityID]] = Map.empty
+  private var consumers: Map[Commodity, Seq[EntityID]] = Map.empty
 
-  private var required: Map[(Commodity, ActiveEntityActorRef), CommodityAmount] = Map.empty
-  private var available: Map[(Commodity, ActiveEntityActorRef), CommodityAmount] = Map.empty
-  private var inTransit: Map[(Commodity, ActiveEntityActorRef), (CommodityAmount, ActiveEntityActorRef)] =
+  private var required: Map[(Commodity, EntityID), CommodityAmount] = Map.empty
+  private var available: Map[(Commodity, EntityID), CommodityAmount] = Map.empty
+  private var inTransit: Map[(Commodity, EntityID), (CommodityAmount, EntityID)] =
     Map.empty
 
   private var produced: Map[Commodity, CommodityAmount] = Map.empty
@@ -62,28 +62,28 @@ class Exchange() extends Actor {
 object Exchange {
   sealed trait Message extends owe.Message
 
-  case class AddProducer(source: ActiveEntityActorRef, commodity: Commodity) extends Message
-  case class RemoveProducer(source: ActiveEntityActorRef, commodity: Commodity) extends Message
-  case class AddConsumer(source: ActiveEntityActorRef, commodity: Commodity) extends Message
-  case class RemoveConsumer(source: ActiveEntityActorRef, commodity: Commodity) extends Message
+  case class AddProducer(source: EntityID, commodity: Commodity) extends Message
+  case class RemoveProducer(source: EntityID, commodity: Commodity) extends Message
+  case class AddConsumer(source: EntityID, commodity: Commodity) extends Message
+  case class RemoveConsumer(source: EntityID, commodity: Commodity) extends Message
 
   case class CommodityRequired(
     commodity: Commodity,
     amount: CommodityAmount,
-    source: ActiveEntityActorRef
+    source: EntityID
   ) extends Message
 
   case class CommodityAvailable(
     commodity: Commodity,
     amount: CommodityAmount,
-    source: ActiveEntityActorRef
+    source: EntityID
   ) extends Message
 
   case class CommodityInTransit(
     commodity: Commodity,
     amount: CommodityAmount,
-    source: ActiveEntityActorRef,
-    destination: ActiveEntityActorRef
+    source: EntityID,
+    destination: EntityID
   ) extends Message
 
   case class UpdateCommodityState(

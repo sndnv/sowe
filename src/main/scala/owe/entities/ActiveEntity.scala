@@ -1,98 +1,84 @@
 package owe.entities
 
-import akka.actor.{Actor, ActorRef, FSM, Props}
+import akka.actor.{Actor, ActorLogging, ActorRef, Props, Stash}
+import akka.pattern.{ask, pipe}
+import akka.util.Timeout
+import owe.Tagging.@@
 import owe.effects.Effect
-import owe.map.MapCell
+import owe.entities.ActiveEntity.ActiveEntityData
+import owe.entities.active.behaviour.BaseBehaviour
+import owe.entities.active.{Resource, Structure, Walker}
+import owe.map.grid.Point
+import owe.map.{GameMap, MapCell}
+
 import scala.reflect.ClassTag
 
-import owe.Tagging.@@
-
 abstract class ActiveEntity[
-  P <: Entity.Properties,
-  S <: Entity.State,
+  P <: Entity.Properties: ClassTag,
+  S <: Entity.State: ClassTag,
   M <: Entity.StateModifiers: ClassTag,
+  B <: BaseBehaviour[T]: ClassTag,
   T <: ActiveEntity.ActorRefTag
 ]() extends Entity {
   type Tag = T
 
-  protected def beforeTick(
-    tickSize: Int,
-    cellProperties: MapCell.Properties,
-    cellModifiers: MapCell.Modifiers,
-    state: S,
-    modifiers: M
-  ): Seq[owe.Message] = Seq.empty
+  protected def createActiveEntityData(): ActiveEntityData
 
-  protected def afterTick(
-    tickSize: Int,
-    cellProperties: MapCell.Properties,
-    cellModifiers: MapCell.Modifiers,
-    state: S,
-    modifiers: M
-  ): Seq[owe.Message] = Seq.empty
+  protected def createEffects(): Seq[((ActiveEntityData) => Boolean, Effect)]
 
-  private[entities] def internalBeforeTick(
-    tickSize: Int,
-    cellProperties: MapCell.Properties,
-    cellModifiers: MapCell.Modifiers,
-    state: S,
-    modifiers: M
-  ): Seq[owe.Message] = Seq.empty
+  protected def createBehaviour(): B
 
-  private[entities] def internalAfterTick(
-    tickSize: Int,
-    cellProperties: MapCell.Properties,
-    cellModifiers: MapCell.Modifiers,
-    state: S,
-    modifiers: M
-  ): Seq[owe.Message] = Seq.empty
-
-  protected def tick(
-    tickSize: Int,
-    cellProperties: MapCell.Properties,
-    cellModifiers: MapCell.Modifiers,
-    properties: P,
-    state: S,
-    modifiers: M
-  ): S
-
-  protected def createProperties(): P
-
-  protected def createState(): S
-
-  protected def createStateModifiers(): M
-
-  protected def createEffects(): Seq[((P, S) => Boolean, Effect)]
-
-  def props(): Props = Props(
+  def props()(implicit timeout: Timeout): Props = Props(
     classOf[ActiveEntityActor],
-    createProperties(),
-    createState(),
-    createStateModifiers(),
-    createEffects()
+    createActiveEntityData(),
+    createEffects(),
+    timeout
   )
 
-  case class Data(state: S, modifiers: M)
+  private def behaviourProps(): Props = Props(createBehaviour())
 
-  protected class ActiveEntityActor(
-    val properties: P,
-    val initialState: S,
-    val initialModifiers: M,
-    val effects: Seq[((P, S) => Boolean, Effect)]
-  ) extends Actor
-      with FSM[ActiveEntity.State, Data] {
+  case class ProcessingData(entityData: ActiveEntityData, messages: Seq[Entity.Message])
+
+  private class ActiveEntityActor(
+    val initialEntityData: ActiveEntityData,
+    val effects: Seq[((ActiveEntityData) => Boolean, Effect)]
+  )(implicit timeout: Timeout)
+      extends Actor
+      with Stash
+      with ActorLogging {
 
     import ActiveEntity._
+    import context.dispatcher
 
-    startWith(State.Idle, Data(initialState, initialModifiers))
+    private val behaviourHandler: ActorRef = context.actorOf(
+      behaviourProps(),
+      s"""${self.path.name}-behaviour"""
+    )
 
-    whenUnhandled {
-      case Event(ApplyEffects(tickSize, externalEffects), data) =>
-        val tickModifiers: M = externalEffects.foldLeft(data.modifiers) {
+    def active(processingData: ProcessingData): Receive = {
+      case updatedState: S =>
+        unstashAll()
+        context.become(idle(ProcessingData(initialEntityData.withState(updatedState), Seq.empty)))
+
+      case ForwardMessage(message) =>
+        (context.parent ? message).pipeTo(sender())
+
+      case GetData() =>
+        sender() ! processingData.entityData
+
+      case _ =>
+        stash()
+    }
+
+    def idle(processingData: ProcessingData): Receive = {
+      case ApplyEffects(externalEffects) =>
+        val tickModifiers: Entity.StateModifiers = externalEffects.foldLeft(processingData.entityData.modifiers) {
           case (currentModifiers, effect) =>
             effect match {
               case effect: ActiveEntity.Effect[P, S, M] =>
-                effect(tickSize, properties, data.state, currentModifiers) match {
+                effect(
+                  processingData.entityData.withModifiers(currentModifiers)
+                ) match {
                   case updatedModifiers: M =>
                     updatedModifiers
 
@@ -115,38 +101,30 @@ abstract class ActiveEntity[
             }
         }
 
-        goto(State.Active).using(data.copy(modifiers = tickModifiers))
+        context.become(
+          idle(
+            processingData.copy(entityData = processingData.entityData.withModifiers(tickModifiers))
+          )
+        )
 
-      case Event(ProcessTick(tickSize, cellProperties, cellModifiers), data) =>
-        internalBeforeTick(tickSize, cellProperties, cellModifiers, data.state, data.modifiers).foreach { msg =>
-          context.parent ! msg
-        }
+      case ProcessGameTick(map) =>
+        behaviourHandler ! ProcessEntityTick(map, processingData.entityData, processingData.messages)
+        context.become(active(processingData))
 
-        beforeTick(tickSize, cellProperties, cellModifiers, data.state, data.modifiers).foreach { msg =>
-          context.parent ! msg
-        }
-
-        val updatedState = tick(tickSize, cellProperties, cellModifiers, properties, data.state, data.modifiers)
-
-        afterTick(tickSize, cellProperties, cellModifiers, updatedState, data.modifiers).foreach { msg =>
-          context.parent ! msg
-        }
-
-        internalAfterTick(tickSize, cellProperties, cellModifiers, updatedState, data.modifiers).foreach { msg =>
-          context.parent ! msg
-        }
-
-        goto(State.Idle).using(Data(updatedState, initialModifiers))
-
-      case Event(GetActiveEffects(), data) =>
+      case GetActiveEffects() =>
         val activeEffects = effects.collect {
-          case (p, effect) if p(properties, data.state) => effect
+          case (p, effect) if p(processingData.entityData) => effect
         }
+        sender() ! activeEffects
 
-        stay().replying(activeEffects)
+      case ForwardMessage(message) =>
+        (context.parent ? message).pipeTo(sender())
+
+      case AddEntityMessage(message) =>
+        context.become(idle(processingData.copy(messages = processingData.messages :+ message)))
     }
 
-    initialize()
+    override def receive: Receive = idle(ProcessingData(initialEntityData, Seq.empty))
   }
 }
 
@@ -160,27 +138,74 @@ object ActiveEntity {
     S <: Entity.State,
     M <: Entity.StateModifiers
   ] extends owe.effects.Effect {
-    def apply(tickSize: Int, properties: P, state: S, modifiers: M): M
+    def apply(entityData: ActiveEntityData): M
   }
 
-  sealed trait State
-  object State {
-    case object Idle extends State
-    case object Active extends State
+  case class MapData(position: Point, cellProperties: MapCell.Properties, cellModifiers: MapCell.Modifiers)
+
+  sealed trait ActiveEntityData {
+    def properties: Entity.Properties
+    def state: Entity.State
+    def modifiers: Entity.StateModifiers
+    def withState(newState: Entity.State): ActiveEntityData
+    def withModifiers(newModifiers: Entity.StateModifiers): ActiveEntityData
   }
 
-  sealed trait Message extends owe.Message
+  case class ResourceData(
+    properties: Resource.Properties,
+    state: Resource.State,
+    modifiers: Resource.StateModifiers
+  ) extends ActiveEntityData {
+    override def withState(newState: Entity.State): ActiveEntityData =
+      newState match {
+        case resourceState: Resource.State => copy(state = resourceState)
+      }
 
-  case class ProcessTick(
-    tickSize: Int,
-    cellProperties: MapCell.Properties,
-    cellModifiers: MapCell.Modifiers
-  ) extends Message
+    override def withModifiers(newModifiers: Entity.StateModifiers): ActiveEntityData =
+      newModifiers match {
+        case resourceModifiers: Resource.StateModifiers => copy(modifiers = resourceModifiers)
+      }
+  }
 
-  case class ApplyEffects(
-    tickSize: Int,
-    externalEffects: Seq[owe.effects.Effect]
-  ) extends Message
+  case class StructureData(
+    properties: Structure.Properties,
+    state: Structure.State,
+    modifiers: Structure.StateModifiers
+  ) extends ActiveEntityData {
+    override def withState(newState: Entity.State): ActiveEntityData =
+      newState match {
+        case structureState: Structure.State => copy(state = structureState)
+      }
 
-  case class GetActiveEffects() extends Message
+    override def withModifiers(newModifiers: Entity.StateModifiers): ActiveEntityData =
+      newModifiers match {
+        case structureModifiers: Structure.StateModifiers => copy(modifiers = structureModifiers)
+      }
+  }
+
+  case class WalkerData(
+    properties: Walker.Properties,
+    state: Walker.State,
+    modifiers: Walker.StateModifiers
+  ) extends ActiveEntityData {
+    override def withState(newState: Entity.State): ActiveEntityData =
+      newState match {
+        case walkerState: Walker.State => copy(state = walkerState)
+      }
+
+    override def withModifiers(newModifiers: Entity.StateModifiers): ActiveEntityData =
+      newModifiers match {
+        case walkerModifiers: Walker.StateModifiers => copy(modifiers = walkerModifiers)
+      }
+  }
+
+  sealed trait ProcessingMessage extends owe.Message
+  case class AddEntityMessage(message: Entity.Message) extends ProcessingMessage
+  case class ForwardMessage(message: GameMap.Message) extends ProcessingMessage
+  case class GetActiveEffects() extends ProcessingMessage
+  case class GetData() extends ProcessingMessage
+  case class ApplyEffects(externalEffects: Seq[owe.effects.Effect]) extends ProcessingMessage
+  case class ProcessGameTick(map: MapData) extends ProcessingMessage
+  case class ProcessEntityTick(map: MapData, entity: ActiveEntityData, messages: Seq[Entity.Message])
+      extends ProcessingMessage
 }

@@ -7,47 +7,46 @@ class GridSpec extends UnitSpec {
 
   case class FixtureParam()
 
-  def withFixture(test: OneArgTest): Outcome = {
+  def withFixture(test: OneArgTest): Outcome =
     withFixture(test.toNoArgTest(FixtureParam()))
-  }
 
   "A Grid" should "map over stored elements" in { _ =>
-    //TODO
+    fail("Not Implemented", new NotImplementedError())
   }
 
   it should "create slices" in { _ =>
-    //TODO
+    fail("Not Implemented", new NotImplementedError())
   }
 
   it should "access individual rows and columns" in { _ =>
-    //TODO
+    fail("Not Implemented", new NotImplementedError())
   }
 
   it should "access groups of rows and columns" in { _ =>
-    //TODO
+    fail("Not Implemented", new NotImplementedError())
   }
 
   it should "access individual elements" in { _ =>
-    //TODO
+    fail("Not Implemented", new NotImplementedError())
   }
 
   it should "update individual elements" in { _ =>
-    //TODO
+    fail("Not Implemented", new NotImplementedError())
   }
 
   it should "search for elements" in { _ =>
-    //TODO
+    fail("Not Implemented", new NotImplementedError())
   }
 
   it should "search for rows and columns" in { _ =>
-    //TODO
+    fail("Not Implemented", new NotImplementedError())
   }
 
   it should "access elements with a sliding window" in { _ =>
-    //TODO
+    fail("Not Implemented", new NotImplementedError())
   }
 
   it should "transpose elements" in { _ =>
-    //TODO
+    fail("Not Implemented", new NotImplementedError())
   }
 }

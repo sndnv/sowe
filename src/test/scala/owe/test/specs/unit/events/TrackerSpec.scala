@@ -10,22 +10,22 @@ class TrackerSpec extends UnitSpec {
     withFixture(test.toNoArgTest(FixtureParam()))
 
   "A Tracker" should "attach observers" in { _ =>
-    //TODO
+    fail("Not Implemented", new NotImplementedError())
   }
 
   it should "forward events to observers" in { _ =>
-    //TODO
+    fail("Not Implemented", new NotImplementedError())
   }
 
   it should "allow event querying" in { _ =>
-    //TODO
+    fail("Not Implemented", new NotImplementedError())
   }
 
   it should "allow event clearing" in { _ =>
-    //TODO
+    fail("Not Implemented", new NotImplementedError())
   }
 
   it should "detach observers" in { _ =>
-    //TODO
+    fail("Not Implemented", new NotImplementedError())
   }
 }

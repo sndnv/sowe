@@ -1,12 +1,27 @@
 import java.util.UUID
 
 package object owe {
-  type CellDesirability = Int
+  final case class CellDesirability(value: Int) extends AnyVal {
+    def +(desirability: CellDesirability): CellDesirability = CellDesirability(value + desirability.value)
+    def -(desirability: CellDesirability): CellDesirability = CellDesirability(value - desirability.value)
+    def >(desirability: CellDesirability): Boolean = value > desirability.value
+    def <(desirability: CellDesirability): Boolean = value < desirability.value
+    def >=(desirability: CellDesirability): Boolean = value >= desirability.value
+    def <=(desirability: CellDesirability): Boolean = value <= desirability.value
+    def min(desirability: CellDesirability): CellDesirability = CellDesirability(value.min(desirability.value))
+    def max(desirability: CellDesirability): CellDesirability = CellDesirability(value.max(desirability.value))
+    def toModifier: CellDesirabilityModifier = CellDesirabilityModifier(value)
+  }
+
+  final case class CellDesirabilityModifier(value: Int) extends AnyVal {
+    def apply(desirability: CellDesirability): CellDesirability =
+      CellDesirability((desirability.value * value) / 100)
+  }
 
   object CellDesirability {
-    val Min: CellDesirability = -8
-    val Max: CellDesirability = 8
-    val Neutral: CellDesirability = 0
+    val Min: CellDesirability = CellDesirability(-8)
+    val Max: CellDesirability = CellDesirability(8)
+    val Neutral: CellDesirability = CellDesirability(0)
   }
 
   case class EntityDesirability(
@@ -48,6 +63,22 @@ package object owe {
   }
 
   object EntityDesirability {
+    def fromInt(
+      self: Int,
+      r1: Int,
+      r2: Int,
+      r3: Int,
+      r4: Int,
+      r5: Int
+    ): EntityDesirability = new EntityDesirability(
+      CellDesirability(self),
+      CellDesirability(r1),
+      CellDesirability(r2),
+      CellDesirability(r3),
+      CellDesirability(r4),
+      CellDesirability(r5)
+    )
+
     val Min: EntityDesirability = EntityDesirability(
       CellDesirability.Min,
       CellDesirability.Min,
@@ -74,6 +105,37 @@ package object owe {
       CellDesirability.Neutral,
       CellDesirability.Neutral
     )
+  }
+
+  final case class Fertility(value: Int) extends AnyVal {
+    def min(fertility: Fertility): Fertility = Fertility(value.min(fertility.value))
+    def max(fertility: Fertility): Fertility = Fertility(value.max(fertility.value))
+    def basedOn(water: Water): Fertility = Fertility((water.value * value) / 100)
+    def toModifier: FertilityModifier = FertilityModifier(value)
+  }
+
+  final case class FertilityModifier(value: Int) extends AnyVal {
+    def apply(fertility: Fertility): Fertility = Fertility((fertility.value * value) / 100)
+  }
+
+  object Fertility {
+    val Min = Fertility(0)
+    val Max = Fertility(100)
+  }
+
+  final case class Water(value: Int) extends AnyVal {
+    def min(water: Water): Water = Water(value.min(water.value))
+    def max(water: Water): Water = Water(value.max(water.value))
+    def toModifier: WaterModifier = WaterModifier(value)
+  }
+
+  final case class WaterModifier(value: Int) extends AnyVal {
+    def apply(water: Water): Water = Water((water.value * value) / 100)
+  }
+
+  object Water {
+    val Max = Water(100)
+    val Min = Water(0)
   }
 
   type EntityID = UUID

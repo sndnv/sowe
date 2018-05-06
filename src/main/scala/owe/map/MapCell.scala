@@ -1,7 +1,7 @@
 package owe.map
 
 import owe.entities.Entity
-import owe.{CellDesirability, EntityID}
+import owe._
 
 private[map] class MapCell(
   private var cellEntities: Map[EntityID, MapEntity],
@@ -17,12 +17,20 @@ private[map] class MapCell(
 }
 
 object MapCell {
-  def empty[E <: Entity]: MapCell =
+  def empty[E <: Entity]: MapCell = {
+    val defaultProperties = Properties(
+      desirability = CellDesirability.Neutral,
+      fertility = Fertility.Min,
+      water = Water.Min,
+      buildingAllowed = true
+    )
+
     new MapCell(
       Map.empty,
-      Properties(desirability = CellDesirability.Neutral, fertility = 0, water = 0, buildingAllowed = true),
-      Modifiers(desirability = CellDesirability.Neutral, fertility = 0, water = 0, buildingAllowed = true)
+      defaultProperties,
+      defaultProperties.toModifiers
     )
+  }
 
   sealed trait Availability
   trait Effect extends owe.effects.Effect {
@@ -31,22 +39,22 @@ object MapCell {
 
   case class Properties(
     desirability: CellDesirability,
-    fertility: Int,
-    water: Int,
+    fertility: Fertility, //doc - in pct
+    water: Water, //doc - in pct
     buildingAllowed: Boolean
   ) {
     def toModifiers: Modifiers = Modifiers(
-      desirability,
-      fertility,
-      water,
+      desirability.toModifier,
+      fertility.toModifier,
+      water.toModifier,
       buildingAllowed
     )
   }
 
   case class Modifiers(
-    desirability: CellDesirability,
-    fertility: Int,
-    water: Int,
+    desirability: CellDesirabilityModifier,
+    fertility: FertilityModifier, //doc - in pct of properties.fertility
+    water: WaterModifier, //doc - in pct of properties.water
     buildingAllowed: Boolean
   )
 
