@@ -1,7 +1,7 @@
 package owe.map
 
-import owe.entities.Entity
 import owe._
+import owe.entities.Entity
 
 private[map] class MapCell(
   private var cellEntities: Map[EntityID, MapEntity],

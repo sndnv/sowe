@@ -1,10 +1,10 @@
 package owe.map.grid.pathfinding
 
-import scala.annotation.tailrec
-import scala.collection.mutable
 import owe.map.grid.Point
 
+import scala.annotation.tailrec
 import scala.collection.immutable.Queue
+import scala.collection.mutable
 
 object AStarSearch extends Search {
   private case class PathData(point: Point, actualCost: Double, expectedCost: Double, path: Queue[Point])

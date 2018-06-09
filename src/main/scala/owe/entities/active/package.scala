@@ -35,8 +35,15 @@ package object active {
     def apply(speed: Speed): Speed = Speed((speed.value * value) / 100)
   }
 
-  final case class RiskAmount(value: Int) extends AnyVal {
+  final case class RiskAmount(value: Int) extends AnyVal { // doc - in pct (0% - 100%)
     def +(risk: RiskAmount): RiskAmount = RiskAmount(value + risk.value)
+    def >(risk: RiskAmount): Boolean = value > risk.value
+    def <(risk: RiskAmount): Boolean = value < risk.value
+  }
+
+  object RiskAmount {
+    val min: RiskAmount = RiskAmount(0)
+    val max: RiskAmount = RiskAmount(100)
   }
 
   final case class EducationEntry(name: String) extends AnyVal

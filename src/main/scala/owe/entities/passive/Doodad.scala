@@ -1,8 +1,7 @@
 package owe.entities.passive
 
 import owe.EntityDesirability
-import owe.entities.Entity
-import owe.entities.PassiveEntity
+import owe.entities.{Entity, PassiveEntity}
 
 class Doodad extends PassiveEntity {
   final override def `type`: Entity.Type = Entity.Type.Doodad

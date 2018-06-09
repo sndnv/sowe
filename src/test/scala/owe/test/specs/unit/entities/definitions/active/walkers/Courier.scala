@@ -6,7 +6,8 @@ import owe.entities.ActiveEntity
 import owe.entities.ActiveEntity.{ActiveEntityData, WalkerData}
 import owe.entities.active.Walker._
 import owe.entities.active._
-import owe.entities.active.behaviour.walker.{BaseWalker, Carrier}
+import owe.entities.active.behaviour.walker.BaseWalker
+import owe.entities.active.behaviour.walker.acting.Carrier
 import owe.map.grid.Point
 import owe.test.specs.unit.entities.definitions.active.walkers.Courier.Parameters
 

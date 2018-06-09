@@ -581,7 +581,9 @@ trait GameMap extends Actor with ActorLogging with Stash with Timers {
               mapCell.entities.values.toSeq.map {
                 case entity: ActiveMapEntity =>
                   (entity.entity ? GetData()).mapTo[ActiveEntityData].map(data => (entity, Some(data)))
-                case entity: PassiveMapEntity => Future.successful(entity, None)
+
+                case entity: PassiveMapEntity =>
+                  Future.successful(entity, None)
               }
             }
             .getOrElse(Seq.empty)

@@ -20,16 +20,27 @@ trait BaseBehaviour[P <: ActorRefTag] extends Actor with ActorLogging {
 
   protected def behaviour: Behaviour
 
-  private[behaviour] val parent: ActorRef @@ ActorRefTag = context.parent.tag[P]
+  private[behaviour] implicit val parentEntity: ActorRef @@ ActorRefTag = context.parent.tag[P]
 
   final override def receive: Receive = behaviour
 
   private[behaviour] def withUpdates[D <: ActiveEntityData: ClassTag, S <: Entity.State](
     entity: D,
-    updates: Seq[(D) => Future[S]]
+    updates: Seq[D => S]
+  ): Future[D] =
+    withAsyncUpdates(
+      entity,
+      updates.map { update => data: D =>
+        Future.successful(update(data))
+      }
+    )
+
+  private[behaviour] def withAsyncUpdates[D <: ActiveEntityData: ClassTag, S <: Entity.State](
+    entity: D,
+    updates: Seq[D => Future[S]]
   ): Future[D] = {
     @tailrec
-    def applyUpdates(result: Future[S], remaining: Seq[(D) => Future[S]]): Future[S] =
+    def applyUpdates(result: Future[S], remaining: Seq[D => Future[S]]): Future[S] =
       remaining match {
         case nextUpdate :: remainingUpdates =>
           applyUpdates(

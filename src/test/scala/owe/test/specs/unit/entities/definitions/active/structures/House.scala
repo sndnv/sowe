@@ -3,7 +3,7 @@ package owe.test.specs.unit.entities.definitions.active.structures
 import owe.effects.Effect
 import owe.entities.ActiveEntity.{ActiveEntityData, StructureData}
 import owe.entities.active.Structure._
-import owe.entities.active.behaviour.structure.{BaseStructure, Housing}
+import owe.entities.active.behaviour.structure.{housing, BaseStructure}
 import owe.entities.active.{Life, RiskAmount, Structure}
 import owe.map.grid.Point
 import owe.production.{Commodity, CommodityAmount}
@@ -17,7 +17,7 @@ class House extends Structure {
     properties = Properties(
       id = java.util.UUID.randomUUID(),
       homePosition = Point(0, 0),
-      name = "HOuse",
+      name = "House",
       walkers = WalkersProperties(
         generators = Map.empty
       ),
@@ -90,7 +90,7 @@ class House extends Structure {
     )
   )
 
-  override protected def createBehaviour(): BaseStructure = new Housing {}
+  override protected def createBehaviour(): BaseStructure = new housing.HousingStructure {}
 
   override protected def createEffects(): Seq[(ActiveEntityData => Boolean, Effect)] = Seq.empty
 

@@ -4,7 +4,7 @@ import owe.effects.Effect
 import owe.entities.ActiveEntity.{ActiveEntityData, ResourceData}
 import owe.entities.active.Resource
 import owe.entities.active.Resource.{Properties, State, StateModifiers}
-import owe.entities.active.behaviour.resource.BaseResource
+import owe.entities.active.behaviour.resource.producing.ProducingResource
 import owe.map.grid.Point
 import owe.production.{Commodity, CommodityAmount, CommodityAmountModifier}
 
@@ -26,7 +26,7 @@ class CopperVein extends Resource {
     )
   )
 
-  override protected def createBehaviour(): BaseResource = new BaseResource {}
+  override protected def createBehaviour(): ProducingResource = new ProducingResource {}
 
   override protected def createEffects(): Seq[(ActiveEntityData => Boolean, Effect)] = Seq.empty
 }

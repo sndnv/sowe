@@ -24,7 +24,7 @@ abstract class ActiveEntity[
 
   protected def createActiveEntityData(): ActiveEntityData
 
-  protected def createEffects(): Seq[((ActiveEntityData) => Boolean, Effect)]
+  protected def createEffects(): Seq[(ActiveEntityData => Boolean, Effect)]
 
   protected def createBehaviour(): B
 
@@ -41,7 +41,7 @@ abstract class ActiveEntity[
 
   private class ActiveEntityActor(
     val initialEntityData: ActiveEntityData,
-    val effects: Seq[((ActiveEntityData) => Boolean, Effect)]
+    val effects: Seq[(ActiveEntityData => Boolean, Effect)]
   )(implicit timeout: Timeout)
       extends Actor
       with Stash
@@ -55,13 +55,15 @@ abstract class ActiveEntity[
       s"""${self.path.name}-behaviour"""
     )
 
+    private val parentMap: ActorRef = context.parent
+
     def active(processingData: ProcessingData): Receive = {
       case updatedState: S =>
         unstashAll()
         context.become(idle(ProcessingData(initialEntityData.withState(updatedState), Seq.empty)))
 
       case ForwardMessage(message) =>
-        (context.parent ? message).pipeTo(sender())
+        (parentMap ? message).pipeTo(sender())
 
       case GetData() =>
         sender() ! processingData.entityData
@@ -118,7 +120,7 @@ abstract class ActiveEntity[
         sender() ! activeEffects
 
       case ForwardMessage(message) =>
-        (context.parent ? message).pipeTo(sender())
+        (parentMap ? message).pipeTo(sender())
 
       case AddEntityMessage(message) =>
         context.become(idle(processingData.copy(messages = processingData.messages :+ message)))

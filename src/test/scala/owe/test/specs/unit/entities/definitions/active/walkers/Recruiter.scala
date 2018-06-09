@@ -11,7 +11,7 @@ import owe.map.grid.Point
 import scala.collection.immutable.Queue
 
 class Recruiter extends Walker {
-  override protected def createBehaviour(): BaseWalker = new walker.Recruiter {
+  override protected def createBehaviour(): BaseWalker = new walker.roaming.Recruiter {
     override protected def recruitmentRadius: Distance = Distance(3)
   }
 

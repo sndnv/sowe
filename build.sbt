@@ -20,3 +20,5 @@ lazy val owe = (project in file("."))
     parallelExecution in Test := false,
     wartremoverWarnings ++= Warts.unsafe
   )
+
+addCommandAlias("qa", "; coverage; test; coverageReport")

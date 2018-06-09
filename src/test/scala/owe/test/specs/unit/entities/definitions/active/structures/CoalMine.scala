@@ -3,7 +3,8 @@ package owe.test.specs.unit.entities.definitions.active.structures
 import owe.effects.Effect
 import owe.entities.ActiveEntity.{ActiveEntityData, StructureData}
 import owe.entities.active.Structure._
-import owe.entities.active.behaviour.structure.{BaseStructure, Industry}
+import owe.entities.active.behaviour.structure.BaseStructure
+import owe.entities.active.behaviour.structure.producing.Industry
 import owe.entities.active.{Life, RiskAmount, Structure, Walker}
 import owe.map.grid.Point
 import owe.production.{Commodity, CommodityAmount, CommodityAmountModifier}

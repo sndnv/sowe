@@ -4,7 +4,8 @@ import owe.effects.Effect
 import owe.entities.ActiveEntity.{ActiveEntityData, WalkerData}
 import owe.entities.active.Walker._
 import owe.entities.active._
-import owe.entities.active.behaviour.walker.{BaseWalker, Military}
+import owe.entities.active.behaviour.walker.BaseWalker
+import owe.entities.active.behaviour.walker.idling.Military
 import owe.map.grid.Point
 
 import scala.collection.immutable.Queue
@@ -25,7 +26,7 @@ class Archer extends Walker {
         rate = AttackRate(3),
         damage = AttackDamage(50),
         distance = Distance(25),
-        target = (_) => true
+        target = _ => true
       )
     ),
     state = State(

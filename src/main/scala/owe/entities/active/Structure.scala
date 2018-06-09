@@ -1,11 +1,11 @@
 package owe.entities.active
 
 import owe.entities.ActiveEntity.StructureData
-import owe.{CellDesirability, EntityID}
 import owe.entities._
 import owe.entities.active.behaviour.structure.BaseStructure
 import owe.map.grid.Point
 import owe.production.{Commodity, CommodityAmount, CommodityAmountModifier}
+import owe.{CellDesirability, EntityID}
 
 trait Structure
     extends ActiveEntity[
@@ -100,7 +100,7 @@ object Structure {
   case object NoWalkers extends Walkers with PropertiesOnly with StateOnly
 
   case class WalkersProperties(
-    generators: Map[String, (StructureData) => Option[Walker]]
+    generators: Map[String, StructureData => Option[Walker]]
   ) extends Walkers
       with PropertiesOnly
 

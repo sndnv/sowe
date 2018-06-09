@@ -45,7 +45,7 @@ object Walker {
     rate: AttackRate,
     damage: AttackDamage,
     distance: Distance,
-    target: (ActiveEntityData) => Boolean
+    target: ActiveEntityData => Boolean
   ) extends Attack
       with PropertiesOnly
 
