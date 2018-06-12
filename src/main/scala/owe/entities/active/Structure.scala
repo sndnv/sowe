@@ -55,7 +55,7 @@ object Structure {
 
   //docs - controls consumption rate for houses && affects production rate
   case class CommoditiesModifier(
-    usageRates: Map[Commodity, CommodityAmount] //docs - per occupant or employee
+    usageRates: Map[Commodity, CommodityAmount] //docs - per occupant (housing) or tick (production)
   ) extends Commodities
       with StateModifiersOnly
 

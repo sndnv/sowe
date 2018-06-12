@@ -8,14 +8,14 @@ import owe.entities.active.behaviour.resource.BaseResource.Become
 
 trait BaseResource extends BaseBehaviour[Resource.ActorRefTag] {
 
-  private def base(): Behaviour = {
+  override protected def base: Behaviour = {
     case Become(behaviour, resource) =>
       parentEntity ! resource.state
       become(behaviour, resource)
   }
 
   private def become(behaviour: () => Behaviour, resource: ResourceData): Unit =
-    context.become(base().orElse(behaviour()))
+    context.become(base.orElse(behaviour()))
 }
 
 object BaseResource {

@@ -24,11 +24,17 @@ object MapCell {
       water = Water.Min,
       buildingAllowed = true
     )
+    val defaultModifiers = Modifiers(
+      desirability = CellDesirabilityModifier(100),
+      fertility = FertilityModifier(100),
+      water = WaterModifier(100),
+      buildingAllowed = true
+    )
 
     new MapCell(
       Map.empty,
       defaultProperties,
-      defaultProperties.toModifiers
+      defaultModifiers
     )
   }
 
@@ -42,14 +48,7 @@ object MapCell {
     fertility: Fertility, //doc - in pct
     water: Water, //doc - in pct
     buildingAllowed: Boolean
-  ) {
-    def toModifiers: Modifiers = Modifiers(
-      desirability.toModifier,
-      fertility.toModifier,
-      water.toModifier,
-      buildingAllowed
-    )
-  }
+  )
 
   case class Modifiers(
     desirability: CellDesirabilityModifier,

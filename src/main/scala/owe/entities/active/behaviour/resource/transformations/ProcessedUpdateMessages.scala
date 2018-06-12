@@ -11,13 +11,13 @@ trait ProcessedUpdateMessages {
     pendingMessages.foldLeft(resource.state) {
       case (currentState, message) =>
         message match {
-          case ProcessCommodities(commodities) if resource.state.currentAmount > CommodityAmount(0) =>
+          case ProcessCommodities(commodities) if currentState.currentAmount > CommodityAmount(0) =>
             commodities.toMap.get(resource.properties.commodity) match {
-              case Some(commodity) if commodity > CommodityAmount(0) =>
-                val updatedAmount = (resource.state.currentAmount - commodity).max(CommodityAmount(0))
+              case Some(commodity) if commodity < CommodityAmount(0) =>
+                val updatedAmount = (currentState.currentAmount + commodity).max(CommodityAmount(0))
                 currentState.copy(currentAmount = updatedAmount)
 
-              case None => currentState
+              case _ => currentState
             }
 
           case _ => currentState

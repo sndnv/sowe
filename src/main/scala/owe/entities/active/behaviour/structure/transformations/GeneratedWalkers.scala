@@ -14,12 +14,18 @@ trait GeneratedWalkers {
       case (WalkersProperties(generators), WalkersState(state)) =>
         generators.foldLeft(structure.state) {
           case (currentState, (walkerName, walkerGenerator)) =>
-            walkerGenerator(structure) match {
-              case Some(walker) =>
-                parentEntity ! ForwardMessage(CreateEntity(walker, structure.properties.homePosition))
-                currentState.copy(walkers = WalkersState(state + (walkerName -> WalkerState.Available)))
+            val isWalkerAvailable = state.get(walkerName).contains(WalkerState.Available)
 
-              case None => currentState //do nothing
+            if (!isWalkerAvailable) {
+              walkerGenerator(structure) match {
+                case Some(walker) =>
+                  parentEntity ! ForwardMessage(CreateEntity(walker, structure.properties.homePosition))
+                  currentState.copy(walkers = WalkersState(state + (walkerName -> WalkerState.Available)))
+
+                case None => currentState //do nothing
+              }
+            } else {
+              currentState //walker already exists
             }
         }
 

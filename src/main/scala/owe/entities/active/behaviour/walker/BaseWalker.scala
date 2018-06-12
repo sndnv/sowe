@@ -303,7 +303,7 @@ trait BaseWalker
       sender() ! entity.state
   }
 
-  private def base(): Behaviour = {
+  override protected def base: Behaviour = {
     case Become(behaviour, walker) =>
       parentEntity ! walker.state
       become(behaviour, walker)
@@ -311,7 +311,7 @@ trait BaseWalker
 
   private def become(behaviour: () => Behaviour, walker: WalkerData): Unit =
     if (walker.state.currentLife.isSufficient) {
-      context.become(base().orElse(behaviour()))
+      context.become(base.orElse(behaviour()))
     } else {
       walker.state.commodities match {
         case CommoditiesState(available, _) => UpdateExchange.State(available, CommodityState.Lost)

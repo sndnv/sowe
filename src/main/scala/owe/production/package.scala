@@ -30,6 +30,7 @@ package object production {
   }
 
   final case class CommodityAmountModifier(value: Int) extends AnyVal {
+    def +(modifier: CommodityAmountModifier) = CommodityAmountModifier(value + modifier.value)
     def *(multiplier: Int): CommodityAmountModifier = CommodityAmountModifier(value * multiplier)
     def /(divisor: Int): CommodityAmountModifier = CommodityAmountModifier(value / divisor)
     def apply(amount: CommodityAmount): CommodityAmount =

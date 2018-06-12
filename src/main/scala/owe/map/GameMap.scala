@@ -427,7 +427,7 @@ trait GameMap extends Actor with ActorLogging with Stash with Timers {
                   }
               }
 
-            val cellModifiers = cellEffects.foldLeft(cell.properties.toModifiers) {
+            val cellModifiers = cellEffects.foldLeft(cell.modifiers) {
               case (modifiers, effect) =>
                 effect(cell.properties, modifiers)
             }

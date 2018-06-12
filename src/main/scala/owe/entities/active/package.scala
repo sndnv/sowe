@@ -18,7 +18,7 @@ package object active {
   }
 
   final case class AttackDamage(value: Int) extends AnyVal {
-    def apply(life: Life): Life = Life(life.value - value)
+    def apply(life: Life): Life = Life((life.value - value).max(0))
   }
 
   final case class AttackDamageModifier(value: Int) extends AnyVal {

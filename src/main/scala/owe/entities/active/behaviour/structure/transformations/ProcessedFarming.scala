@@ -14,8 +14,15 @@ trait ProcessedFarming {
           case Some(actualProductionRates) =>
             val updatedResources = available ++ actualProductionRates.map {
               case (commodity, amount) =>
-                val water = map.cellModifiers.water(map.cellProperties.water).min(Water.Max)
-                val fertility = map.cellModifiers.fertility(map.cellProperties.fertility).min(Fertility.Max)
+                val water = map.cellModifiers
+                  .water(map.cellProperties.water)
+                  .min(Water.Max)
+                  .max(Water.Min)
+
+                val fertility = map.cellModifiers
+                  .fertility(map.cellProperties.fertility)
+                  .min(Fertility.Max)
+                  .max(Fertility.Min)
 
                 val actualAmount = amount.basedOn(fertility.basedOn(water))
 

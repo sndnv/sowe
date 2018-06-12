@@ -10,7 +10,6 @@ package object owe {
     def <=(desirability: CellDesirability): Boolean = value <= desirability.value
     def min(desirability: CellDesirability): CellDesirability = CellDesirability(value.min(desirability.value))
     def max(desirability: CellDesirability): CellDesirability = CellDesirability(value.max(desirability.value))
-    def toModifier: CellDesirabilityModifier = CellDesirabilityModifier(value)
   }
 
   final case class CellDesirabilityModifier(value: Int) extends AnyVal {
@@ -111,7 +110,6 @@ package object owe {
     def min(fertility: Fertility): Fertility = Fertility(value.min(fertility.value))
     def max(fertility: Fertility): Fertility = Fertility(value.max(fertility.value))
     def basedOn(water: Water): Fertility = Fertility((water.value * value) / 100)
-    def toModifier: FertilityModifier = FertilityModifier(value)
   }
 
   final case class FertilityModifier(value: Int) extends AnyVal {
@@ -126,7 +124,6 @@ package object owe {
   final case class Water(value: Int) extends AnyVal {
     def min(water: Water): Water = Water(value.min(water.value))
     def max(water: Water): Water = Water(value.max(water.value))
-    def toModifier: WaterModifier = WaterModifier(value)
   }
 
   final case class WaterModifier(value: Int) extends AnyVal {

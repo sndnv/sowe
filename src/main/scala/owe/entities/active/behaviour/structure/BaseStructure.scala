@@ -10,7 +10,7 @@ import owe.entities.active.behaviour.{BaseBehaviour, UpdateExchange}
 import owe.production.{CommodityAmount, CommodityState}
 
 trait BaseStructure extends BaseBehaviour[Structure.ActorRefTag] {
-  private def base(): Behaviour = {
+  override protected def base: Behaviour = {
     case Become(behaviour, structure) =>
       parentEntity ! structure.state
       become(behaviour, structure)
@@ -18,7 +18,7 @@ trait BaseStructure extends BaseBehaviour[Structure.ActorRefTag] {
 
   private def become(behaviour: () => Behaviour, structure: StructureData): Unit =
     if (structure.state.currentLife.isSufficient) {
-      context.become(base().orElse(behaviour()))
+      context.become(base.orElse(behaviour()))
     } else {
       structure.state.commodities match {
         case CommoditiesState(available, _) =>
@@ -32,8 +32,8 @@ trait BaseStructure extends BaseBehaviour[Structure.ActorRefTag] {
 object BaseStructure {
   private[behaviour] case class Become(behaviour: () => Receive, structure: StructureData)
 
-  private[behaviour] sealed trait StructureTransition
-  private[behaviour] object StructureTransition {
+  sealed trait StructureTransition
+  object StructureTransition {
     case object Upgrade extends StructureTransition
     case object Downgrade extends StructureTransition
     case object None extends StructureTransition

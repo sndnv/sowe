@@ -18,11 +18,13 @@ trait BaseBehaviour[P <: ActorRefTag] extends Actor with ActorLogging {
 
   protected implicit val timeout: Timeout = 1.second
 
+  protected def base: Behaviour
+
   protected def behaviour: Behaviour
 
   private[behaviour] implicit val parentEntity: ActorRef @@ ActorRefTag = context.parent.tag[P]
 
-  final override def receive: Receive = behaviour
+  final override def receive: Receive = base.orElse(behaviour)
 
   private[behaviour] def withUpdates[D <: ActiveEntityData: ClassTag, S <: Entity.State](
     entity: D,

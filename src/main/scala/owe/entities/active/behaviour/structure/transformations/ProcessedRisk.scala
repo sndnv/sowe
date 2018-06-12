@@ -11,15 +11,18 @@ trait ProcessedRisk {
         val updatedFireState = state.fire + modifiers.fire
         val updatedDamageState = state.damage + modifiers.damage
 
-        structure.state.copy(
-          risk = RiskState(
-            fire = updatedFireState,
-            damage = updatedDamageState
-          ),
-          currentLife =
-            if (updatedFireState > RiskAmount.max || updatedDamageState > RiskAmount.max) Life(0)
-            else structure.state.currentLife
-        )
+        if (updatedFireState > RiskAmount.max || updatedDamageState > RiskAmount.max) {
+          structure.state.copy(
+            currentLife = Life(0)
+          )
+        } else {
+          structure.state.copy(
+            risk = RiskState(
+              fire = updatedFireState,
+              damage = updatedDamageState
+            )
+          )
+        }
 
       case _ => structure.state //can't calculate risk; risk data missing
     }

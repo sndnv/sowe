@@ -17,35 +17,35 @@ trait ProcessedHousing {
         val updatedEducation = education.map {
           case (entry, level) =>
             val actualModifier = educationModifier.getOrElse(entry, EducationLevelModifier(0)).value - 1
-            val updatedLevel = level.copy(current = level.current + actualModifier)
+            val updatedLevel = level.copy(current = (level.current + actualModifier).max(0))
             (entry, updatedLevel)
         }
 
         val updatedEntertainment = entertainment.map {
           case (entry, level) =>
             val actualModifier = entertainmentModifier.getOrElse(entry, EntertainmentLevelModifier(0)).value - 1
-            val updatedLevel = level.copy(current = level.current + actualModifier)
+            val updatedLevel = level.copy(current = (level.current + actualModifier).max(0))
             (entry, updatedLevel)
         }
 
         val updatedReligion = religion.map {
           case (entry, level) =>
             val actualModifier = religionModifier.getOrElse(entry, ReligionLevelModifier(0)).value - 1
-            val updatedLevel = level.copy(current = level.current + actualModifier)
+            val updatedLevel = level.copy(current = (level.current + actualModifier).max(0))
             (entry, updatedLevel)
         }
 
         val updatedHealthcare = healthcare.map {
           case (entry, level) =>
             val actualModifier = healthcareModifier.getOrElse(entry, HealthcareLevelModifier(0)).value - 1
-            val updatedLevel = level.copy(current = level.current + actualModifier)
+            val updatedLevel = level.copy(current = (level.current + actualModifier).max(0))
             (entry, updatedLevel)
         }
 
         val updatedCivilService = civilService.map {
           case (entry, level) =>
             val actualModifier = civilServiceModifier.getOrElse(entry, CivilServiceLevelModifier(0)).value - 1
-            val updatedLevel = level.copy(current = level.current + actualModifier)
+            val updatedLevel = level.copy(current = (level.current + actualModifier).max(0))
             (entry, updatedLevel)
         }
 

@@ -11,7 +11,7 @@ object DistributionCalculations {
     walker: WalkerData
   ): Option[DistributionResult] =
     (structure.state.commodities, walker.state.commodities) match {
-      case (Structure.CommoditiesState(available, limits), Walker.CommoditiesState(carrying, _)) =>
+      case (Structure.CommoditiesState(available, _), Walker.CommoditiesState(carrying, limits)) =>
         val result = calculateCommodityUpdates(
           DistributionData(
             carrying.tag[WalkerCarrying],
@@ -35,7 +35,7 @@ object DistributionCalculations {
     walker: WalkerData
   ): Option[DistributionResult] =
     (structure.state.commodities, walker.state.commodities) match {
-      case (Structure.CommoditiesState(available, _), Walker.CommoditiesState(carrying, limits)) =>
+      case (Structure.CommoditiesState(available, limits), Walker.CommoditiesState(carrying, _)) =>
         val result = calculateCommodityUpdates(
           DistributionData(
             carrying.tag[WalkerCarrying],
@@ -65,24 +65,24 @@ object DistributionCalculations {
     val result =
       commodities.walkerCarrying.foldLeft(
         (Map.empty[Commodity, CommodityAmount], Map.empty[Commodity, CommodityAmount])) {
-        case ((transferableCommodities, remainingCommodities), (commodity, carrying)) =>
+        case ((structureCommodities, walkerCommodities), (commodity, carrying)) =>
           (commodities.limits.get(commodity), commodities.structureAvailable.get(commodity)) match {
             case (Some(limit), maybeExisting) =>
               val existing = maybeExisting.getOrElse(CommodityAmount(0))
 
-              val (transferred, remaining) = transfer(
+              val (structureAmount, walkerAmount) = transfer(
                 existing.tag[StructureAvailable],
                 carrying.tag[WalkerCarrying],
                 limit.tag[Limits]
               )
 
               (
-                transferableCommodities + (commodity -> transferred),
-                remainingCommodities + (commodity -> remaining)
+                structureCommodities + (commodity -> structureAmount),
+                walkerCommodities + (commodity -> walkerAmount)
               )
 
             case _ =>
-              (transferableCommodities, remainingCommodities) //cannot accept commodity
+              (structureCommodities, walkerCommodities) //cannot accept commodity
           }
       }
 
@@ -94,10 +94,8 @@ object DistributionCalculations {
     carrying: CommodityAmount @@ WalkerCarrying,
     limit: CommodityAmount @@ Limits
   ): (CommodityAmount, CommodityAmount) = {
-    val transferred = limit.min(carrying)
-    val remaining = carrying + transferred
-
-    (transferred, remaining)
+    val changeAmount = (limit - carrying).min(existing)
+    (changeAmount * -1, changeAmount)
   }
 
   private def walkerToStructureTransfer(
@@ -105,10 +103,8 @@ object DistributionCalculations {
     carrying: CommodityAmount @@ WalkerCarrying,
     limit: CommodityAmount @@ Limits
   ): (CommodityAmount, CommodityAmount) = {
-    val transferred = (limit - existing).min(carrying)
-    val remaining = carrying - transferred
-
-    (transferred, remaining)
+    val changeAmount = (limit - existing).min(carrying)
+    (changeAmount, changeAmount * -1)
   }
 
   private trait WalkerCarrying

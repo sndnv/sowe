@@ -1,10 +1,9 @@
 package owe.entities.active.behaviour.structure.transformations
 
-import owe.CellDesirability
 import owe.entities.ActiveEntity.{MapData, StructureData}
 import owe.entities.active.Structure._
 import owe.entities.active.behaviour.structure.BaseStructure.StructureTransition
-import owe.entities.active.behaviour.structure.CommodityCalculations
+import owe.entities.active.behaviour.structure.{CommodityCalculations, TransitionCalculations}
 
 trait ProcessedTransition {
   def withProcessedTransition(map: MapData, structure: StructureData): State =
@@ -37,80 +36,20 @@ trait ProcessedTransition {
 
   private def calculateStructureTransition(map: MapData, structure: StructureData): StructureTransition =
     structure.state.housing match {
-      case HousingState(occupants, commodityShortage, education, entertainment, religion, healthcare, civilService) =>
-        if (occupants > 0) {
-          val commoditiesMissing = CommodityCalculations.areHousingCommoditiesMissing(structure)
-          val cellDesirability =
-            map.cellModifiers.desirability(map.cellProperties.desirability).min(CellDesirability.Max)
-
-          val (minDesirability, commodityShortageLimit) =
-            (structure.state.currentStage, structure.properties.stages) match {
-              case (DefaultStage, SingleStage(stage)) =>
-                (stage.minDesirability, stage.commodityShortageLimit)
-
-              case (CurrentStage(stage), MultiStage(stages)) if stages.size > stage =>
-                (stages(stage).minDesirability, stages(stage).commodityShortageLimit)
-
-              case _ =>
-                (CellDesirability.Neutral, 0) //stage data missing
-            }
-
-          val enoughDesirability = cellDesirability >= minDesirability
-
-          val shouldDowngrade =
-            (commoditiesMissing && commodityShortage >= commodityShortageLimit) ||
-              !enoughDesirability ||
-              education.forall { case (_, level)     => level.current < level.minimal } ||
-              entertainment.forall { case (_, level) => level.current < level.minimal } ||
-              religion.forall { case (_, level)      => level.current < level.minimal } ||
-              healthcare.forall { case (_, level)    => level.current < level.minimal } ||
-              civilService.forall { case (_, level)  => level.current < level.minimal }
-
-          if (shouldDowngrade) {
-            StructureTransition.Downgrade
-          } else {
-            val shouldUpgrade =
-              !commoditiesMissing &&
-                enoughDesirability &&
-                education.forall { case (_, level)     => level.current >= level.required } &&
-                entertainment.forall { case (_, level) => level.current >= level.required } &&
-                religion.forall { case (_, level)      => level.current >= level.required } &&
-                healthcare.forall { case (_, level)    => level.current >= level.required } &&
-                civilService.forall { case (_, level)  => level.current >= level.required }
-
-            if (shouldUpgrade) {
-              StructureTransition.Upgrade
-            } else {
-              StructureTransition.None //no transition; no need to upgrade or downgrade
-            }
-          }
-
-        } else {
-          StructureTransition.None //no transition; no occupants
-        }
+      case housingState: HousingState =>
+        TransitionCalculations.housing(
+          map,
+          housingState,
+          structure.state.currentStage,
+          structure.properties.stages,
+          CommodityCalculations.areHousingCommoditiesMissing(structure)
+        )
 
       case _ =>
-        val cellDesirability =
-          map.cellModifiers.desirability(map.cellProperties.desirability).min(CellDesirability.Max)
-
-        val minDesirability =
-          (structure.state.currentStage, structure.properties.stages) match {
-            case (DefaultStage, SingleStage(stage)) =>
-              stage.minDesirability
-
-            case (CurrentStage(stage), MultiStage(stages)) if stages.size > stage =>
-              stages(stage).minDesirability
-
-            case _ =>
-              CellDesirability.Neutral //stage data missing
-          }
-
-        if (cellDesirability > minDesirability) {
-          StructureTransition.Upgrade
-        } else if (cellDesirability < minDesirability) {
-          StructureTransition.Downgrade
-        } else {
-          StructureTransition.None
-        }
+        TransitionCalculations.producing(
+          map,
+          structure.state.currentStage,
+          structure.properties.stages
+        )
     }
 }

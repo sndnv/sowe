@@ -7,7 +7,7 @@ import owe.production.CommodityAmount
 trait ReplenishedResources {
   def withReplenishedResources(resource: ResourceData, amountProduced: Option[CommodityAmount]): State =
     amountProduced match {
-      case Some(produced) => resource.state.copy(currentAmount = produced)
+      case Some(produced) => resource.state.copy(currentAmount = resource.state.currentAmount + produced)
       case None           => resource.state
     }
 }
