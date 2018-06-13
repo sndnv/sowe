@@ -19,16 +19,6 @@ package object production {
     def basedOn(fertility: Fertility): CommodityAmount = CommodityAmount((fertility.value * value) / 100)
   }
 
-  final case class CommodityReplenishRate(value: Int) extends AnyVal {
-    def *(multiplier: Int): CommodityAmount = CommodityAmount(value * multiplier)
-    def /(divisor: Int): CommodityAmount = CommodityAmount(value / divisor)
-  }
-
-  final case class CommodityReplenishRateModifier(value: Int) extends AnyVal {
-    def apply(amount: CommodityReplenishRate): CommodityReplenishRate =
-      CommodityReplenishRate((amount.value * value) / 100)
-  }
-
   final case class CommodityAmountModifier(value: Int) extends AnyVal {
     def +(modifier: CommodityAmountModifier) = CommodityAmountModifier(value + modifier.value)
     def *(multiplier: Int): CommodityAmountModifier = CommodityAmountModifier(value * multiplier)

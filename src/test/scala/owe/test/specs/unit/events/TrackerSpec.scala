@@ -20,7 +20,7 @@ class TrackerSpec extends AkkaUnitSpec("TrackerSpec") {
 
   private val tracker: ActorRef = system.actorOf(Tracker.props())
 
-  "A Tracker" should "attach observers" in { fixture =>
+  "A Tracker" should "attach observers" in { _ =>
     val events = Seq(
       Event.System.EntityCreated,
       Event.System.EntityDestroyed,
@@ -38,7 +38,7 @@ class TrackerSpec extends AkkaUnitSpec("TrackerSpec") {
     expectMsg(EventsObserverAttached(events: _*))
   }
 
-  it should "forward events to observers" in { fixture =>
+  it should "forward events to observers" in { _ =>
     val event1 = Event(id = Event.System.EntityCreated, cell = None)
     val event2 = Event(id = TestEvent2, cell = Some(Point(0, 0)))
     val event3 = Event(id = TestEvent1, cell = Some(Point(5, 1)))
@@ -52,7 +52,7 @@ class TrackerSpec extends AkkaUnitSpec("TrackerSpec") {
     expectMsg(event3)
   }
 
-  it should "allow event querying" in { fixture =>
+  it should "allow event querying" in { _ =>
     val event2 = Event(id = TestEvent2, cell = Some(Point(0, 0)))
     val event3 = Event(id = TestEvent1, cell = Some(Point(5, 1)))
 
