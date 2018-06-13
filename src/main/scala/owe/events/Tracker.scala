@@ -1,37 +1,60 @@
 package owe.events
 
 import akka.actor.{Actor, ActorRef, Props}
-import owe.events.Tracker.{AttachEventsObserver, ClearGameEventsLog, DetachEventsObserver, GetGameEventsLog}
+import owe.events.Tracker._
 
-//TODO - use state instead of vars
 class Tracker() extends Actor {
-  private var observers: Map[Event.Identifier, Seq[ActorRef]] = Map.empty
-  private var gameEventsLog: Vector[Event.Game] = Vector.empty
-
-  override def receive: Receive = {
+  private def handler(observers: Map[Event.Identifier, Seq[ActorRef]], gameEventsLog: Vector[Event]): Receive = {
     case event: Event =>
       observers.getOrElse(event.id, Seq.empty).foreach(_ ! event)
-      event match {
-        case event: Event.Game => gameEventsLog :+= event
-        case _                 => () //system events are not stored
+      val updatedEventsLog = event.id match {
+        case _: Event.Game => gameEventsLog :+ event
+        case _             => gameEventsLog //system events are not stored
       }
+
+      context.become(handler(observers, updatedEventsLog))
 
     case attach: AttachEventsObserver =>
-      attach.events.foreach { event =>
-        observers += event -> (observers.getOrElse(event, Seq.empty) :+ attach.actor)
+      val updatedObservers = attach.events.foldLeft(observers) {
+        case (currentObservers, event) =>
+          currentObservers + (event -> (currentObservers.getOrElse(event, Seq.empty) :+ attach.actor))
       }
 
+      attach.actor ! EventsObserverAttached(attach.events: _*)
+      context.become(handler(updatedObservers, gameEventsLog))
+
     case detach: DetachEventsObserver =>
-      detach.events.foreach { event =>
-        observers += event -> (observers.getOrElse(event, Seq.empty) :+ detach.actor)
+      val (detachedEvents, updatedObservers) = detach.events.foldLeft((Seq.empty[Event.Identifier], observers)) {
+        case ((currentDetachedEvents, currentObservers), event) =>
+          val eventObservers = observers.getOrElse(event, Seq.empty)
+          val filteredEventObservers = eventObservers.filterNot(_ == detach.actor)
+
+          val updatedDetachedEvents = if (eventObservers.size != filteredEventObservers.size) {
+            currentDetachedEvents :+ event
+          } else {
+            currentDetachedEvents
+          }
+
+          val updatedObservers = if (filteredEventObservers.isEmpty) {
+            currentObservers - event
+          } else {
+            currentObservers + (event -> filteredEventObservers)
+          }
+
+          (updatedDetachedEvents, updatedObservers)
       }
+
+      detach.actor ! EventsObserverDetached(detachedEvents: _*)
+      context.become(handler(updatedObservers, gameEventsLog))
 
     case GetGameEventsLog() =>
       sender() ! gameEventsLog
 
     case ClearGameEventsLog() =>
-      gameEventsLog = Vector.empty
+      context.become(handler(observers, Vector.empty))
   }
+
+  override def receive: Receive = handler(observers = Map.empty, gameEventsLog = Vector.empty)
 }
 
 object Tracker {
@@ -39,6 +62,8 @@ object Tracker {
   case class DetachEventsObserver(actor: ActorRef, events: Event.Identifier*)
   case class GetGameEventsLog()
   case class ClearGameEventsLog()
+  case class EventsObserverAttached(events: Event.Identifier*)
+  case class EventsObserverDetached(events: Event.Identifier*)
 
   def props(): Props = Props(classOf[Tracker])
 }
