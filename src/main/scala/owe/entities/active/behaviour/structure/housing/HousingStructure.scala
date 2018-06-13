@@ -40,7 +40,7 @@ trait HousingStructure
           .foreach(UpdateExchange.State(_, CommodityState.Used))
 
         CommodityCalculations
-          .requiredCommodities(structure)
+          .requiredCommodities(updatedData)
           .foreach(UpdateExchange.Stats.requiredCommodities(structure.properties.id, _))
 
         self ! Become(housing, updatedData)

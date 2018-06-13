@@ -43,7 +43,7 @@ trait ProducingStructure
           .foreach(UpdateExchange.State(_, CommodityState.Used))
 
         CommodityCalculations
-          .requiredCommodities(structure)
+          .requiredCommodities(updatedData)
           .foreach(UpdateExchange.Stats.requiredCommodities(structure.properties.id, _))
 
         (structure.state.commodities, updatedData.state.commodities) match {

@@ -1,31 +1,155 @@
 package owe.test.specs.unit.entities.active.behaviour.structure.producing
 
+import akka.actor.{ActorRef, Props}
+import akka.util.Timeout
 import org.scalatest.Outcome
-import owe.test.specs.unit.UnitSpec
+import owe.entities.ActiveEntity.{ForwardMessage, ProcessEntityTick, StructureData}
+import owe.entities.Entity.ProcessAttack
+import owe.entities.active.{AttackDamage, Life}
+import owe.entities.active.Structure._
+import owe.entities.active.behaviour.structure.producing.ProducingStructure
+import owe.map.GameMap.ForwardExchangeMessage
+import owe.production.Exchange.{CommodityAvailable, CommodityRequired, UpdateCommodityState}
+import owe.production.{Commodity, CommodityAmount, CommodityAmountModifier, CommodityState}
+import owe.test.specs.unit.AkkaUnitSpec
+import owe.test.specs.unit.entities.active.behaviour.{Fixtures, TestParentEntity}
 
-class ProducingStructureSpec extends UnitSpec {
-  case class FixtureParam()
+import scala.concurrent.duration._
 
-  def withFixture(test: OneArgTest): Outcome =
-    withFixture(test.toNoArgTest(FixtureParam()))
+class ProducingStructureSpec extends AkkaUnitSpec("ProducingStructureSpec") {
 
-  "A Producing structure" should "generate walkers" in { _ =>
-    fail("Not Implemented", new NotImplementedError())
+  private implicit val timeout: Timeout = 5.seconds
+
+  case class FixtureParam(structure: StructureData, parentEntity: ActorRef)
+
+  def withFixture(test: OneArgTest): Outcome = {
+    val structure = StructureData(
+      properties = Fixtures.Structure.Producing.properties,
+      state = State(
+        risk = NoRisk,
+        commodities = CommoditiesState(
+          available = Map(
+            Commodity("TestCommodity#2") -> CommodityAmount(70)
+          ),
+          limits = Map(
+            Commodity("TestCommodity#1") -> CommodityAmount(50),
+            Commodity("TestCommodity#2") -> CommodityAmount(100)
+          )
+        ),
+        housing = NoHousing,
+        production = ProductionState(
+          employees = 15,
+          labour = LabourState.Found,
+          rates = Map(Commodity("TestCommodity#1") -> CommodityAmount(25))
+        ),
+        currentStage = DefaultStage,
+        currentLife = Life(100),
+        walkers = NoWalkers
+      ),
+      modifiers = StateModifiers(
+        risk = NoRisk,
+        commodities = CommoditiesModifier(
+          usageRates = Map(
+            Commodity("TestCommodity#2") -> CommodityAmount(15)
+          )
+        ),
+        production = ProductionModifier(
+          rates = Map(
+            Commodity("TestCommodity#1") -> CommodityAmountModifier(100)
+          )
+        ),
+        housing = NoHousing
+      )
+    )
+
+    val parentEntity = system.actorOf(TestParentEntity.props(testActor, Props(new ProducingStructure {})))
+
+    withFixture(test.toNoArgTest(FixtureParam(structure, parentEntity)))
   }
 
-  it should "accept commodities" in { _ =>
-    fail("Not Implemented", new NotImplementedError())
-  }
+  "A Producing structure" should "generate walkers" in { fixture =>
+    fixture.parentEntity ! ProcessEntityTick(
+      map = Fixtures.defaultMapData,
+      entity = fixture.structure,
+      messages = Seq(
+        ProcessAttack(AttackDamage(100))
+      )
+    )
 
-  it should "consume commodities" in { _ =>
-    fail("Not Implemented", new NotImplementedError())
-  }
+    expectMsg(
+      ForwardMessage(
+        ForwardExchangeMessage(
+          UpdateCommodityState(
+            Commodity("TestCommodity#1"),
+            CommodityAmount(25),
+            CommodityState.Produced
+          )
+        )
+      )
+    )
 
-  it should "upgrade itself based on conditions" in { _ =>
-    fail("Not Implemented", new NotImplementedError())
-  }
+    expectMsg(
+      ForwardMessage(
+        ForwardExchangeMessage(
+          UpdateCommodityState(
+            Commodity("TestCommodity#2"),
+            CommodityAmount(15),
+            CommodityState.Used
+          )
+        )
+      )
+    )
 
-  it should "downgrade itself based on conditions" in { _ =>
-    fail("Not Implemented", new NotImplementedError())
+    expectMsg(
+      ForwardMessage(
+        ForwardExchangeMessage(
+          CommodityRequired(
+            Commodity("TestCommodity#2"),
+            CommodityAmount(45),
+            Fixtures.Structure.Producing.properties.id
+          )
+        )
+      )
+    )
+
+    expectMsg(
+      ForwardMessage(
+        ForwardExchangeMessage(
+          CommodityAvailable(
+            Commodity("TestCommodity#2"),
+            CommodityAmount(55),
+            Fixtures.Structure.Producing.properties.id
+          )
+        )
+      )
+    )
+
+    expectMsg(
+      ForwardMessage(
+        ForwardExchangeMessage(
+          CommodityAvailable(
+            Commodity("TestCommodity#1"),
+            CommodityAmount(25),
+            Fixtures.Structure.Producing.properties.id
+          )
+        )
+      )
+    )
+
+    expectMsg(
+      fixture.structure.state.copy(
+        currentLife = Life(0),
+        commodities = CommoditiesState(
+          available = Map(
+            Commodity("TestCommodity#1") -> CommodityAmount(25),
+            Commodity("TestCommodity#2") -> CommodityAmount(55)
+          ),
+          limits = Map(
+            Commodity("TestCommodity#1") -> CommodityAmount(50),
+            Commodity("TestCommodity#2") -> CommodityAmount(100)
+          )
+        )
+      )
+    )
   }
 }
