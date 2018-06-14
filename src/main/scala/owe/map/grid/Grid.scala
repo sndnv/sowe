@@ -17,7 +17,7 @@ class Grid[A: ClassTag](private val data: Array[Array[A]]) {
         case (row, rowIndex) =>
           row.zipWithIndex.map {
             case (col, colIndex) =>
-              f((rowIndex, colIndex), col)
+              f((colIndex, rowIndex), col)
           }
       }
     )
@@ -29,7 +29,7 @@ class Grid[A: ClassTag](private val data: Array[Array[A]]) {
       case (row, rowIndex) =>
         row.zipWithIndex.foreach {
           case (col, colIndex) =>
-            f((rowIndex, colIndex), col)
+            f((colIndex, rowIndex), col)
         }
     }
 
@@ -37,10 +37,10 @@ class Grid[A: ClassTag](private val data: Array[Array[A]]) {
 
   def indexed(): Grid[(Point, A)] = mapIndexed { case (point, element) => (point, element) }
 
-  def slice(cols: Range, rows: Range): Grid[A] =
+  def slice(rows: Range, cols: Range): Grid[A] =
     new Grid(
-      cols.map { x =>
-        rows.flatMap { y =>
+      rows.map { y =>
+        cols.flatMap { x =>
           row(y).map(_(x))
         }.toArray
       }.toArray
@@ -71,17 +71,17 @@ class Grid[A: ClassTag](private val data: Array[Array[A]]) {
       case (row, rowIndex) =>
         row.zipWithIndex.map {
           case (col, colIndex) =>
-            (Point(rowIndex, colIndex), col)
+            (Point(colIndex, rowIndex), col)
         }
     }.toMap
 
-  def getUnsafe(point: Point): A = data(point.x)(point.y)
+  def getUnsafe(point: Point): A = data(point.y)(point.x)
 
   def get(point: Point): Option[A] = Try(getUnsafe(point)).toOption
 
   def updated(point: Point, element: A): Grid[A] = {
     val result = map(identity)
-    result.data(point.x)(point.y) = element
+    result.data(point.y)(point.x) = element
     result
   }
 
@@ -89,7 +89,7 @@ class Grid[A: ClassTag](private val data: Array[Array[A]]) {
 
   def exists(p: A => Boolean): Boolean = data.exists(_.exists(p))
 
-  def find(p: A => Boolean): Option[A] = data.collectFirst { case row => row.find(p) }.flatten
+  def find(p: A => Boolean): Option[A] = data.collectFirst { case row if row.exists(p) => row.find(p) }.flatten
 
   def findRow(p: A => Boolean): Option[Seq[A]] = rows.find(_.exists(p))
 
@@ -106,18 +106,18 @@ class Grid[A: ClassTag](private val data: Array[Array[A]]) {
     slice(rows, cols)
   }
 
-  def slide[U](start: Point, end: Point, radius: Int, f: A => U): Unit =
+  def sliding[U](start: Point, end: Point, radius: Int, f: A => U): Unit =
     mapIndexed { case (p, _) => p }
-      .slice(start.x to end.x, start.y to end.y)
+      .slice(start.y to end.y, start.x to end.x)
       .toSeq
       .foreach { point =>
         window(point, radius).foreach(f)
       }
 
-  def slide[U](start: Point, radius: Int, f: A => U): Unit =
-    slide(start, end = Point(Math.max(width - 1, 0), Math.max(height - 1, 0)), radius, f)
+  def sliding[U](start: Point, radius: Int, f: A => U): Unit =
+    sliding(start, end = Point(Math.max(width - 1, 0), Math.max(height - 1, 0)), radius, f)
 
-  def slide[U](radius: Int, f: A => U): Unit = slide(start = Point(0, 0), radius, f)
+  def sliding[U](radius: Int, f: A => U): Unit = sliding(start = Point(0, 0), radius, f)
 
   def nextPoint(point: Point): Option[Point] =
     get(point).map { _ =>
@@ -143,7 +143,7 @@ class Grid[A: ClassTag](private val data: Array[Array[A]]) {
       }
     }
 
-  def transpose: Grid[A] = new Grid(data.transpose)
+  def transposed: Grid[A] = new Grid(data.transpose)
 
   def debugString(): String = {
     val header = s" \t${(0 until width).mkString("\t")}\tX"
