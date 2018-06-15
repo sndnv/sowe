@@ -1,22 +1,23 @@
 package owe.map.ops
 
-import owe.entities.active.Distance
-import owe.map.MapCell
-import owe.map.MapCell.Availability
-import owe.map.grid.pathfinding.{neighboursOf, Search}
-import owe.map.grid.{Grid, Point}
-
 import scala.annotation.tailrec
 import scala.collection.immutable.Queue
 
-trait PathingOps { _: AvailabilityOps =>
+import owe.entities.active.Distance
+import owe.map.MapCell
+import owe.map.MapCell.Availability
+import owe.map.grid.{Grid, Point}
+import owe.map.pathfinding.Search
+
+trait PathfindingOps { _: AvailabilityOps =>
 
   protected val search: Search
 
   def passableNeighboursOf(grid: Grid[MapCell], cell: Point): Seq[Point] =
     //TODO - allow corner neighbours only for specific walkers that don't need roads
     //TODO - handle roadblocks for specific walkers
-    neighboursOf(cell, withCornerNeighbours = true)
+    cell
+      .neighbours(withCornerNeighbours = true)
       .collect {
         case Some(point) if cellAvailability(grid, point) == Availability.Passable => point
       }
@@ -49,10 +50,12 @@ trait PathingOps { _: AvailabilityOps =>
             } else {
               currentPath.lastOption match {
                 case Some(previousCell) =>
-                  extendPath(previousCell,
-                             currentPath.dropRight(1),
-                             examined :+ currentCell,
-                             backtracked :+ currentCell)
+                  extendPath(
+                    previousCell,
+                    currentPath.dropRight(1),
+                    examined :+ currentCell,
+                    backtracked :+ currentCell
+                  )
 
                 case None =>
                   Seq.empty

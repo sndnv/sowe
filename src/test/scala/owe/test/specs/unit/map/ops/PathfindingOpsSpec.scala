@@ -3,13 +3,13 @@ package owe.test.specs.unit.map.ops
 import org.scalatest.Outcome
 import owe.test.specs.unit.UnitSpec
 
-class PathingOpsSpec extends UnitSpec {
+class PathfindingOpsSpec extends UnitSpec {
   case class FixtureParam()
 
   def withFixture(test: OneArgTest): Outcome =
     withFixture(test.toNoArgTest(FixtureParam()))
 
-  "Pathing ops" should "calculate passable neighbours" in { _ =>
+  "Pathfinding ops" should "calculate passable neighbours" in { _ =>
     fail("Not Implemented", new NotImplementedError())
   }
 

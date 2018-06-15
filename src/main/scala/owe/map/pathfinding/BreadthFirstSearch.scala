@@ -1,17 +1,17 @@
-package owe.map.grid.pathfinding
+package owe.map.pathfinding
 import owe.map.grid.Point
 
 import scala.annotation.tailrec
 import scala.collection.immutable.Queue
 
-object DepthFirstSearch extends Search {
+object BreadthFirstSearch extends Search {
   private case class PathData(point: Point, path: Queue[Point])
 
   override def calculate(start: Point, goal: Point, neighbours: Point => Seq[Point]): Option[Queue[Point]] = {
     @tailrec
-    def calculate(available: Vector[PathData], visited: Queue[Point]): Option[Queue[Point]] =
-      available.lastOption match {
-        case Some(PathData(point, path)) =>
+    def calculate(available: Queue[PathData], visited: Queue[Point]): Option[Queue[Point]] =
+      available.dequeueOption match {
+        case Some((PathData(point, path), remaining)) =>
           if (point == goal) {
             Some(path)
           } else if (!visited.contains(point)) {
@@ -19,14 +19,14 @@ object DepthFirstSearch extends Search {
               case neighbour if !visited.contains(neighbour) =>
                 PathData(neighbour, path :+ neighbour)
             }
-            calculate(available.dropRight(1) ++ paths, visited.enqueue(point))
+            calculate(remaining.enqueue(paths.toList), visited.enqueue(point))
           } else {
-            calculate(available.dropRight(1), visited)
+            calculate(remaining, visited)
           }
 
         case None => None
       }
 
-    calculate(Vector(PathData(start, path = Queue(start))), Queue.empty)
+    calculate(Queue(PathData(start, path = Queue(start))), Queue.empty)
   }
 }

@@ -1,4 +1,4 @@
-package owe.map.grid.pathfinding
+package owe.map.pathfinding
 
 import owe.map.grid.Point
 

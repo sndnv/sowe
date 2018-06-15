@@ -1,8 +1,8 @@
-package owe.test.specs.unit.map.grid.pathfinding
+package owe.test.specs.unit.map.pathfinding
 
 import org.scalatest.Outcome
 import owe.map.grid.Point
-import owe.map.grid.pathfinding.AStarSearch
+import owe.map.pathfinding.AStarSearch
 import owe.test.specs.unit.UnitSpec
 
 import scala.collection.immutable.Queue

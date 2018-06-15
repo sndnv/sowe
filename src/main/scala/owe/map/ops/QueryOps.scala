@@ -11,7 +11,7 @@ import owe.map.grid.{Grid, Point}
 import scala.collection.immutable.Queue
 import scala.concurrent.{ExecutionContext, Future}
 
-trait QueryOps { _: PathingOps =>
+trait QueryOps { _: PathfindingOps =>
 
   protected implicit val actionTimeout: Timeout
   protected implicit val ec: ExecutionContext
@@ -48,7 +48,8 @@ trait QueryOps { _: PathingOps =>
               .toSeq
               .flatMap { mapCell =>
                 mapCell.entities.collect {
-                  case (k, v: ActiveMapEntity) => (k, (v.entity ? GetData()).mapTo[ActiveEntityData])
+                  case (k, v: ActiveMapEntity) =>
+                    (k, (v.entity ? GetData()).mapTo[ActiveEntityData])
                 }
               }
               .toMap

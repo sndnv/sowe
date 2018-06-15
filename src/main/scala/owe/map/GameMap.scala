@@ -4,11 +4,10 @@ import akka.actor.{Actor, ActorLogging, ActorRef, Stash, Timers}
 import akka.pattern.pipe
 import akka.util.Timeout
 import owe.EntityID
-import owe.Tagging._
 import owe.entities.Entity
 import owe.entities.Entity._
 import owe.entities.active._
-import owe.map.grid.pathfinding.Search
+import owe.map.pathfinding.Search
 import owe.map.grid.{Grid, Point}
 import owe.map.ops.Ops
 import owe.production.{Commodity, CommodityAmount, Exchange}

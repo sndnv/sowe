@@ -85,6 +85,17 @@ class Grid[A: ClassTag](private val data: Array[Array[A]]) {
     result
   }
 
+  def updated(elements: Map[Point, A]): Grid[A] = {
+    val result = map(identity)
+
+    elements.foreach {
+      case (point, element) =>
+        result.data(point.y)(point.x) = element
+    }
+
+    result
+  }
+
   def forall(p: A => Boolean): Boolean = data.forall(_.forall(p))
 
   def exists(p: A => Boolean): Boolean = data.exists(_.exists(p))

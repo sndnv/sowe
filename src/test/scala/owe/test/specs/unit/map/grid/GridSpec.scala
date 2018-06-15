@@ -152,6 +152,22 @@ class GridSpec extends UnitSpec {
         Point(2, 2) -> 8
       )
     )
+
+    fixture.grid
+      .updated(Map(Point(1, 2) -> 42, Point(2, 1) -> 83))
+      .toMap should be(
+      Map(
+        Point(0, 0) -> 0,
+        Point(1, 0) -> 1,
+        Point(2, 0) -> 2,
+        Point(0, 1) -> 3,
+        Point(1, 1) -> 4,
+        Point(2, 1) -> 83,
+        Point(0, 2) -> 6,
+        Point(1, 2) -> 42,
+        Point(2, 2) -> 8
+      )
+    )
   }
 
   it should "search for elements" in { fixture =>
