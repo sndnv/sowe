@@ -19,7 +19,8 @@ lazy val owe = (project in file("."))
     ),
     logBuffered in Test := false,
     parallelExecution in Test := false,
-    wartremoverWarnings ++= Warts.unsafe
+    wartremoverWarnings in (Compile, compile) ++= Warts.unsafe,
+    scalacOptions := Seq("-unchecked", "-deprecation")
   )
 
 addCommandAlias("qa", "; clean; coverage; test; coverageReport")

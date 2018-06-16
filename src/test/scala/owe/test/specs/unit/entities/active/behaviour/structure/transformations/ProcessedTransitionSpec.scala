@@ -49,7 +49,7 @@ class ProcessedTransitionSpec extends UnitSpec {
     )
 
     val map = Fixtures.defaultMapData.copy(
-      cellProperties = Fixtures.defaultCellProperties.copy(desirability = CellDesirability(4))
+      cellState = Fixtures.defaultCellState.copy(desirability = CellDesirability(4))
     )
 
     withFixture(test.toNoArgTest(FixtureParam(transformer, structure, map)))
@@ -58,7 +58,7 @@ class ProcessedTransitionSpec extends UnitSpec {
   "A ProcessedTransition transformation" should "upgrade a structure" in { fixture =>
     fixture.transformer.withProcessedTransition(
       fixture.map.copy(
-        cellProperties = fixture.map.cellProperties.copy(desirability = CellDesirability.Max)
+        cellState = fixture.map.cellState.copy(desirability = CellDesirability.Max)
       ),
       fixture.structure
     ) should be(
@@ -69,7 +69,7 @@ class ProcessedTransitionSpec extends UnitSpec {
   it should "downgrade a structure" in { fixture =>
     fixture.transformer.withProcessedTransition(
       fixture.map.copy(
-        cellProperties = fixture.map.cellProperties.copy(desirability = CellDesirability.Min)
+        cellState = fixture.map.cellState.copy(desirability = CellDesirability.Min)
       ),
       fixture.structure
     ) should be(

@@ -48,7 +48,7 @@ class Tracker() extends Actor {
       context.become(handler(updatedObservers, gameEventsLog))
 
     case GetGameEventsLog() =>
-      sender() ! gameEventsLog
+      sender ! gameEventsLog
 
     case ClearGameEventsLog() =>
       context.become(handler(observers, Vector.empty))

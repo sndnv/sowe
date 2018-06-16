@@ -46,7 +46,7 @@ trait FarmingStructure
           case _ => //do nothing
         }
 
-        self ! Become(farming, updatedData)
+        self ! Become(() => farming(), updatedData)
       }
   }
 }

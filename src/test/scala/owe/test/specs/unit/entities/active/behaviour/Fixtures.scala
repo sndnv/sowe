@@ -3,31 +3,23 @@ package owe.test.specs.unit.entities.active.behaviour
 import owe._
 import owe.entities.ActiveEntity.MapData
 import owe.entities.active._
-import owe.map.MapCell
+import owe.map.Cell
 import owe.map.grid.Point
 import owe.production.{Commodity, CommodityAmount, CommodityAmountModifier}
 
 import scala.collection.immutable.Queue
 
 object Fixtures {
-  val defaultCellProperties: MapCell.Properties = MapCell.Properties(
+  val defaultCellState: Cell.State = Cell.State(
     desirability = CellDesirability.Neutral,
     fertility = Fertility.Max,
     water = Water.Max,
     buildingAllowed = true
   )
 
-  val defaultCellModifiers: MapCell.Modifiers = MapCell.Modifiers(
-    desirability = CellDesirabilityModifier(100),
-    fertility = FertilityModifier(100),
-    water = WaterModifier(100),
-    buildingAllowed = true
-  )
-
   val defaultMapData: MapData = MapData(
     position = Point(0, 0),
-    defaultCellProperties,
-    defaultCellModifiers
+    defaultCellState
   )
 
   object Resource {

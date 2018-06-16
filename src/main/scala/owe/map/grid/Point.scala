@@ -3,7 +3,7 @@ package owe.map.grid
 import scala.language.implicitConversions
 
 case class Point(x: Int, y: Int) {
-  def neighbours(withCornerNeighbours: Boolean): Seq[Option[Point]] =
+  def neighbours(withCornerNeighbours: Boolean): Seq[Point] =
     Point.neighboursOf(this, withCornerNeighbours)
 }
 
@@ -11,7 +11,7 @@ object Point {
   implicit def tupleToPoint(t: (Int, Int)): Point = Point(t._1, t._2)
   implicit def ordering[A <: Point]: Ordering[A] = Ordering.by(p => (p.y, p.x))
 
-  def neighboursOf(point: Point, withCornerNeighbours: Boolean): Seq[Option[Point]] = {
+  def neighboursOf(point: Point, withCornerNeighbours: Boolean): Seq[Point] = {
     val Point(x, y) = point
 
     if (x >= 0 && y >= 0) {
@@ -24,7 +24,7 @@ object Point {
         /* bottom left   */ if (withCornerNeighbours && x > 0) Some((x - 1, y + 1)) else None,
         /* bottom center */ Some((x, y + 1)),
         /* bottom right  */ if (withCornerNeighbours) Some((x + 1, y + 1)) else None
-      )
+      ).flatMap(point => point.map(t => Point(t._1, t._2)))
     } else {
       Seq.empty
     }

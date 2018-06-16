@@ -5,6 +5,7 @@ import akka.util.Timeout
 import owe.EntityID
 import owe.entities.ActiveEntity.{ActiveEntityData, GetData}
 import owe.entities.active.Distance
+import owe.map.Cell.{CellActorRef, CellData, GetCellData, GetEntity}
 import owe.map._
 import owe.map.grid.{Grid, Point}
 
@@ -17,88 +18,98 @@ trait QueryOps { _: PathfindingOps =>
   protected implicit val ec: ExecutionContext
 
   def getAdvancePath(
-    grid: Grid[MapCell],
+    grid: Grid[CellActorRef],
     entities: Map[EntityID, Point],
     entityID: EntityID,
     destination: Point
-  ): Option[Queue[Point]] =
-    entities.get(entityID).flatMap(start => generateAdvancePath(grid, start, destination))
+  ): Future[Queue[Point]] =
+    entities
+      .get(entityID)
+      .map(start => generateAdvancePath(grid, start, destination))
+      .getOrElse(Future.successful(Queue.empty))
 
   def getRoamingPath(
-    grid: Grid[MapCell],
+    grid: Grid[CellActorRef],
     entities: Map[EntityID, Point],
     entityID: EntityID,
     length: Distance
-  ): Option[Queue[Point]] =
-    entities.get(entityID).flatMap(start => generateRoamPath(grid, start, length))
+  ): Future[Queue[Point]] =
+    entities
+      .get(entityID)
+      .map(start => generateRoamPath(grid, start, length))
+      .getOrElse(Future.successful(Queue.empty))
 
   def getNeighbours(
-    grid: Grid[MapCell],
+    grid: Grid[CellActorRef],
     entities: Map[EntityID, Point],
     entityID: EntityID,
     radius: Distance
   ): Future[Seq[(EntityID, ActiveEntityData)]] =
-    Future
-      .traverse(
-        entities
-          .get(entityID)
-          .map { point =>
+    entities
+      .get(entityID)
+      .map { point =>
+        Future
+          .sequence(
             grid
               .window(point, radius.value)
               .toSeq
-              .flatMap { mapCell =>
-                mapCell.entities.collect {
-                  case (k, v: ActiveMapEntity) =>
-                    (k, (v.entity ? GetData()).mapTo[ActiveEntityData])
+              .map { mapCell =>
+                (mapCell ? GetCellData()).mapTo[CellData].flatMap { cellData =>
+                  Future
+                    .sequence(
+                      cellData.entities.toSeq.collect {
+                        case (id, entity: ActiveMapEntity) =>
+                          (entity.entity ? GetData()).mapTo[ActiveEntityData].map(data => (id, data))
+                      }
+                    )
                 }
               }
-              .toMap
-          }
-          .getOrElse(Map.empty)
-      ) {
-        case (neighbourEntityID, future) =>
-          future.map { result =>
-            (neighbourEntityID, result)
-          }
+          )
+          .map(_.flatten)
       }
-      .map(_.toSeq)
+      .getOrElse(Future.successful(Seq.empty))
 
   def getEntities(
-    grid: Grid[MapCell],
+    grid: Grid[CellActorRef],
     entities: Map[EntityID, Point],
     point: Point
   ): Future[Seq[(MapEntity, Option[ActiveEntityData])]] =
-    Future
-      .sequence(
-        grid
-          .get(point)
-          .map { mapCell =>
-            mapCell.entities.values.toSeq.map {
+    grid
+      .get(point)
+      .map { mapCell =>
+        (mapCell ? GetCellData()).mapTo[CellData].flatMap { cellData =>
+          Future.sequence(
+            cellData.entities.values.toSeq.map {
               case entity: ActiveMapEntity =>
                 (entity.entity ? GetData()).mapTo[ActiveEntityData].map(data => (entity, Some(data)))
 
               case entity: PassiveMapEntity =>
                 Future.successful(entity, None)
             }
-          }
-          .getOrElse(Seq.empty)
-      )
+          )
+        }
+      }
+      .getOrElse(Future.successful(Seq.empty))
 
   def getEntity(
-    grid: Grid[MapCell],
+    grid: Grid[CellActorRef],
     entities: Map[EntityID, Point],
     entityID: EntityID
   ): Future[ActiveEntityData] =
     entities
       .get(entityID)
       .flatMap(grid.get)
-      .flatMap(_.entities.get(entityID))
-      .collect {
-        case ActiveMapEntity(entity, _, _, _) =>
-          entity ? GetData()
+      .map { cell =>
+        (cell ? GetEntity(entityID))
+          .mapTo[MapEntity]
+          .collect {
+            case ActiveMapEntity(entity, _, _, _) =>
+              (entity ? GetData()).mapTo[ActiveEntityData]
+          }
+          .flatten
       } match {
       case Some(result) =>
-        result.mapTo[ActiveEntityData]
+        result
 
       case None =>
         val message = s"Failed to find entity with ID [$entityID] while retrieving its data."

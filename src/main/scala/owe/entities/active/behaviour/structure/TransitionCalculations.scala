@@ -24,9 +24,7 @@ object TransitionCalculations {
     ) = housingState
 
     if (occupants > 0) {
-      val cellDesirability = map.cellModifiers
-        .desirability(map.cellProperties.desirability)
-        .min(CellDesirability.Max)
+      val cellDesirability = map.cellState.desirability.min(CellDesirability.Max)
 
       (currentStage, definedStages) match {
         case (DefaultStage, SingleStage(_)) =>
@@ -76,9 +74,7 @@ object TransitionCalculations {
     currentStage: Stages with StateOnly,
     definedStages: Stages with PropertiesOnly
   ): StructureTransition = {
-    val cellDesirability = map.cellModifiers
-      .desirability(map.cellProperties.desirability)
-      .min(CellDesirability.Max)
+    val cellDesirability = map.cellState.desirability.min(CellDesirability.Max)
 
     (currentStage, definedStages) match {
       case (DefaultStage, SingleStage(_)) =>

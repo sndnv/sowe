@@ -53,7 +53,7 @@ trait ProducingStructure
           case _ => //do nothing
         }
 
-        self ! Become(producing, updatedData)
+        self ! Become(() => producing(), updatedData)
       }
   }
 }

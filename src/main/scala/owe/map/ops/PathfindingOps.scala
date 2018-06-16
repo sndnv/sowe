@@ -1,75 +1,83 @@
 package owe.map.ops
 
-import scala.annotation.tailrec
-import scala.collection.immutable.Queue
-
 import owe.entities.active.Distance
-import owe.map.MapCell
-import owe.map.MapCell.Availability
+import owe.map.Cell.{Availability, CellActorRef}
 import owe.map.grid.{Grid, Point}
 import owe.map.pathfinding.Search
+
+import scala.collection.immutable.Queue
+import scala.concurrent.{ExecutionContext, Future}
 
 trait PathfindingOps { _: AvailabilityOps =>
 
   protected val search: Search
+  protected implicit val ec: ExecutionContext
 
-  def passableNeighboursOf(grid: Grid[MapCell], cell: Point): Seq[Point] =
+  def passableNeighboursOf(grid: Grid[CellActorRef], cell: Point): Future[Seq[Point]] =
     //TODO - allow corner neighbours only for specific walkers that don't need roads
     //TODO - handle roadblocks for specific walkers
-    cell
-      .neighbours(withCornerNeighbours = true)
-      .collect {
-        case Some(point) if cellAvailability(grid, point) == Availability.Passable => point
-      }
+    Future
+      .sequence(
+        cell
+          .neighbours(withCornerNeighbours = true)
+          .map { point =>
+            cellAvailability(grid, point).map { availability =>
+              if (availability == Availability.Passable) {
+                Some(point)
+              } else {
+                None
+              }
+            }
+          }
+      )
+      .map(_.flatten)
 
   //TODO - check if path should follow roads
-  def generateAdvancePath(grid: Grid[MapCell], start: Point, end: Point): Option[Queue[Point]] =
+  def generateAdvancePath(grid: Grid[CellActorRef], start: Point, end: Point): Future[Queue[Point]] =
     search.calculate(start, end, passableNeighboursOf(grid, _))
 
   //TODO - check if path should follow roads
-  def generateRoamPath(grid: Grid[MapCell], start: Point, maxDistance: Distance): Option[Queue[Point]] = {
-    @tailrec
+  def generateRoamPath(grid: Grid[CellActorRef], start: Point, maxDistance: Distance): Future[Queue[Point]] = {
     def extendPath(
       currentCell: Point,
       currentPath: Seq[Point],
       examined: Seq[Point],
       backtracked: Seq[Point]
-    ): Seq[Point] = {
+    ): Future[Seq[Point]] = {
       val maxDistanceNotReached = currentPath.lengthCompare(maxDistance.value) < 0
       if (maxDistanceNotReached) {
-        passableNeighboursOf(grid, currentCell).filterNot { neighbour =>
-          examined.contains(neighbour)
-        }.headOption match {
-          case Some(nextCell) =>
-            extendPath(nextCell, currentPath :+ currentCell, examined :+ currentCell, backtracked)
+        passableNeighboursOf(grid, currentCell).flatMap { neighbours =>
+          neighbours.filterNot { neighbour =>
+            examined.contains(neighbour)
+          }.headOption match {
+            case Some(nextCell) =>
+              extendPath(nextCell, currentPath :+ currentCell, examined :+ currentCell, backtracked)
 
-          case None =>
-            val backtrackedTooFar = backtracked.lengthCompare(maxDistance.value / 2) >= 0
-            if (backtrackedTooFar) {
-              currentPath ++ backtracked
-            } else {
-              currentPath.lastOption match {
-                case Some(previousCell) =>
-                  extendPath(
-                    previousCell,
-                    currentPath.dropRight(1),
-                    examined :+ currentCell,
-                    backtracked :+ currentCell
-                  )
+            case None =>
+              val backtrackedTooFar = backtracked.lengthCompare(maxDistance.value / 2) >= 0
+              if (backtrackedTooFar) {
+                Future.successful(currentPath ++ backtracked)
+              } else {
+                currentPath.lastOption match {
+                  case Some(previousCell) =>
+                    extendPath(
+                      previousCell,
+                      currentPath.dropRight(1),
+                      examined :+ currentCell,
+                      backtracked :+ currentCell
+                    )
 
-                case None =>
-                  Seq.empty
+                  case None =>
+                    Future.successful(Seq.empty)
+                }
               }
-            }
+          }
         }
       } else {
-        currentPath
+        Future.successful(currentPath)
       }
     }
 
-    extendPath(start, currentPath = Seq.empty, examined = Seq.empty, backtracked = Seq.empty) match {
-      case Nil  => None
-      case path => Some(path.to[Queue])
-    }
+    extendPath(start, currentPath = Seq.empty, examined = Seq.empty, backtracked = Seq.empty).map(_.to[Queue])
   }
 }

@@ -4,12 +4,14 @@ import akka.actor.{Actor, ActorLogging, ActorRef, Stash, Timers}
 import akka.pattern.pipe
 import akka.util.Timeout
 import owe.EntityID
+import owe.Tagging._
 import owe.entities.Entity
 import owe.entities.Entity._
 import owe.entities.active._
-import owe.map.pathfinding.Search
+import owe.map.Cell.{ActorRefTag, CellActorRef}
 import owe.map.grid.{Grid, Point}
 import owe.map.ops.Ops
+import owe.map.pathfinding.Search
 import owe.production.{Commodity, CommodityAmount, Exchange}
 
 import scala.concurrent.ExecutionContext
@@ -35,7 +37,7 @@ trait GameMap extends Actor with ActorLogging with Stash with Timers with Ops {
 
   protected val exchange: ActorRef
 
-  private val grid = Grid[MapCell](height, width, MapCell.empty)
+  private val grid = Grid[CellActorRef](height, width, context.actorOf(Cell.props()).tag[ActorRefTag])
   private var entities: Map[EntityID, Point] = Map.empty
 
   private def scheduleNextTick(): Unit =
@@ -46,32 +48,35 @@ trait GameMap extends Actor with ActorLogging with Stash with Timers with Ops {
     )
 
   private def idle: Receive = {
+    case UpdateEntities(updatedEntities) =>
+      entities = updatedEntities
+
     case CreateEntity(entity, cell) =>
       log.debug("Creating entity of type [{}] with size [{}].", entity.`type`, entity.`size`)
-      entities = createEntity(grid, entities, entity, cell, context.system.actorOf)
+      createEntity(grid, entities, entity, cell, context.system.actorOf).map(UpdateEntities).pipeTo(self)
 
     case DestroyEntity(entityID) =>
       log.debug("Destroying entity with ID [{}.", entityID)
-      entities = destroyEntity(grid, entities, entityID)
+      destroyEntity(grid, entities, entityID).map(UpdateEntities).pipeTo(self)
 
     case MoveEntity(entityID, cell) =>
       log.debug("Moving entity with ID [{}] to [{}].", entityID, cell)
-      entities = moveEntity(grid, entities, entityID, cell)
+      moveEntity(grid, entities, entityID, cell).map(UpdateEntities).pipeTo(self)
 
     case DistributeCommodities(entityID, commodities) =>
-      forwardEntityMessage(grid, entities, entityID, ProcessCommodities(commodities))
+      forwardEntityMessage(grid, entities, entityID, ProcessCommodities(commodities)).pipeTo(sender)
 
     case AttackEntity(entityID, damage) =>
-      forwardEntityMessage(grid, entities, entityID, ProcessAttack(damage))
+      forwardEntityMessage(grid, entities, entityID, ProcessAttack(damage)).pipeTo(sender)
 
     case LabourFound(entityID) =>
-      forwardEntityMessage(grid, entities, entityID, ProcessLabourFound())
+      forwardEntityMessage(grid, entities, entityID, ProcessLabourFound()).pipeTo(sender)
 
     case OccupantsUpdate(entityID, occupants) =>
-      forwardEntityMessage(grid, entities, entityID, ProcessOccupantsUpdate(occupants))
+      forwardEntityMessage(grid, entities, entityID, ProcessOccupantsUpdate(occupants)).pipeTo(sender)
 
     case LabourUpdate(entityID, employees) =>
-      forwardEntityMessage(grid, entities, entityID, ProcessLabourUpdate(employees))
+      forwardEntityMessage(grid, entities, entityID, ProcessLabourUpdate(employees)).pipeTo(sender)
 
     case ForwardExchangeMessage(message) =>
       log.debug("Forwarding message [{}] to commodity exchange.", message)
@@ -89,23 +94,23 @@ trait GameMap extends Actor with ActorLogging with Stash with Timers with Ops {
 
     case GetAdvancePath(entityID, destination) =>
       log.debug("Generating advance path for entity [{}] to [{}].", entityID, destination)
-      sender() ! getAdvancePath(grid, entities, entityID, destination)
+      sender ! getAdvancePath(grid, entities, entityID, destination)
 
     case GetRoamingPath(entityID, length) =>
       log.debug("Generating roaming path for entity [{}].", entityID)
-      sender() ! getRoamingPath(grid, entities, entityID, length)
+      sender ! getRoamingPath(grid, entities, entityID, length)
 
     case GetNeighbours(entityID, radius) =>
       log.debug("Retrieving neighbours for entity [{}] in radius [{}].", entityID, radius)
-      getNeighbours(grid, entities, entityID, radius).pipeTo(sender())
+      getNeighbours(grid, entities, entityID, radius).pipeTo(sender)
 
     case GetEntities(point) =>
       log.debug("Retrieving entities in cell [{}]", point)
-      getEntities(grid, entities, point).pipeTo(sender())
+      getEntities(grid, entities, point).pipeTo(sender)
 
     case GetEntity(entityID) =>
       log.debug("Retrieving data for entity [{}]", entityID)
-      getEntity(grid, entities, entityID).pipeTo(sender())
+      getEntity(grid, entities, entityID).pipeTo(sender)
 
     case TickProcessed(processedCells) =>
       log.debug("[{}] cells processed by tick.", processedCells)
@@ -123,6 +128,7 @@ trait GameMap extends Actor with ActorLogging with Stash with Timers with Ops {
 
 object GameMap {
   sealed trait Message extends owe.Message
+  private case class UpdateEntities(updatedEntities: Map[EntityID, Point]) extends Message
   private[map] case class ProcessTick(start: Point, end: Point) extends Message
   private[map] case class TickProcessed(processedCells: Int) extends Message
   case class GetAdvancePath(entityID: EntityID, destination: Point) extends Message

@@ -9,7 +9,7 @@ import owe.entities.ActiveEntity.ActiveEntityData
 import owe.entities.active.behaviour.BaseBehaviour
 import owe.entities.active.{Resource, Structure, Walker}
 import owe.map.grid.Point
-import owe.map.{GameMap, MapCell}
+import owe.map.{Cell, GameMap}
 
 import scala.reflect.ClassTag
 
@@ -63,10 +63,10 @@ abstract class ActiveEntity[
         context.become(idle(ProcessingData(initialEntityData.withState(updatedState), Seq.empty)))
 
       case ForwardMessage(message) =>
-        (parentMap ? message).pipeTo(sender())
+        (parentMap ? message).pipeTo(sender)
 
       case GetData() =>
-        sender() ! processingData.entityData
+        sender ! processingData.entityData
 
       case _ =>
         stash()
@@ -117,10 +117,10 @@ abstract class ActiveEntity[
         val activeEffects = effects.collect {
           case (p, effect) if p(processingData.entityData) => effect
         }
-        sender() ! activeEffects
+        sender ! activeEffects
 
       case ForwardMessage(message) =>
-        (parentMap ? message).pipeTo(sender())
+        (parentMap ? message).pipeTo(sender)
 
       case AddEntityMessage(message) =>
         context.become(idle(processingData.copy(messages = processingData.messages :+ message)))
@@ -143,7 +143,7 @@ object ActiveEntity {
     def apply(entityData: ActiveEntityData): M
   }
 
-  case class MapData(position: Point, cellProperties: MapCell.Properties, cellModifiers: MapCell.Modifiers)
+  case class MapData(position: Point, cellState: Cell.State)
 
   sealed trait ActiveEntityData {
     def properties: Entity.Properties

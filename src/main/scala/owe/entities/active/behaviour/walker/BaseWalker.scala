@@ -58,7 +58,7 @@ trait BaseWalker
           case Some(_) =>
             withAsyncUpdates(entity, Seq(withProcessedUpdateMessages(_: WalkerData, messages)))
               .foreach { updatedData =>
-                self ! Become(() => attacking(idling), updatedData)
+                self ! Become(() => attacking(() => idling()), updatedData)
               }
 
           case None =>
@@ -69,7 +69,7 @@ trait BaseWalker
                 withMovementMode(_: WalkerData, MovementMode.Idling)
               )
             ).foreach { updatedData =>
-              self ! Become(idling, updatedData)
+              self ! Become(() => idling(), updatedData)
             }
         }
   }
@@ -300,7 +300,7 @@ trait BaseWalker
   protected def destroying(): Behaviour = {
     case ProcessEntityTick(_, entity, _) =>
       log.debug("Entity [{}] waiting to be destroyed; tick ignored", self)
-      sender() ! entity.state
+      sender ! entity.state
   }
 
   override protected def base: Behaviour = {

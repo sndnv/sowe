@@ -87,13 +87,13 @@ class Exchange() extends Actor {
       }
 
     case GetExchangeCommodities() =>
-      sender() ! ExchangeCommodities(commodities.required, commodities.available, commodities.inTransit)
+      sender ! ExchangeCommodities(commodities.required, commodities.available, commodities.inTransit)
 
     case GetExchangeStats() =>
-      sender() ! ExchangeStats(stats.produced, stats.used, stats.lost)
+      sender ! ExchangeStats(stats.produced, stats.used, stats.lost)
 
     case GetExchangeEntities() =>
-      sender() ! ExchangeEntities(entities.producers, entities.consumers)
+      sender ! ExchangeEntities(entities.producers, entities.consumers)
   }
 
   override def receive: Receive = handler(

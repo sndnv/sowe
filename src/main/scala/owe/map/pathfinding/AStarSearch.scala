@@ -2,9 +2,9 @@ package owe.map.pathfinding
 
 import owe.map.grid.Point
 
-import scala.annotation.tailrec
 import scala.collection.immutable.Queue
 import scala.collection.mutable
+import scala.concurrent.{ExecutionContext, Future}
 
 object AStarSearch extends Search {
   private case class PathData(point: Point, actualCost: Double, expectedCost: Double, path: Queue[Point])
@@ -13,34 +13,42 @@ object AStarSearch extends Search {
   def heuristic(point: Point, goal: Point): Double =
     Math.abs(goal.x - point.x) + Math.abs(goal.y - point.y)
 
-  override def calculate(start: Point, goal: Point, neighbours: Point => Seq[Point]): Option[Queue[Point]] = {
-    val available: mutable.PriorityQueue[PathData] =
-      mutable.PriorityQueue.empty[PathData](orderingByExpectedCost.reverse)
-    available.enqueue(PathData(start, 0, heuristic(start, goal), Queue(start)))
+  override def calculate(
+    start: Point,
+    goal: Point,
+    neighbours: Point => Future[Seq[Point]]
+  )(implicit ec: ExecutionContext): Future[Queue[Point]] = {
 
-    @tailrec
-    def calculate(visited: Queue[Point]): Option[Queue[Point]] =
+    def calculate(available: mutable.PriorityQueue[PathData], visited: Queue[Point]): Future[Queue[Point]] =
       if (available.nonEmpty) {
         val PathData(point, actualCost, _, path) = available.dequeue()
 
         if (point == goal) {
-          Some(path)
+          Future.successful(path)
         } else if (!visited.contains(point)) {
-          neighbours(point).foreach { neighbour =>
-            if (!visited.contains(neighbour)) {
-              available.enqueue(
-                PathData(neighbour, actualCost + 1, actualCost + heuristic(neighbour, goal), path :+ neighbour)
-              )
+          neighbours(point).flatMap { neighbours =>
+            neighbours.foreach { neighbour =>
+              if (!visited.contains(neighbour)) {
+                available.enqueue(
+                  PathData(neighbour, actualCost + 1, actualCost + heuristic(neighbour, goal), path :+ neighbour)
+                )
+              }
             }
+
+            calculate(available, visited.enqueue(point))
           }
-          calculate(visited.enqueue(point))
         } else {
-          calculate(visited)
+          calculate(available, visited)
         }
       } else {
-        None
+        Future.successful(Queue.empty)
       }
 
-    calculate(Queue.empty)
+    val available: mutable.PriorityQueue[PathData] =
+      mutable.PriorityQueue.empty[PathData](orderingByExpectedCost.reverse)
+
+    available.enqueue(PathData(start, 0, heuristic(start, goal), Queue(start)))
+
+    calculate(available, Queue.empty)
   }
 }

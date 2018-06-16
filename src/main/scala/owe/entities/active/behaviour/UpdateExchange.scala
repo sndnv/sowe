@@ -15,9 +15,11 @@ object UpdateExchange {
       state: CommodityState
     )(implicit parentEntity: ActorRef @@ ActorRefTag): Unit =
       forwardMessages(
-        commodities.map {
+        commodities.flatMap {
           case (commodity, amount) if amount > CommodityAmount(0) =>
-            UpdateCommodityState(commodity, amount, state)
+            Some(UpdateCommodityState(commodity, amount, state))
+
+          case _ => None
         }.toSeq
       )
   }
@@ -28,9 +30,11 @@ object UpdateExchange {
       commodities: Map[Commodity, CommodityAmount]
     )(implicit parentEntity: ActorRef @@ ActorRefTag): Unit =
       forwardMessages(
-        commodities.map {
+        commodities.flatMap {
           case (commodity, updatedAmount) if updatedAmount > CommodityAmount(0) =>
-            CommodityAvailable(commodity, updatedAmount, entityID)
+            Some(CommodityAvailable(commodity, updatedAmount, entityID))
+
+          case _ => None
         }.toSeq
       )
 
@@ -49,6 +53,8 @@ object UpdateExchange {
             } else {
               None
             }
+
+          case _ => None
         }.toSeq
       )
 
@@ -57,9 +63,11 @@ object UpdateExchange {
       consumedCommodities: Map[Commodity, CommodityAmount]
     )(implicit parentEntity: ActorRef @@ ActorRefTag): Unit =
       forwardMessages(
-        consumedCommodities.map {
+        consumedCommodities.flatMap {
           case (commodity, amount) if amount > CommodityAmount(0) =>
-            CommodityRequired(commodity, amount, entityID)
+            Some(CommodityRequired(commodity, amount, entityID))
+
+          case _ => None
         }.toSeq
       )
 
@@ -69,9 +77,11 @@ object UpdateExchange {
       inTransitCommodities: Map[Commodity, CommodityAmount]
     )(implicit parentEntity: ActorRef @@ ActorRefTag): Unit =
       forwardMessages(
-        inTransitCommodities.map {
+        inTransitCommodities.flatMap {
           case (commodity, amount) if amount > CommodityAmount(0) =>
-            CommodityInTransit(commodity, amount, source, destination)
+            Some(CommodityInTransit(commodity, amount, source, destination))
+
+          case _ => None
         }.toSeq
       )
   }

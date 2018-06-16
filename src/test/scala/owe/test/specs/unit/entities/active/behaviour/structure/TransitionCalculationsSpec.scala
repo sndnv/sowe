@@ -17,7 +17,7 @@ class TransitionCalculationsSpec extends UnitSpec {
 
   "TransitionCalculations" should "calculate housing structure transitions" in { _ =>
     val map = Fixtures.defaultMapData.copy(
-      cellProperties = Fixtures.defaultCellProperties.copy(desirability = CellDesirability(4))
+      cellState = Fixtures.defaultCellState.copy(desirability = CellDesirability(4))
     )
 
     val stages = MultiStage(
@@ -158,7 +158,7 @@ class TransitionCalculationsSpec extends UnitSpec {
 
   it should "calculate producing structure transitions" in { _ =>
     val map = Fixtures.defaultMapData.copy(
-      cellProperties = Fixtures.defaultCellProperties.copy(desirability = CellDesirability(4))
+      cellState = Fixtures.defaultCellState.copy(desirability = CellDesirability(4))
     )
 
     val stages = MultiStage(

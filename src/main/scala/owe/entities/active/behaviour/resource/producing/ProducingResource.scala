@@ -36,7 +36,7 @@ trait ProducingResource extends BaseResource with ProcessedUpdateMessages with R
           )
         }
 
-        self ! Become(producing, updatedData)
+        self ! Become(() => producing(), updatedData)
       }
   }
 }

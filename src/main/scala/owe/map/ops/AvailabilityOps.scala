@@ -1,64 +1,31 @@
 package owe.map.ops
 
+import akka.pattern.ask
+import akka.util.Timeout
 import owe.EntityID
 import owe.entities.Entity
-import owe.entities.active.{Resource, Structure, Walker}
-import owe.entities.passive.{Doodad, Road, Roadblock}
-import owe.map.MapCell.Availability
+import owe.map.Cell._
+import owe.map.MapEntity
 import owe.map.grid.{Grid, Point}
-import owe.map.{ActiveMapEntity, MapCell, PassiveMapEntity}
+
+import scala.concurrent.{ExecutionContext, Future}
 
 trait AvailabilityOps {
-  def cellAvailability(cell: MapCell): Availability =
-    cell.entities
-      .find {
-        case (_, mapEntity) =>
-          mapEntity match {
-            case PassiveMapEntity(entity, _, _) =>
-              entity match {
-                case _: Doodad    => true
-                case _: Road      => false
-                case _: Roadblock => false
-              }
 
-            case ActiveMapEntity(entity, _, _, _) =>
-              entity match {
-                case _: Structure.ActorRefTag => true
-                case _: Resource.ActorRefTag  => true
-                case _: Walker.ActorRefTag    => false
-              }
-          }
-      } match {
-      case Some(_) =>
-        Availability.Occupied
+  protected implicit val actionTimeout: Timeout
+  protected implicit val ec: ExecutionContext
 
-      case None =>
-        if (cell.entities.isEmpty) {
-          Availability.Buildable
-        } else {
-          Availability.Passable
-        }
-    }
+  def cellAvailability(cell: CellActorRef): Future[Availability] =
+    (cell ? GetCellAvailability()).mapTo[Availability]
 
-  def cellAvailability(grid: Grid[MapCell], cell: Point): Availability =
+  def cellAvailability(grid: Grid[CellActorRef], cell: Point): Future[Availability] =
     grid
       .get(cell)
       .map(cellAvailability)
-      .getOrElse(Availability.OutOfBounds)
+      .getOrElse(Future.successful(Availability.OutOfBounds))
 
-  def cellHasRoad(mapCell: MapCell): Boolean =
-    mapCell.entities.exists {
-      case (_, entity) =>
-        entity match {
-          case PassiveMapEntity(passiveEntity, _, _) =>
-            passiveEntity match {
-              case _: Road => true
-              case _       => false
-            }
-
-          case _ => false
-        }
-    }
+  def cellHasRoad(cell: CellActorRef): Future[Boolean] =
+    (cell ? HasRoad()).mapTo[Boolean]
 
   def requiredAvailability(entityType: Entity.Type): Availability = entityType match {
     case Entity.Type.Doodad    => Availability.Buildable
@@ -69,24 +36,37 @@ trait AvailabilityOps {
     case Entity.Type.Walker    => Availability.Passable
   }
 
-  def findFirstAdjacentRoad(grid: Grid[MapCell], entities: Map[EntityID, Point], entityID: EntityID): Option[Point] = {
-    for {
-      parentCell <- entities.get(entityID)
-      mapCell <- grid.get(parentCell)
-      mapEntity <- mapCell.entities.get(entityID)
+  def findFirstAdjacentRoad(
+    grid: Grid[CellActorRef],
+    entities: Map[EntityID, Point],
+    entityID: EntityID
+  ): Future[Option[Point]] =
+    (for {
+      parentPoint <- entities.get(entityID)
+      parentCell <- grid.get(parentPoint)
     } yield {
-      val cells = entityCells(mapEntity.size, parentCell)
-      cells
-        .flatMap(point => grid.indexes().window(point, radius = 1).toSeq)
-        .distinct
-        .flatMap(point => grid.get(point).map(cell => (point, cell)))
-        .collect {
-          case (point, cell) if !cells.contains(point) && cellHasRoad(cell) => point
-        }
-        .sorted
-        .headOption
+      (parentCell ? GetEntity(entityID)).mapTo[Option[MapEntity]].flatMap {
+        case Some(mapEntity) =>
+          val cells = entityCells(mapEntity.size, parentPoint)
+          Future
+            .sequence(
+              cells
+                .flatMap(point => grid.indexes().window(point, radius = 1).toSeq)
+                .distinct
+                .flatMap(point => grid.get(point).map(cell => (point, cell)))
+                .collect {
+                  case (point, cell) if !cells.contains(point) =>
+                    cellHasRoad(cell).map(if (_) Some(point) else None)
+                }
+            )
+            .map(_.flatten.sorted.headOption)
+
+        case None => Future.successful(None)
+      }
+    }) match {
+      case Some(future) => future
+      case None         => Future.successful(None)
     }
-  }.flatten
 
   def entityCells(entitySize: Entity.Size, parentCell: Point): Seq[Point] =
     (parentCell.x to entitySize.width)
