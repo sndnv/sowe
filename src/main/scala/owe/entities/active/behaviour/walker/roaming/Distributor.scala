@@ -1,18 +1,17 @@
 package owe.entities.active.behaviour.walker.roaming
 
-import owe.EntityID
 import owe.entities.ActiveEntity.{StructureData, WalkerData}
 import owe.entities.active.Walker.CommoditiesState
 import owe.entities.active.behaviour.walker.BaseWalker._
 import owe.entities.active.behaviour.walker.DistributionCalculations.DistributionResult
 import owe.entities.active.behaviour.walker.{BaseWalker, DistributionCalculations}
-import owe.entities.active.{Distance, Walker}
+import owe.entities.active.{Distance, Structure, Walker}
 import owe.production.CommodityAmount
 
 import scala.concurrent.Future
 
 trait Distributor extends BaseWalker {
-  protected def target: EntityID
+  protected def target: Structure.ActiveEntityActorRef
   protected def distributionRadius: Distance
 
   import context.dispatcher
@@ -20,7 +19,7 @@ trait Distributor extends BaseWalker {
   final override protected def behaviour: Behaviour = roaming(DoRepeatableOperation(distribute, continueRoaming))
 
   private def distribute(walker: WalkerData): Future[Walker.State] =
-    getNeighboursData(walker.properties.id, distributionRadius)
+    getNeighboursData(walker.id, distributionRadius)
       .map { entities =>
         entities.foldLeft(walker.state) {
           case (currentState, (_, structure: StructureData)) =>
@@ -29,7 +28,7 @@ trait Distributor extends BaseWalker {
               walker.copy(state = currentState)
             ) match {
               case Some(DistributionResult(structureCommodities, walkerCommodities)) =>
-                distributeCommodities(structure.properties.id, structureCommodities.toSeq)
+                distributeCommodities(structure.id, structureCommodities.toSeq)
                 walker.state.commodities match {
                   case CommoditiesState(available, limits) =>
                     walker.state.copy(

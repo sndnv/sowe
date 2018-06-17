@@ -3,7 +3,6 @@ package owe.map
 import akka.actor.{Actor, ActorLogging, ActorRef, Stash, Timers}
 import akka.pattern.pipe
 import akka.util.Timeout
-import owe.EntityID
 import owe.Tagging._
 import owe.entities.Entity
 import owe.entities.Entity._
@@ -38,7 +37,7 @@ trait GameMap extends Actor with ActorLogging with Stash with Timers with Ops {
   protected val exchange: ActorRef
 
   private val grid = Grid[CellActorRef](height, width, context.actorOf(Cell.props()).tag[ActorRefTag])
-  private var entities: Map[EntityID, Point] = Map.empty
+  private var entities: Map[EntityActorRef, Point] = Map.empty
 
   private def scheduleNextTick(): Unit =
     timers.startSingleTimer(
@@ -128,22 +127,23 @@ trait GameMap extends Actor with ActorLogging with Stash with Timers with Ops {
 
 object GameMap {
   sealed trait Message extends owe.Message
-  private case class UpdateEntities(updatedEntities: Map[EntityID, Point]) extends Message
+  private case class UpdateEntities(updatedEntities: Map[EntityActorRef, Point]) extends Message
   private[map] case class ProcessTick(start: Point, end: Point) extends Message
   private[map] case class TickProcessed(processedCells: Int) extends Message
-  case class GetAdvancePath(entityID: EntityID, destination: Point) extends Message
-  case class GetRoamingPath(entityID: EntityID, length: Distance) extends Message
-  case class GetNeighbours(entityID: EntityID, radius: Distance) extends Message
+  case class GetAdvancePath(entityID: Walker.ActiveEntityActorRef, destination: Point) extends Message
+  case class GetRoamingPath(entityID: Walker.ActiveEntityActorRef, length: Distance) extends Message
+  case class GetNeighbours(entityID: EntityActorRef, radius: Distance) extends Message
   case class GetEntities(point: Point) extends Message
-  case class GetEntity(entityID: EntityID) extends Message
-  case class CreateEntity(entity: Entity, cell: Point) extends Message
-  case class DestroyEntity(entityID: EntityID) extends Message
-  case class MoveEntity(entityID: EntityID, cell: Point) extends Message
-  case class DistributeCommodities(entityID: EntityID, commodities: Seq[(Commodity, CommodityAmount)]) extends Message
-  case class AttackEntity(entityID: EntityID, damage: AttackDamage) extends Message
-  case class LabourFound(entityID: EntityID) extends Message
-  case class OccupantsUpdate(entityID: EntityID, occupants: Int) extends Message
-  case class LabourUpdate(entityID: EntityID, employees: Int) extends Message
+  case class GetEntity(entityID: EntityActorRef) extends Message
+  case class CreateEntity[T <: Entity.ActorRefTag](entity: Entity[T], cell: Point) extends Message
+  case class DestroyEntity(entityID: EntityActorRef) extends Message
+  case class MoveEntity(entityID: EntityActorRef, cell: Point) extends Message
+  case class DistributeCommodities(entityID: EntityActorRef, commodities: Seq[(Commodity, CommodityAmount)])
+      extends Message
+  case class AttackEntity(entityID: EntityActorRef, damage: AttackDamage) extends Message
+  case class LabourFound(entityID: Structure.ActiveEntityActorRef) extends Message
+  case class OccupantsUpdate(entityID: Structure.ActiveEntityActorRef, occupants: Int) extends Message
+  case class LabourUpdate(entityID: Structure.ActiveEntityActorRef, employees: Int) extends Message
   case class ForwardExchangeMessage(message: Exchange.Message) extends Message
 
   def distanceBetween(cell1: Point, cell2: Point): Double = {

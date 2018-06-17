@@ -20,7 +20,8 @@ class ProcessedUpdateMessagesSpec extends UnitSpec {
     val resource = ResourceData(
       Fixtures.Resource.properties,
       Fixtures.Resource.state,
-      Fixtures.Resource.modifiers
+      Fixtures.Resource.modifiers,
+      Fixtures.MockRefs.resource
     )
 
     withFixture(test.toNoArgTest(FixtureParam(transformer, resource)))

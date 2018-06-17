@@ -19,12 +19,14 @@ class DistributionCalculationsSpec extends UnitSpec {
           WalkerData(
             Fixtures.Walker.properties,
             Fixtures.Walker.state,
-            Fixtures.Walker.modifiers
+            Fixtures.Walker.modifiers,
+            Fixtures.MockRefs.walker
           ),
           StructureData(
             Fixtures.Structure.Producing.properties,
             Fixtures.Structure.Producing.state,
-            Fixtures.Structure.Producing.modifiers
+            Fixtures.Structure.Producing.modifiers,
+            Fixtures.MockRefs.structure
           )
         )
       )

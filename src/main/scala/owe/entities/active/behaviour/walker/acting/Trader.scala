@@ -1,17 +1,16 @@
 package owe.entities.active.behaviour.walker.acting
 
-import owe.EntityID
 import owe.entities.ActiveEntity.{StructureData, WalkerData}
-import owe.entities.active.Walker
 import owe.entities.active.Walker.CommoditiesState
 import owe.entities.active.behaviour.walker.BaseWalker._
 import owe.entities.active.behaviour.walker.DistributionCalculations.DistributionResult
 import owe.entities.active.behaviour.walker.{BaseWalker, DistributionCalculations}
+import owe.entities.active.{Structure, Walker}
 
 import scala.concurrent.Future
 
 trait Trader extends BaseWalker {
-  protected def target: EntityID
+  protected def target: Structure.ActiveEntityActorRef
 
   import context.dispatcher
 
@@ -21,7 +20,7 @@ trait Trader extends BaseWalker {
         //TODO - check if trade for commodity allowed
         DistributionCalculations.walkerToStructureTransfer(structure, walker) match {
           case Some(DistributionResult(structureCommodities, walkerCommodities)) =>
-            distributeCommodities(structure.properties.id, structureCommodities.toSeq)
+            distributeCommodities(structure.id, structureCommodities.toSeq)
             walker.state.commodities match {
               case CommoditiesState(available, limits) =>
                 walker.state.copy(

@@ -18,7 +18,8 @@ class CommodityCalculationsSpec extends UnitSpec {
           StructureData(
             Fixtures.Structure.Producing.properties,
             Fixtures.Structure.Producing.state,
-            Fixtures.Structure.Producing.modifiers
+            Fixtures.Structure.Producing.modifiers,
+            Fixtures.MockRefs.structure
           )
         )
       )

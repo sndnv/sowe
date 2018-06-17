@@ -13,7 +13,14 @@ class CommodityCalculationsSpec extends UnitSpec {
   def withFixture(test: OneArgTest): Outcome =
     withFixture(
       test.toNoArgTest(
-        FixtureParam(ResourceData(Fixtures.Resource.properties, Fixtures.Resource.state, Fixtures.Resource.modifiers))
+        FixtureParam(
+          ResourceData(
+            Fixtures.Resource.properties,
+            Fixtures.Resource.state,
+            Fixtures.Resource.modifiers,
+            Fixtures.MockRefs.resource
+          )
+        )
       )
     )
 

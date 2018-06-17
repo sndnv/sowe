@@ -52,7 +52,8 @@ class HousingStructureSpec extends AkkaUnitSpec("HousingStructureSpec") {
             )
           )
         ),
-        Fixtures.Structure.Housing.modifiers
+        Fixtures.Structure.Housing.modifiers,
+        Fixtures.MockRefs.structure
       ),
       messages = Seq.empty
     )
@@ -99,7 +100,7 @@ class HousingStructureSpec extends AkkaUnitSpec("HousingStructureSpec") {
           CommodityRequired(
             Commodity("TestCommodity#1"),
             CommodityAmount(100),
-            Fixtures.Structure.Housing.properties.id
+            Fixtures.MockRefs.structure
           )
         )
       )
@@ -111,7 +112,7 @@ class HousingStructureSpec extends AkkaUnitSpec("HousingStructureSpec") {
           CommodityRequired(
             Commodity("TestCommodity#2"),
             CommodityAmount(10),
-            Fixtures.Structure.Housing.properties.id
+            Fixtures.MockRefs.structure
           )
         )
       )
@@ -123,7 +124,7 @@ class HousingStructureSpec extends AkkaUnitSpec("HousingStructureSpec") {
           CommodityRequired(
             Commodity("TestCommodity#3"),
             CommodityAmount(200),
-            Fixtures.Structure.Housing.properties.id
+            Fixtures.MockRefs.structure
           )
         )
       )

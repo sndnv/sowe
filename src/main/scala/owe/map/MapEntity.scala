@@ -2,10 +2,13 @@ package owe.map
 
 import owe.EntityDesirability
 import owe.entities.ActiveEntity.ActiveEntityActorRef
-import owe.entities.{Entity, PassiveEntity}
+import owe.entities.Entity
+import owe.entities.Entity.EntityActorRef
+import owe.entities.PassiveEntity.PassiveEntityActorRef
 import owe.map.grid.Point
 
 sealed trait MapEntity {
+  def entity: EntityActorRef
   def parentCell: Point
   def size: Entity.Size
   def desirability: EntityDesirability
@@ -13,11 +16,11 @@ sealed trait MapEntity {
 }
 
 final case class PassiveMapEntity(
-  entity: PassiveEntity,
+  entity: PassiveEntityActorRef,
   parentCell: Point,
+  size: Entity.Size,
   desirability: EntityDesirability
 ) extends MapEntity {
-  override def size: Entity.Size = entity.`size`
   override def withNewParentCell(newParentCell: Point): MapEntity = copy(parentCell = newParentCell)
 }
 

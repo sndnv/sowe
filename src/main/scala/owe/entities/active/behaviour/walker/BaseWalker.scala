@@ -2,8 +2,8 @@ package owe.entities.active.behaviour.walker
 
 import akka.actor.Actor.Receive
 import akka.pattern.ask
-import owe.EntityID
 import owe.entities.ActiveEntity.{ActiveEntityData, ForwardMessage, ProcessEntityTick, WalkerData}
+import owe.entities.Entity.EntityActorRef
 import owe.entities.active.Walker._
 import owe.entities.active._
 import owe.entities.active.behaviour.walker.BaseWalker._
@@ -98,7 +98,7 @@ trait BaseWalker
                 .foreach { nextPositionOpt =>
                   val updates: Future[Seq[WalkerData => Future[State]]] = nextPositionOpt match {
                     case Some((nextPosition, remainingPath)) =>
-                      moveEntity(entity.properties.id, nextPosition)
+                      moveEntity(entity.id, nextPosition)
                       Future.successful(
                         Seq(
                           withProcessedUpdateMessages(_, messages),
@@ -111,7 +111,7 @@ trait BaseWalker
 
                     case None =>
                       //no free path; can't move
-                      calculateRoamingPath(entity.properties.id, maxDistance).map {
+                      calculateRoamingPath(entity.id, maxDistance).map {
                         case Some(newRoamingPath) =>
                           Seq(
                             withProcessedUpdateMessages(_, messages),
@@ -121,7 +121,7 @@ trait BaseWalker
                           )
 
                         case None =>
-                          log.error("Failed to generate new roaming path for entity [{}].", entity.properties.id)
+                          log.error("Failed to generate new roaming path for entity [{}].", entity.id)
                           Seq.empty
                       }
                   }
@@ -168,7 +168,7 @@ trait BaseWalker
             nextPosition(entity).foreach { nextPositionOpt =>
               val updates: Future[Seq[WalkerData => Future[State]]] = nextPositionOpt match {
                 case Some((nextPosition, remainingPath)) =>
-                  moveEntity(entity.properties.id, nextPosition)
+                  moveEntity(entity.id, nextPosition)
                   Future.successful(
                     Seq(
                       withProcessedUpdateMessages(_, messages),
@@ -180,7 +180,7 @@ trait BaseWalker
 
                 case None =>
                   //no free path; can't move
-                  calculateAdvancePath(entity.properties.id, actualDestination).map {
+                  calculateAdvancePath(entity.id, actualDestination).map {
                     case Some(newAdvancePath) =>
                       Seq(
                         withProcessedUpdateMessages(_, messages),
@@ -189,7 +189,7 @@ trait BaseWalker
                       )
 
                     case None =>
-                      log.error("Failed to generate new advance path for entity [{}].", entity.properties.id)
+                      log.error("Failed to generate new advance path for entity [{}].", entity.id)
                       Seq.empty
                   }
               }
@@ -282,17 +282,17 @@ trait BaseWalker
         .foreach(updatedData => self ! Become(behaviour, updatedData))
   }
 
-  protected def getEntityData(entityID: EntityID): Future[ActiveEntityData] =
+  protected def getEntityData(entityID: EntityActorRef): Future[ActiveEntityData] =
     (parentEntity ? ForwardMessage(GetEntity(entityID))).mapTo[ActiveEntityData]
 
   protected def getNeighboursData(
-    walkerId: EntityID,
+    walkerId: ActiveEntityActorRef,
     radius: Distance
-  ): Future[Seq[(EntityID, ActiveEntityData)]] =
-    (parentEntity ? ForwardMessage(GetNeighbours(walkerId, radius))).mapTo[Seq[(EntityID, ActiveEntityData)]]
+  ): Future[Seq[(EntityActorRef, ActiveEntityData)]] =
+    (parentEntity ? ForwardMessage(GetNeighbours(walkerId, radius))).mapTo[Seq[(EntityActorRef, ActiveEntityData)]]
 
   protected def distributeCommodities(
-    entityID: EntityID,
+    entityID: EntityActorRef,
     commodities: Seq[(Commodity, CommodityAmount)]
   ): Unit =
     parentEntity ! ForwardMessage(DistributeCommodities(entityID, commodities))
@@ -318,20 +318,20 @@ trait BaseWalker
         case _                              => //do nothing
       }
 
-      parentEntity ! ForwardMessage(DestroyEntity(walker.properties.id))
+      parentEntity ! ForwardMessage(DestroyEntity(walker.id))
       context.become(destroying())
     }
 
-  private def attackEntity(id: EntityID, damage: AttackDamage): Unit =
+  private def attackEntity(id: EntityActorRef, damage: AttackDamage): Unit =
     parentEntity ! ForwardMessage(AttackEntity(id, damage))
 
-  private def moveEntity(id: EntityID, destination: Point): Unit =
+  private def moveEntity(id: EntityActorRef, destination: Point): Unit =
     parentEntity ! ForwardMessage(MoveEntity(id, destination))
 
-  private def nextEnemyEntity(walker: WalkerData): Future[Option[(EntityID, AttackDamage)]] =
+  private def nextEnemyEntity(walker: WalkerData): Future[Option[(EntityActorRef, AttackDamage)]] =
     (walker.properties.attack, walker.modifiers.attack) match {
       case (attackProperties: AttackProperties, attackModifiers: AttackModifiers) =>
-        getNeighboursData(walker.properties.id, attackModifiers.distance(attackProperties.distance))
+        getNeighboursData(walker.id, attackModifiers.distance(attackProperties.distance))
           .map { neighbours =>
             neighbours.collectFirst {
               case (entityID, entity) if attackProperties.target(entity) =>
@@ -345,10 +345,12 @@ trait BaseWalker
   private def getEntitiesData(point: Point): Future[Seq[(MapEntity, Option[ActiveEntityData])]] =
     (parentEntity ? ForwardMessage(GetEntities(point))).mapTo[Seq[(MapEntity, Option[ActiveEntityData])]]
 
-  private def calculateAdvancePath(walkerId: EntityID, destination: Point): Future[Option[Queue[Point]]] =
+  private def calculateAdvancePath(walkerId: Walker.ActiveEntityActorRef,
+                                   destination: Point): Future[Option[Queue[Point]]] =
     (parentEntity ? ForwardMessage(GetAdvancePath(walkerId, destination))).mapTo[Option[Queue[Point]]]
 
-  private def calculateRoamingPath(walkerId: EntityID, length: Distance): Future[Option[Queue[Point]]] =
+  private def calculateRoamingPath(walkerId: Walker.ActiveEntityActorRef,
+                                   length: Distance): Future[Option[Queue[Point]]] =
     (parentEntity ? ForwardMessage(GetRoamingPath(walkerId, length))).mapTo[Option[Queue[Point]]]
 
   private def nextPosition(walker: WalkerData): Future[Option[(Point, Queue[Point])]] = {
@@ -406,7 +408,7 @@ object BaseWalker {
   case class DoOperation(op: WalkerData => Future[State]) extends Action
   case class DoRepeatableOperation(op: WalkerData => Future[State], repeat: WalkerData => Boolean) extends Action
   case class GoToPoint(destination: Point) extends Action
-  case class GoToEntity(entityID: EntityID) extends Action
+  case class GoToEntity(entityID: EntityActorRef) extends Action
   case class GoHome() extends Action
 
   sealed trait Transition extends Action
@@ -416,7 +418,7 @@ object BaseWalker {
   sealed trait Destination
   case object Home extends Destination
   case class DestinationPoint(point: Point) extends Destination
-  case class DestinationEntity(entityID: EntityID) extends Destination
+  case class DestinationEntity(entityID: EntityActorRef) extends Destination
 
   private[behaviour] case class Become(behaviour: () => Receive, walker: WalkerData)
 }

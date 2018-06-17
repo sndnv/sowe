@@ -1,10 +1,12 @@
 package owe.entities.active
 
+import akka.actor.ActorRef
+import owe.EntityDesirability
+import owe.Tagging.@@
 import owe.entities._
 import owe.entities.active.behaviour.resource.BaseResource
 import owe.map.grid.Point
 import owe.production._
-import owe.{EntityDesirability, EntityID}
 
 trait Resource
     extends ActiveEntity[
@@ -22,10 +24,10 @@ trait Resource
 object Resource {
   type Effect = ActiveEntity.Effect[Properties, State, StateModifiers]
 
+  type ActiveEntityActorRef = ActorRef @@ ActorRefTag
   trait ActorRefTag extends ActiveEntity.ActorRefTag
 
   case class Properties(
-    id: EntityID,
     homePosition: Point,
     name: String,
     commodity: Commodity,

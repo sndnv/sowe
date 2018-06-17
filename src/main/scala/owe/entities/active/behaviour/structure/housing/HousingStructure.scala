@@ -41,7 +41,7 @@ trait HousingStructure
 
         CommodityCalculations
           .requiredCommodities(updatedData)
-          .foreach(UpdateExchange.Stats.requiredCommodities(structure.properties.id, _))
+          .foreach(UpdateExchange.Stats.requiredCommodities(structure.id, _))
 
         self ! Become(() => housing(), updatedData)
       }

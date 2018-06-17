@@ -34,7 +34,8 @@ class FarmingStructureSpec extends AkkaUnitSpec("FarmingStructureSpec") {
       entity = StructureData(
         Fixtures.Structure.Producing.properties,
         Fixtures.Structure.Producing.state,
-        Fixtures.Structure.Producing.modifiers
+        Fixtures.Structure.Producing.modifiers,
+        Fixtures.MockRefs.structure
       ),
       messages = Seq.empty
     )
@@ -57,7 +58,7 @@ class FarmingStructureSpec extends AkkaUnitSpec("FarmingStructureSpec") {
           CommodityAvailable(
             Commodity("TestCommodity"),
             CommodityAmount(25),
-            Fixtures.Structure.Producing.properties.id
+            Fixtures.MockRefs.structure
           )
         )
       )

@@ -5,9 +5,9 @@ import akka.util.Timeout
 import org.scalatest.Outcome
 import owe.entities.ActiveEntity.{ForwardMessage, ProcessEntityTick, StructureData}
 import owe.entities.Entity.ProcessAttack
-import owe.entities.active.{AttackDamage, Life}
 import owe.entities.active.Structure._
 import owe.entities.active.behaviour.structure.producing.ProducingStructure
+import owe.entities.active.{AttackDamage, Life}
 import owe.map.GameMap.ForwardExchangeMessage
 import owe.production.Exchange.{CommodityAvailable, CommodityRequired, UpdateCommodityState}
 import owe.production.{Commodity, CommodityAmount, CommodityAmountModifier, CommodityState}
@@ -59,7 +59,8 @@ class ProducingStructureSpec extends AkkaUnitSpec("ProducingStructureSpec") {
           )
         ),
         housing = NoHousing
-      )
+      ),
+      Fixtures.MockRefs.structure
     )
 
     val parentEntity = system.actorOf(TestParentEntity.props(testActor, Props(new ProducingStructure {})))
@@ -106,7 +107,7 @@ class ProducingStructureSpec extends AkkaUnitSpec("ProducingStructureSpec") {
           CommodityRequired(
             Commodity("TestCommodity#2"),
             CommodityAmount(45),
-            Fixtures.Structure.Producing.properties.id
+            Fixtures.MockRefs.structure
           )
         )
       )
@@ -118,7 +119,7 @@ class ProducingStructureSpec extends AkkaUnitSpec("ProducingStructureSpec") {
           CommodityAvailable(
             Commodity("TestCommodity#2"),
             CommodityAmount(55),
-            Fixtures.Structure.Producing.properties.id
+            Fixtures.MockRefs.structure
           )
         )
       )
@@ -130,7 +131,7 @@ class ProducingStructureSpec extends AkkaUnitSpec("ProducingStructureSpec") {
           CommodityAvailable(
             Commodity("TestCommodity#1"),
             CommodityAmount(25),
-            Fixtures.Structure.Producing.properties.id
+            Fixtures.MockRefs.structure
           )
         )
       )

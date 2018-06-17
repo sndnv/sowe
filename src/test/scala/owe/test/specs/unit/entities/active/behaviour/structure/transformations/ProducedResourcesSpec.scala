@@ -20,7 +20,8 @@ class ProducedResourcesSpec extends UnitSpec {
     val structure = StructureData(
       Fixtures.Structure.Producing.properties,
       Fixtures.Structure.Producing.state,
-      Fixtures.Structure.Producing.modifiers
+      Fixtures.Structure.Producing.modifiers,
+      Fixtures.MockRefs.structure
     )
 
     withFixture(test.toNoArgTest(FixtureParam(transformer, structure)))

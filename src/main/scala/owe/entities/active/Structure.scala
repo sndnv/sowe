@@ -1,11 +1,13 @@
 package owe.entities.active
 
+import akka.actor.ActorRef
+import owe.CellDesirability
+import owe.Tagging.@@
 import owe.entities.ActiveEntity.StructureData
 import owe.entities._
 import owe.entities.active.behaviour.structure.BaseStructure
 import owe.map.grid.Point
 import owe.production.{Commodity, CommodityAmount, CommodityAmountModifier}
-import owe.{CellDesirability, EntityID}
 
 trait Structure
     extends ActiveEntity[
@@ -19,6 +21,7 @@ trait Structure
 }
 
 object Structure {
+  type ActiveEntityActorRef = ActorRef @@ ActorRefTag
   trait ActorRefTag extends ActiveEntity.ActorRefTag
 
   type Effect = ActiveEntity.Effect[Properties, State, StateModifiers]
@@ -140,7 +143,6 @@ object Structure {
   case class CurrentStage(stage: Int) extends Stages with StateOnly
 
   case class Properties(
-    id: EntityID,
     homePosition: Point,
     name: String,
     walkers: Walkers with PropertiesOnly,

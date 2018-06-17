@@ -20,7 +20,8 @@ class RoamActionSpec extends AsyncUnitSpec {
     val walker = WalkerData(
       Fixtures.Walker.properties,
       Fixtures.Walker.state,
-      Fixtures.Walker.modifiers
+      Fixtures.Walker.modifiers,
+      Fixtures.MockRefs.walker
     )
 
     withFixture(test.toNoArgAsyncTest(FixtureParam(transformer, walker)))
@@ -65,7 +66,7 @@ class RoamActionSpec extends AsyncUnitSpec {
       )
       updatedStateGoToEntity <- fixture.transformer.withRoamAction(
         fixture.walker,
-        GoToEntity(fixture.walker.properties.id)
+        GoToEntity(fixture.walker.id)
       )
       updatedStateGoHome <- fixture.transformer.withRoamAction(
         fixture.walker,

@@ -1,9 +1,9 @@
 package owe.entities.active.behaviour
 
 import akka.actor.ActorRef
-import owe.EntityID
 import owe.Tagging.@@
 import owe.entities.ActiveEntity.{ActorRefTag, ForwardMessage}
+import owe.entities.Entity.EntityActorRef
 import owe.map.GameMap.ForwardExchangeMessage
 import owe.production.Exchange.{CommodityAvailable, CommodityInTransit, CommodityRequired, UpdateCommodityState}
 import owe.production.{Commodity, CommodityAmount, CommodityState, Exchange}
@@ -26,7 +26,7 @@ object UpdateExchange {
 
   object Stats {
     def availableCommodities(
-      entityID: EntityID,
+      entityID: EntityActorRef,
       commodities: Map[Commodity, CommodityAmount]
     )(implicit parentEntity: ActorRef @@ ActorRefTag): Unit =
       forwardMessages(
@@ -39,7 +39,7 @@ object UpdateExchange {
       )
 
     def availableCommodities(
-      entityID: EntityID,
+      entityID: EntityActorRef,
       initialCommodities: Map[Commodity, CommodityAmount],
       updatedCommodities: Map[Commodity, CommodityAmount]
     )(implicit parentEntity: ActorRef @@ ActorRefTag): Unit =
@@ -59,7 +59,7 @@ object UpdateExchange {
       )
 
     def requiredCommodities(
-      entityID: EntityID,
+      entityID: EntityActorRef,
       consumedCommodities: Map[Commodity, CommodityAmount]
     )(implicit parentEntity: ActorRef @@ ActorRefTag): Unit =
       forwardMessages(
@@ -72,8 +72,8 @@ object UpdateExchange {
       )
 
     def inTransitCommodities(
-      source: EntityID,
-      destination: EntityID,
+      source: EntityActorRef,
+      destination: EntityActorRef,
       inTransitCommodities: Map[Commodity, CommodityAmount]
     )(implicit parentEntity: ActorRef @@ ActorRefTag): Unit =
       forwardMessages(

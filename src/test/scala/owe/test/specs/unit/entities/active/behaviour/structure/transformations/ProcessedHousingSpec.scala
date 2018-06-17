@@ -20,7 +20,8 @@ class ProcessedHousingSpec extends UnitSpec {
     val structure = StructureData(
       Fixtures.Structure.Housing.properties,
       Fixtures.Structure.Housing.state,
-      Fixtures.Structure.Housing.modifiers
+      Fixtures.Structure.Housing.modifiers,
+      Fixtures.MockRefs.structure
     )
 
     withFixture(test.toNoArgTest(FixtureParam(transformer, structure)))

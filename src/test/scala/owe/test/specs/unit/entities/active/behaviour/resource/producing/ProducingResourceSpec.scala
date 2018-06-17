@@ -33,7 +33,8 @@ class ProducingResourceSpec extends AkkaUnitSpec("ProducingResourceSpec") {
       entity = ResourceData(
         Fixtures.Resource.properties,
         Fixtures.Resource.state,
-        Fixtures.Resource.modifiers
+        Fixtures.Resource.modifiers,
+        Fixtures.MockRefs.resource
       ),
       messages = Seq.empty
     )
@@ -56,7 +57,7 @@ class ProducingResourceSpec extends AkkaUnitSpec("ProducingResourceSpec") {
           CommodityAvailable(
             Fixtures.Resource.properties.commodity,
             Fixtures.Resource.state.currentAmount + Fixtures.Resource.state.replenishAmount,
-            Fixtures.Resource.properties.id
+            Fixtures.MockRefs.resource
           )
         )
       )
@@ -74,7 +75,8 @@ class ProducingResourceSpec extends AkkaUnitSpec("ProducingResourceSpec") {
       entity = ResourceData(
         Fixtures.Resource.properties,
         Fixtures.Resource.state,
-        Fixtures.Resource.modifiers
+        Fixtures.Resource.modifiers,
+        Fixtures.MockRefs.resource
       ),
       messages = Seq(
         ProcessCommodities(Seq((Fixtures.Resource.properties.commodity, CommodityAmount(-42)))),
@@ -106,7 +108,7 @@ class ProducingResourceSpec extends AkkaUnitSpec("ProducingResourceSpec") {
           CommodityAvailable(
             Fixtures.Resource.properties.commodity,
             expectedFinalAmount,
-            Fixtures.Resource.properties.id
+            Fixtures.MockRefs.resource
           )
         )
       )

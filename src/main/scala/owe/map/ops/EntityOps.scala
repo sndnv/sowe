@@ -1,11 +1,10 @@
 package owe.map.ops
 
-import java.util.UUID
-
 import akka.actor.{ActorRef, Props}
 import akka.pattern.ask
 import akka.util.Timeout
 import owe.Tagging._
+import owe.entities.Entity.EntityActorRef
 import owe.entities.active.{Resource, Structure, Walker}
 import owe.entities.passive.{Doodad, Road, Roadblock}
 import owe.entities.{ActiveEntity, Entity, PassiveEntity}
@@ -13,7 +12,7 @@ import owe.events.Event
 import owe.map.Cell._
 import owe.map._
 import owe.map.grid.{Grid, Point}
-import owe.{EntityDesirability, EntityID}
+import owe.EntityDesirability
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -24,13 +23,13 @@ trait EntityOps { _: AvailabilityOps =>
   protected implicit val actionTimeout: Timeout
   protected implicit val ec: ExecutionContext
 
-  def createEntity(
+  def createEntity[T <: Entity.ActorRefTag](
     grid: Grid[CellActorRef],
-    entities: Map[EntityID, Point],
-    entity: Entity,
+    entities: Map[EntityActorRef, Point],
+    entity: Entity[T],
     cell: Point,
     actorFactory: Props => ActorRef
-  ): Future[Map[EntityID, Point]] =
+  ): Future[Map[EntityActorRef, Point]] =
     grid.get(cell) match {
       case Some(mapCell) =>
         val targetAvailability = requiredAvailability(entity.`type`)
@@ -40,7 +39,6 @@ trait EntityOps { _: AvailabilityOps =>
               .sequence(entityCells(entity.`size`, cell).map(cellAvailability(grid, _)))
               .map { cellsAvailability =>
                 if (cellsAvailability.forall(_ == targetAvailability)) {
-                  val entityID = UUID.randomUUID()
                   val mapEntity: MapEntity = entity match {
                     case entity: ActiveEntity[_, _, _, _, _] =>
                       ActiveMapEntity(
@@ -50,12 +48,17 @@ trait EntityOps { _: AvailabilityOps =>
                         entity.`desirability`
                       )
 
-                    case entity: PassiveEntity =>
-                      PassiveMapEntity(entity, cell, entity.`desirability`)
+                    case entity: PassiveEntity[_] =>
+                      PassiveMapEntity(
+                        actorFactory(entity.props()).tag[entity.Tag],
+                        cell,
+                        entity.`size`,
+                        entity.`desirability`
+                      )
                   }
 
                   tracker ! Event(Event.System.EntityCreated, Some(cell))
-                  associateMapEntity(grid, entities, mapEntity, entityID, cell)
+                  associateMapEntity(grid, entities, mapEntity, mapEntity.entity, cell)
                 } else {
                   tracker ! Event(Event.System.CellsUnavailable, Some(cell))
                   entities
@@ -74,9 +77,9 @@ trait EntityOps { _: AvailabilityOps =>
 
   def destroyEntity(
     grid: Grid[CellActorRef],
-    entities: Map[EntityID, Point],
-    entityID: EntityID
-  ): Future[Map[EntityID, Point]] =
+    entities: Map[EntityActorRef, Point],
+    entityID: EntityActorRef
+  ): Future[Map[EntityActorRef, Point]] =
     entities
       .get(entityID)
       .flatMap { point =>
@@ -107,10 +110,10 @@ trait EntityOps { _: AvailabilityOps =>
 
   def moveEntity(
     grid: Grid[CellActorRef],
-    entities: Map[EntityID, Point],
-    entityID: EntityID,
+    entities: Map[EntityActorRef, Point],
+    entityID: EntityActorRef,
     newCell: Point
-  ): Future[Map[EntityID, Point]] = {
+  ): Future[Map[EntityActorRef, Point]] = {
 
     val result = for {
       currentCell <- entities
@@ -179,7 +182,7 @@ trait EntityOps { _: AvailabilityOps =>
 
   def entityTypeFromMapEntity(mapEntity: MapEntity): Entity.Type =
     mapEntity match {
-      case PassiveMapEntity(entity, _, _) =>
+      case PassiveMapEntity(entity, _, _, _) =>
         entity match {
           case _: Doodad    => Entity.Type.Doodad
           case _: Road      => Entity.Type.Road
@@ -196,16 +199,16 @@ trait EntityOps { _: AvailabilityOps =>
 
   def associateMapEntity(
     grid: Grid[CellActorRef],
-    entities: Map[EntityID, Point],
+    entities: Map[EntityActorRef, Point],
     mapEntity: MapEntity,
-    entityID: EntityID,
+    entityID: EntityActorRef,
     cell: Point
-  ): Map[EntityID, Point] = {
+  ): Map[EntityActorRef, Point] = {
     val cells = entityCells(mapEntity.size, mapEntity.parentCell)
     cells.flatMap(grid.get).foreach(_ ! AddEntity(entityID, mapEntity))
 
     mapEntity match {
-      case PassiveMapEntity(entity, _, desirability) =>
+      case PassiveMapEntity(entity, _, _, desirability) =>
         entity match {
           case _: Doodad | _: Road => addDesirability(grid, desirability, cells)
           case _                   => () //do nothing
@@ -223,16 +226,16 @@ trait EntityOps { _: AvailabilityOps =>
 
   def dissociateMapEntity(
     grid: Grid[CellActorRef],
-    entities: Map[EntityID, Point],
+    entities: Map[EntityActorRef, Point],
     mapEntity: MapEntity,
-    entityID: EntityID,
+    entityID: EntityActorRef,
     cell: Point
-  ): Map[EntityID, Point] = {
+  ): Map[EntityActorRef, Point] = {
     val cells = entityCells(mapEntity.size, mapEntity.parentCell)
     cells.flatMap(grid.get).foreach(_ ! RemoveEntity(entityID))
 
     mapEntity match {
-      case PassiveMapEntity(entity, _, desirability) =>
+      case PassiveMapEntity(entity, _, _, desirability) =>
         entity match {
           case _: Doodad | _: Road => removeDesirability(grid, desirability, cells)
           case _                   => () //do nothing

@@ -45,7 +45,8 @@ class ProcessedTransitionSpec extends UnitSpec {
     val structure = StructureData(
       Fixtures.Structure.Producing.properties.copy(stages = multipleStage),
       Fixtures.Structure.Producing.state.copy(currentStage = CurrentStage(1)),
-      Fixtures.Structure.Producing.modifiers
+      Fixtures.Structure.Producing.modifiers,
+      Fixtures.MockRefs.structure
     )
 
     val map = Fixtures.defaultMapData.copy(

@@ -22,7 +22,8 @@ class ProcessedFarmingSpec extends UnitSpec {
     val structure = StructureData(
       Fixtures.Structure.Producing.properties,
       Fixtures.Structure.Producing.state,
-      Fixtures.Structure.Producing.modifiers
+      Fixtures.Structure.Producing.modifiers,
+      Fixtures.MockRefs.structure
     )
 
     val map = Fixtures.defaultMapData

@@ -1,19 +1,28 @@
 package owe.entities
 
+import akka.actor.{ActorRef, Props}
+import akka.util.Timeout
+import owe.EntityDesirability
+import owe.Tagging.@@
 import owe.entities.active.AttackDamage
 import owe.map.grid.Point
 import owe.production.{Commodity, CommodityAmount}
-import owe.{EntityDesirability, EntityID}
 
-trait Entity {
+trait Entity[T <: Entity.ActorRefTag] {
+  type Tag = T
+
   def `size`: Entity.Size
   def `type`: Entity.Type
   def `desirability`: EntityDesirability
+
+  def props()(implicit timeout: Timeout): Props
 }
 
 object Entity {
+  type EntityActorRef = ActorRef @@ ActorRefTag
+  trait ActorRefTag
+
   trait Properties {
-    def id: EntityID
     def homePosition: Point
   }
 

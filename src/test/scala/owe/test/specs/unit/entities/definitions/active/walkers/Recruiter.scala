@@ -15,31 +15,33 @@ class Recruiter extends Walker {
     override protected def recruitmentRadius: Distance = Distance(3)
   }
 
-  override protected def createActiveEntityData(): ActiveEntityData = WalkerData(
-    properties = Properties(
-      id = java.util.UUID.randomUUID(),
-      parent = None,
-      homePosition = Point(0, 0),
-      name = "Recruiter",
-      maxLife = Life(100),
-      movementSpeed = Speed(100),
-      maxRoamingDistance = Distance(50),
-      attack = NoAttack
-    ),
-    state = State(
-      currentLife = Life(100),
-      distanceCovered = Distance(0),
-      destinationPath = Queue.empty,
-      commodities = NoCommodities,
-      path = Queue.empty,
-      mode = MovementMode.Roaming
-    ),
-    modifiers = StateModifiers(
-      movementSpeed = SpeedModifier(100),
-      maxRoamingDistance = DistanceModifier(100),
-      attack = NoAttack
+  override protected def createActiveEntityData(): ActiveEntityActorRef => ActiveEntityData = { id =>
+    WalkerData(
+      properties = Properties(
+        parent = None,
+        homePosition = Point(0, 0),
+        name = "Recruiter",
+        maxLife = Life(100),
+        movementSpeed = Speed(100),
+        maxRoamingDistance = Distance(50),
+        attack = NoAttack
+      ),
+      state = State(
+        currentLife = Life(100),
+        distanceCovered = Distance(0),
+        destinationPath = Queue.empty,
+        commodities = NoCommodities,
+        path = Queue.empty,
+        mode = MovementMode.Roaming
+      ),
+      modifiers = StateModifiers(
+        movementSpeed = SpeedModifier(100),
+        maxRoamingDistance = DistanceModifier(100),
+        attack = NoAttack
+      ),
+      id
     )
-  )
+  }
 
   override protected def createEffects(): Seq[(ActiveEntityData => Boolean, Effect)] = Seq.empty
 }

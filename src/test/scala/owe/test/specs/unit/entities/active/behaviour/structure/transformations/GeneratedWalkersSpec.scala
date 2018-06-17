@@ -30,14 +30,16 @@ class GeneratedWalkersSpec extends AkkaUnitSpec("GeneratedWalkersSpec") {
     val structure = StructureData(
       Fixtures.Structure.Producing.properties,
       Fixtures.Structure.Producing.state,
-      Fixtures.Structure.Producing.modifiers
+      Fixtures.Structure.Producing.modifiers,
+      Fixtures.MockRefs.structure
     )
 
     withFixture(test.toNoArgTest(FixtureParam(transformer, structure)))
   }
 
   private case class DummyWalker() extends Walker {
-    override protected def createActiveEntityData(): ActiveEntity.ActiveEntityData = ???
+    override protected def createActiveEntityData(
+      ): ActorRef @@ Walker.ActorRefTag => ActiveEntity.ActiveEntityData = ???
     override protected def createEffects(): Seq[(ActiveEntity.ActiveEntityData => Boolean, Effect)] = ???
     override protected def createBehaviour(): BaseWalker = ???
   }

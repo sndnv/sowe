@@ -2,9 +2,9 @@ package owe.map.ops
 
 import akka.pattern.ask
 import akka.util.Timeout
-import owe.EntityID
 import owe.entities.ActiveEntity.{ActiveEntityData, GetData}
-import owe.entities.active.Distance
+import owe.entities.Entity.EntityActorRef
+import owe.entities.active.{Distance, Walker}
 import owe.map.Cell.{CellActorRef, CellData, GetCellData, GetEntity}
 import owe.map._
 import owe.map.grid.{Grid, Point}
@@ -19,8 +19,8 @@ trait QueryOps { _: PathfindingOps =>
 
   def getAdvancePath(
     grid: Grid[CellActorRef],
-    entities: Map[EntityID, Point],
-    entityID: EntityID,
+    entities: Map[EntityActorRef, Point],
+    entityID: Walker.ActiveEntityActorRef,
     destination: Point
   ): Future[Queue[Point]] =
     entities
@@ -30,8 +30,8 @@ trait QueryOps { _: PathfindingOps =>
 
   def getRoamingPath(
     grid: Grid[CellActorRef],
-    entities: Map[EntityID, Point],
-    entityID: EntityID,
+    entities: Map[EntityActorRef, Point],
+    entityID: Walker.ActiveEntityActorRef,
     length: Distance
   ): Future[Queue[Point]] =
     entities
@@ -41,10 +41,10 @@ trait QueryOps { _: PathfindingOps =>
 
   def getNeighbours(
     grid: Grid[CellActorRef],
-    entities: Map[EntityID, Point],
-    entityID: EntityID,
+    entities: Map[EntityActorRef, Point],
+    entityID: EntityActorRef,
     radius: Distance
-  ): Future[Seq[(EntityID, ActiveEntityData)]] =
+  ): Future[Seq[(EntityActorRef, ActiveEntityData)]] =
     entities
       .get(entityID)
       .map { point =>
@@ -71,7 +71,7 @@ trait QueryOps { _: PathfindingOps =>
 
   def getEntities(
     grid: Grid[CellActorRef],
-    entities: Map[EntityID, Point],
+    entities: Map[EntityActorRef, Point],
     point: Point
   ): Future[Seq[(MapEntity, Option[ActiveEntityData])]] =
     grid
@@ -93,8 +93,8 @@ trait QueryOps { _: PathfindingOps =>
 
   def getEntity(
     grid: Grid[CellActorRef],
-    entities: Map[EntityID, Point],
-    entityID: EntityID
+    entities: Map[EntityActorRef, Point],
+    entityID: EntityActorRef
   ): Future[ActiveEntityData] =
     entities
       .get(entityID)

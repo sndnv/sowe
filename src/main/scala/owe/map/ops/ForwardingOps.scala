@@ -4,9 +4,9 @@ import akka.Done
 import akka.actor.ActorLogging
 import akka.pattern.ask
 import akka.util.Timeout
-import owe.EntityID
 import owe.entities.ActiveEntity.AddEntityMessage
 import owe.entities.Entity
+import owe.entities.Entity.EntityActorRef
 import owe.map.Cell.{CellActorRef, GetEntity}
 import owe.map.grid.{Grid, Point}
 import owe.map.{ActiveMapEntity, MapEntity, PassiveMapEntity}
@@ -20,8 +20,8 @@ trait ForwardingOps { _: ActorLogging =>
 
   def forwardEntityMessage(
     grid: Grid[CellActorRef],
-    entities: Map[EntityID, Point],
-    entityID: EntityID,
+    entities: Map[EntityActorRef, Point],
+    entityID: EntityActorRef,
     message: Entity.Message
   ): Future[Done] = {
     log.debug("Forwarding message [{}] to entity with ID [{}]", message, entityID)

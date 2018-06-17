@@ -25,7 +25,8 @@ class ProcessedUpdateMessagesSpec extends UnitSpec {
     val structure = StructureData(
       Fixtures.Structure.Producing.properties,
       Fixtures.Structure.Producing.state,
-      Fixtures.Structure.Producing.modifiers
+      Fixtures.Structure.Producing.modifiers,
+      Fixtures.MockRefs.structure
     )
 
     val commoditiesState = structure.state.commodities.asInstanceOf[CommoditiesState]
@@ -135,7 +136,8 @@ class ProcessedUpdateMessagesSpec extends UnitSpec {
     val structure = StructureData(
       Fixtures.Structure.Housing.properties,
       Fixtures.Structure.Housing.state,
-      Fixtures.Structure.Housing.modifiers
+      Fixtures.Structure.Housing.modifiers,
+      Fixtures.MockRefs.structure
     )
 
     val housingState = structure.state.housing.asInstanceOf[HousingState]
@@ -184,7 +186,8 @@ class ProcessedUpdateMessagesSpec extends UnitSpec {
       Fixtures.Structure.Producing.state.copy(
         production = productionState.copy(employees = 0)
       ),
-      Fixtures.Structure.Producing.modifiers
+      Fixtures.Structure.Producing.modifiers,
+      Fixtures.MockRefs.structure
     )
 
     fixture.transformer.withProcessedUpdateMessages(
@@ -227,7 +230,8 @@ class ProcessedUpdateMessagesSpec extends UnitSpec {
     val structure = StructureData(
       Fixtures.Structure.Producing.properties,
       Fixtures.Structure.Producing.state,
-      Fixtures.Structure.Producing.modifiers
+      Fixtures.Structure.Producing.modifiers,
+      Fixtures.MockRefs.structure
     )
 
     fixture.transformer.withProcessedUpdateMessages(
@@ -277,7 +281,8 @@ class ProcessedUpdateMessagesSpec extends UnitSpec {
     val structure = StructureData(
       Fixtures.Structure.Producing.properties,
       Fixtures.Structure.Producing.state,
-      Fixtures.Structure.Producing.modifiers
+      Fixtures.Structure.Producing.modifiers,
+      Fixtures.MockRefs.structure
     )
 
     val productionState = structure.state.production.asInstanceOf[ProductionState]

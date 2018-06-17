@@ -31,51 +31,53 @@ class CoalMine extends Structure {
 
   override def `desirability`: EntityDesirability = EntityDesirability.fromInt(-5, -5, -3, -3, -3, -3)
 
-  override protected def createActiveEntityData(): ActiveEntityData = StructureData(
-    properties = Properties(
-      id = java.util.UUID.randomUUID(),
-      homePosition = Point(0, 0),
-      name = "CoalMine",
-      walkers = WalkersProperties(
-        generators = Map(
-          "recruiter" -> generateRecruiter,
-          "courier" -> generateCourier
+  override protected def createActiveEntityData(): ActiveEntityActorRef => ActiveEntityData = { id =>
+    StructureData(
+      properties = Properties(
+        homePosition = Point(0, 0),
+        name = "CoalMine",
+        walkers = WalkersProperties(
+          generators = Map(
+            "recruiter" -> generateRecruiter,
+            "courier" -> generateCourier
+          )
+        ),
+        stages = SingleStage(
+          stage = StageProperties(
+            maxLife = Life(100),
+            maxPeople = 15,
+            minDesirability = CellDesirability.Neutral,
+            commodityShortageLimit = 0
+          )
         )
       ),
-      stages = SingleStage(
-        stage = StageProperties(
-          maxLife = Life(100),
-          maxPeople = 15,
-          minDesirability = CellDesirability.Neutral,
-          commodityShortageLimit = 0
+      state = State(
+        risk = RiskState(fire = RiskAmount(0), damage = RiskAmount(0)),
+        commodities = CommoditiesState(
+          available = Map.empty,
+          limits = Map(Commodity("Coal") -> CommodityAmount(100))
+        ),
+        housing = NoHousing,
+        production = ProductionState(
+          employees = 0,
+          labour = LabourState.None,
+          rates = Map(Commodity("Coal") -> CommodityAmount(25))
+        ),
+        currentStage = DefaultStage,
+        currentLife = Life(100),
+        walkers = WalkersState(
+          state = Map.empty
         )
-      )
-    ),
-    state = State(
-      risk = RiskState(fire = RiskAmount(0), damage = RiskAmount(0)),
-      commodities = CommoditiesState(
-        available = Map.empty,
-        limits = Map(Commodity("Coal") -> CommodityAmount(100))
       ),
-      housing = NoHousing,
-      production = ProductionState(
-        employees = 0,
-        labour = LabourState.None,
-        rates = Map(Commodity("Coal") -> CommodityAmount(25))
+      modifiers = StateModifiers(
+        risk = RiskModifier(fire = RiskAmount(3), damage = RiskAmount(5)),
+        commodities = NoCommodities,
+        production = ProductionModifier(rates = Map(Commodity("Coal") -> CommodityAmountModifier(100))),
+        housing = NoHousing
       ),
-      currentStage = DefaultStage,
-      currentLife = Life(100),
-      walkers = WalkersState(
-        state = Map.empty
-      )
-    ),
-    modifiers = StateModifiers(
-      risk = RiskModifier(fire = RiskAmount(3), damage = RiskAmount(5)),
-      commodities = NoCommodities,
-      production = ProductionModifier(rates = Map(Commodity("Coal") -> CommodityAmountModifier(100))),
-      housing = NoHousing
+      id
     )
-  )
+  }
 
   override protected def createBehaviour(): BaseStructure = new Industry {}
 

@@ -19,7 +19,8 @@ class ProcessedUpdateMessagesSpec extends AsyncUnitSpec {
     val walker = WalkerData(
       Fixtures.Walker.properties,
       Fixtures.Walker.state,
-      Fixtures.Walker.modifiers
+      Fixtures.Walker.modifiers,
+      Fixtures.MockRefs.walker
     )
 
     withFixture(test.toNoArgAsyncTest(FixtureParam(transformer, walker)))

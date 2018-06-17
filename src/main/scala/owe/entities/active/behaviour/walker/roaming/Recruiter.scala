@@ -1,12 +1,11 @@
 package owe.entities.active.behaviour.walker.roaming
 
-import owe.EntityID
 import owe.entities.ActiveEntity.{ForwardMessage, StructureData, WalkerData}
 import owe.entities.active.Structure.{HousingState, NoHousing}
 import owe.entities.active.Walker.MovementMode
 import owe.entities.active.behaviour.walker.BaseWalker
 import owe.entities.active.behaviour.walker.BaseWalker._
-import owe.entities.active.{Distance, Walker}
+import owe.entities.active.{Distance, Structure, Walker}
 import owe.map.GameMap.LabourFound
 
 import scala.concurrent.Future
@@ -19,7 +18,7 @@ trait Recruiter extends BaseWalker {
   final override protected def behaviour: Behaviour = roaming(DoRepeatableOperation(recruit, continueRoaming))
 
   private def recruit(walker: WalkerData): Future[Walker.State] =
-    getNeighboursData(walker.properties.id, recruitmentRadius)
+    getNeighboursData(walker.id, recruitmentRadius)
       .map { neighbours =>
         neighbours.exists {
           case (_, structure: StructureData) =>
@@ -43,6 +42,6 @@ trait Recruiter extends BaseWalker {
   private def continueRoaming(walker: WalkerData): Boolean =
     walker.state.mode == MovementMode.Roaming
 
-  private def sendLabourNotification(parentID: EntityID): Unit =
+  private def sendLabourNotification(parentID: Structure.ActiveEntityActorRef): Unit =
     parentEntity ! ForwardMessage(LabourFound(parentID))
 }

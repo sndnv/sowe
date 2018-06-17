@@ -1,11 +1,13 @@
 package owe.entities.active
 
+import akka.actor.ActorRef
+import owe.EntityDesirability
+import owe.Tagging.@@
 import owe.entities.ActiveEntity.ActiveEntityData
 import owe.entities._
 import owe.entities.active.behaviour.walker.BaseWalker
 import owe.map.grid.Point
 import owe.production.{Commodity, CommodityAmount}
-import owe.{EntityDesirability, EntityID}
 
 import scala.collection.immutable.Queue
 
@@ -23,6 +25,7 @@ trait Walker
 }
 
 object Walker {
+  type ActiveEntityActorRef = ActorRef @@ ActorRefTag
   trait ActorRefTag extends ActiveEntity.ActorRefTag
 
   type Effect = ActiveEntity.Effect[Properties, State, StateModifiers]
@@ -65,8 +68,7 @@ object Walker {
   }
 
   case class Properties(
-    id: EntityID,
-    parent: Option[EntityID],
+    parent: Option[Structure.ActiveEntityActorRef],
     homePosition: Point,
     name: String,
     maxLife: Life,

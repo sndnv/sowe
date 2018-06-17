@@ -2,7 +2,7 @@ package owe.test.specs.unit.map
 
 import owe.map.grid.Point
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 
 package object pathfinding {
   private def pointInBounds(point: Point, x: Int, y: Int): Boolean =

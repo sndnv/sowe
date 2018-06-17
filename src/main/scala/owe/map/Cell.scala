@@ -3,6 +3,7 @@ package owe.map
 import akka.actor.{Actor, ActorRef, Props}
 import owe.Tagging.@@
 import owe._
+import owe.entities.Entity.EntityActorRef
 import owe.entities.active.{Resource, Structure, Walker}
 import owe.entities.passive.{Doodad, Road, Roadblock}
 
@@ -45,7 +46,7 @@ class Cell extends Actor {
         .find {
           case (_, mapEntity) =>
             mapEntity match {
-              case PassiveMapEntity(entity, _, _) =>
+              case PassiveMapEntity(entity, _, _, _) =>
                 entity match {
                   case _: Doodad    => true
                   case _: Road      => false
@@ -77,7 +78,7 @@ class Cell extends Actor {
       val result = data.entities.exists {
         case (_, entity) =>
           entity match {
-            case PassiveMapEntity(passiveEntity, _, _) =>
+            case PassiveMapEntity(passiveEntity, _, _, _) =>
               passiveEntity match {
                 case _: Road => true
                 case _       => false
@@ -100,13 +101,13 @@ object Cell {
   def props(): Props = Props(classOf[Cell])
 
   sealed trait Message
-  case class AddEntity(entityID: EntityID, entity: MapEntity) extends Message
-  case class RemoveEntity(entityID: EntityID) extends Message
+  case class AddEntity(entityID: EntityActorRef, entity: MapEntity) extends Message
+  case class RemoveEntity(entityID: EntityActorRef) extends Message
   case class UpdateDesirability(desirability: CellDesirability) extends Message
   case class UpdateFertility(fertility: Fertility) extends Message
   case class UpdateWater(water: Water) extends Message
   case class UpdateBuildAllowed(buildingAllowed: Boolean) extends Message
-  case class GetEntity(entityID: EntityID) extends Message
+  case class GetEntity(entityID: EntityActorRef) extends Message
   case class GetCellData() extends Message
   case class GetCellAvailability() extends Message
   case class HasRoad() extends Message
@@ -116,7 +117,7 @@ object Cell {
   }
 
   case class CellData(
-    entities: Map[EntityID, MapEntity],
+    entities: Map[EntityActorRef, MapEntity],
     state: State
   )
 

@@ -31,7 +31,7 @@ trait ProducingResource extends BaseResource with ProcessedUpdateMessages with R
           )
 
           UpdateExchange.Stats.availableCommodities(
-            resource.properties.id,
+            resource.id,
             Map(resource.properties.commodity -> updatedData.state.currentAmount)
           )
         }

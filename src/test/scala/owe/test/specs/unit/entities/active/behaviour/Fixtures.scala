@@ -1,5 +1,8 @@
 package owe.test.specs.unit.entities.active.behaviour
 
+import akka.actor.ActorSystem
+import akka.testkit.TestProbe
+import owe.Tagging._
 import owe._
 import owe.entities.ActiveEntity.MapData
 import owe.entities.active._
@@ -10,6 +13,16 @@ import owe.production.{Commodity, CommodityAmount, CommodityAmountModifier}
 import scala.collection.immutable.Queue
 
 object Fixtures {
+  object MockRefs {
+    import owe.entities.active
+
+    private implicit val mockRefsActorSystem: ActorSystem = ActorSystem("mockRefsActorSystem")
+
+    val resource: active.Resource.ActiveEntityActorRef = TestProbe().ref.tag[active.Resource.ActorRefTag]
+    val structure: active.Structure.ActiveEntityActorRef = TestProbe().ref.tag[active.Structure.ActorRefTag]
+    val walker: active.Walker.ActiveEntityActorRef = TestProbe().ref.tag[active.Walker.ActorRefTag]
+  }
+
   val defaultCellState: Cell.State = Cell.State(
     desirability = CellDesirability.Neutral,
     fertility = Fertility.Max,
@@ -26,7 +39,6 @@ object Fixtures {
     import owe.entities.active.Resource.{Properties, State, StateModifiers}
 
     val properties: Properties = Properties(
-      id = java.util.UUID.randomUUID(),
       name = "TestResource",
       homePosition = Point(0, 0),
       commodity = Commodity("TestCommodity"),
@@ -48,7 +60,6 @@ object Fixtures {
 
     object Producing {
       val properties: Properties = Properties(
-        id = java.util.UUID.randomUUID(),
         homePosition = Point(0, 0),
         name = "TestProducingStructure",
         walkers = NoWalkers,
@@ -89,7 +100,6 @@ object Fixtures {
 
     object Housing {
       val properties: Properties = Properties(
-        id = java.util.UUID.randomUUID(),
         homePosition = Point(0, 0),
         name = "TestHousingStructure",
         walkers = WalkersProperties(
@@ -181,7 +191,6 @@ object Fixtures {
     import owe.entities.active.Walker._
 
     val properties: Properties = Properties(
-      id = java.util.UUID.randomUUID(),
       parent = None,
       homePosition = Point(0, 0),
       name = "TestWalker",

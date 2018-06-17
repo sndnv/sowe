@@ -2,8 +2,8 @@ package owe.map.ops
 
 import akka.pattern.ask
 import akka.util.Timeout
-import owe.EntityID
 import owe.entities.Entity
+import owe.entities.Entity.EntityActorRef
 import owe.map.Cell._
 import owe.map.MapEntity
 import owe.map.grid.{Grid, Point}
@@ -38,8 +38,8 @@ trait AvailabilityOps {
 
   def findFirstAdjacentRoad(
     grid: Grid[CellActorRef],
-    entities: Map[EntityID, Point],
-    entityID: EntityID
+    entities: Map[EntityActorRef, Point],
+    entityID: EntityActorRef
   ): Future[Option[Point]] =
     (for {
       parentPoint <- entities.get(entityID)

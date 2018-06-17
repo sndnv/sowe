@@ -44,11 +44,11 @@ trait ProducingStructure
 
         CommodityCalculations
           .requiredCommodities(updatedData)
-          .foreach(UpdateExchange.Stats.requiredCommodities(structure.properties.id, _))
+          .foreach(UpdateExchange.Stats.requiredCommodities(structure.id, _))
 
         (structure.state.commodities, updatedData.state.commodities) match {
           case (CommoditiesState(current, _), CommoditiesState(updated, _)) =>
-            UpdateExchange.Stats.availableCommodities(structure.properties.id, current, updated)
+            UpdateExchange.Stats.availableCommodities(structure.id, current, updated)
 
           case _ => //do nothing
         }
