@@ -3,6 +3,7 @@ package owe.map
 import akka.actor.{Actor, ActorRef, Props}
 import owe.Tagging.@@
 import owe._
+import owe.entities.Entity
 import owe.entities.Entity.EntityActorRef
 import owe.entities.active.{Resource, Structure, Walker}
 import owe.entities.passive.{Doodad, Road, Roadblock}
@@ -45,20 +46,13 @@ class Cell extends Actor {
       val result: Availability = data.entities
         .find {
           case (_, mapEntity) =>
-            mapEntity match {
-              case PassiveMapEntity(entity, _, _, _) =>
-                entity match {
-                  case _: Doodad    => true
-                  case _: Road      => false
-                  case _: Roadblock => false
-                }
-
-              case ActiveMapEntity(entity, _, _, _) =>
-                entity match {
-                  case _: Structure.ActorRefTag => true
-                  case _: Resource.ActorRefTag  => true
-                  case _: Walker.ActorRefTag    => false
-                }
+            mapEntity.entityRef match {
+              case _: Doodad.ActorRefTag    => true
+              case _: Road.ActorRefTag      => false
+              case _: Roadblock.ActorRefTag => false
+              case _: Structure.ActorRefTag => true
+              case _: Resource.ActorRefTag  => true
+              case _: Walker.ActorRefTag    => false
             }
         } match {
         case Some(_) =>
@@ -77,14 +71,9 @@ class Cell extends Actor {
     case HasRoad() =>
       val result = data.entities.exists {
         case (_, entity) =>
-          entity match {
-            case PassiveMapEntity(passiveEntity, _, _, _) =>
-              passiveEntity match {
-                case _: Road => true
-                case _       => false
-              }
-
-            case _ => false
+          entity.entityRef match {
+            case _: Road.ActorRefTag => true
+            case _                   => false
           }
       }
 
@@ -147,4 +136,14 @@ object Cell {
     case object Occupied extends Availability
     case object OutOfBounds extends Availability
   }
+
+  def requiredAvailability(entityType: Entity.Type): Availability =
+    entityType match {
+      case Entity.Type.Doodad    => Availability.Buildable
+      case Entity.Type.Road      => Availability.Buildable
+      case Entity.Type.Roadblock => Availability.Passable //TODO - can be built only on roads w/o walkers
+      case Entity.Type.Resource  => Availability.Buildable
+      case Entity.Type.Structure => Availability.Buildable
+      case Entity.Type.Walker    => Availability.Passable
+    }
 }

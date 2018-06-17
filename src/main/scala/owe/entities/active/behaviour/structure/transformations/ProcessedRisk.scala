@@ -1,8 +1,8 @@
 package owe.entities.active.behaviour.structure.transformations
 
 import owe.entities.ActiveEntity.StructureData
-import owe.entities.active.{Life, RiskAmount}
 import owe.entities.active.Structure.{RiskModifier, RiskState, State}
+import owe.entities.active.{Life, RiskAmount}
 
 trait ProcessedRisk {
   def withProcessedRisk(structure: StructureData): State =

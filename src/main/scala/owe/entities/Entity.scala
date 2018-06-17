@@ -48,4 +48,10 @@ object Entity {
   case class ProcessLabourFound() extends Message
   case class ProcessOccupantsUpdate(occupants: Int) extends Message
   case class ProcessLabourUpdate(employees: Int) extends Message
+
+  def cells(entitySize: Entity.Size, parentCell: Point): Seq[Point] =
+    (parentCell.x to entitySize.width)
+      .flatMap(
+        x => (parentCell.y to entitySize.height).map(y => Point(x, y))
+      )
 }

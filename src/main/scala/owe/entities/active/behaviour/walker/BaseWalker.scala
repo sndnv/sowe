@@ -16,8 +16,8 @@ import owe.entities.active.behaviour.walker.transformations.{
 import owe.entities.active.behaviour.{BaseBehaviour, UpdateExchange}
 import owe.entities.passive.{Doodad, Road, Roadblock}
 import owe.map.GameMap._
+import owe.map.MapEntity
 import owe.map.grid.Point
-import owe.map.{ActiveMapEntity, MapEntity, PassiveMapEntity}
 import owe.production.{Commodity, CommodityAmount, CommodityState}
 
 import scala.collection.immutable.Queue
@@ -379,27 +379,19 @@ trait BaseWalker
     walker.modifiers.movementSpeed(walker.properties.movementSpeed).value
 
   private def isPassable(mapEntity: MapEntity, entityData: Option[ActiveEntityData], walker: WalkerData): Boolean =
-    mapEntity match {
-      case mapEntity: PassiveMapEntity =>
-        mapEntity.entity match {
-          case _: Doodad    => false
-          case _: Road      => true
-          case _: Roadblock => walker.state.mode == MovementMode.Roaming
-        }
-
-      case mapEntity: ActiveMapEntity =>
-        mapEntity.entity match {
-          case _: Structure.ActorRefTag => false
-
-          case _: Resource.ActorRefTag => false
-
-          case _: Walker.ActorRefTag =>
-            walker.properties.attack match {
-              case props: AttackProperties => !entityData.forall(props.target)
-              case _                       => false
-            }
+    mapEntity.entityRef match {
+      case _: Doodad                => false
+      case _: Road                  => true
+      case _: Roadblock             => walker.state.mode == MovementMode.Roaming
+      case _: Structure.ActorRefTag => false
+      case _: Resource.ActorRefTag  => false
+      case _: Walker.ActorRefTag =>
+        walker.properties.attack match {
+          case props: AttackProperties => !entityData.forall(props.target)
+          case _                       => false
         }
     }
+
 }
 
 object BaseWalker {

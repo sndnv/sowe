@@ -27,15 +27,6 @@ trait AvailabilityOps {
   def cellHasRoad(cell: CellActorRef): Future[Boolean] =
     (cell ? HasRoad()).mapTo[Boolean]
 
-  def requiredAvailability(entityType: Entity.Type): Availability = entityType match {
-    case Entity.Type.Doodad    => Availability.Buildable
-    case Entity.Type.Road      => Availability.Buildable
-    case Entity.Type.Roadblock => Availability.Passable //TODO - can be built only on roads w/o walkers
-    case Entity.Type.Resource  => Availability.Buildable
-    case Entity.Type.Structure => Availability.Buildable
-    case Entity.Type.Walker    => Availability.Passable
-  }
-
   def findFirstAdjacentRoad(
     grid: Grid[CellActorRef],
     entities: Map[EntityActorRef, Point],
@@ -47,7 +38,7 @@ trait AvailabilityOps {
     } yield {
       (parentCell ? GetEntity(entityID)).mapTo[Option[MapEntity]].flatMap {
         case Some(mapEntity) =>
-          val cells = entityCells(mapEntity.size, parentPoint)
+          val cells = Entity.cells(mapEntity.size, parentPoint)
           Future
             .sequence(
               cells
@@ -67,10 +58,4 @@ trait AvailabilityOps {
       case Some(future) => future
       case None         => Future.successful(None)
     }
-
-  def entityCells(entitySize: Entity.Size, parentCell: Point): Seq[Point] =
-    (parentCell.x to entitySize.width)
-      .flatMap(
-        x => (parentCell.y to entitySize.height).map(y => Point(x, y))
-      )
 }

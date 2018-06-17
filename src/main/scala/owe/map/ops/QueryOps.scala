@@ -2,6 +2,7 @@ package owe.map.ops
 
 import akka.pattern.ask
 import akka.util.Timeout
+import owe.entities.ActiveEntity
 import owe.entities.ActiveEntity.{ActiveEntityData, GetData}
 import owe.entities.Entity.EntityActorRef
 import owe.entities.active.{Distance, Walker}
@@ -58,8 +59,8 @@ trait QueryOps { _: PathfindingOps =>
                   Future
                     .sequence(
                       cellData.entities.toSeq.collect {
-                        case (id, entity: ActiveMapEntity) =>
-                          (entity.entity ? GetData()).mapTo[ActiveEntityData].map(data => (id, data))
+                        case (id, MapEntity(entity: ActiveEntity.ActorRefTag, _, _, _)) =>
+                          (entity ? GetData()).mapTo[ActiveEntityData].map(data => (id, data))
                       }
                     )
                 }
@@ -80,10 +81,10 @@ trait QueryOps { _: PathfindingOps =>
         (mapCell ? GetCellData()).mapTo[CellData].flatMap { cellData =>
           Future.sequence(
             cellData.entities.values.toSeq.map {
-              case entity: ActiveMapEntity =>
-                (entity.entity ? GetData()).mapTo[ActiveEntityData].map(data => (entity, Some(data)))
+              case mapEntity @ MapEntity(entity: ActiveEntity.ActorRefTag, _, _, _) =>
+                (entity ? GetData()).mapTo[ActiveEntityData].map(data => (mapEntity, Some(data)))
 
-              case entity: PassiveMapEntity =>
+              case entity =>
                 Future.successful(entity, None)
             }
           )
@@ -103,7 +104,7 @@ trait QueryOps { _: PathfindingOps =>
         (cell ? GetEntity(entityID))
           .mapTo[MapEntity]
           .collect {
-            case ActiveMapEntity(entity, _, _, _) =>
+            case MapEntity(entity, _, _, _) =>
               (entity ? GetData()).mapTo[ActiveEntityData]
           }
           .flatten

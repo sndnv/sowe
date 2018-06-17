@@ -1,7 +1,5 @@
 import java.util.UUID
 
-import owe.entities.Entity.EntityActorRef
-
 package object owe {
   final case class CellDesirability(value: Int) extends AnyVal {
     def +(desirability: CellDesirability): CellDesirability = CellDesirability(value + desirability.value)
