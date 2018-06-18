@@ -17,9 +17,9 @@ case class MapEntity(
 
   def entityType: Entity.Type =
     entityRef match {
-      case _: Doodad                => Entity.Type.Doodad
-      case _: Road                  => Entity.Type.Road
-      case _: Roadblock             => Entity.Type.Roadblock
+      case _: Doodad.ActorRefTag    => Entity.Type.Doodad
+      case _: Road.ActorRefTag      => Entity.Type.Road
+      case _: Roadblock.ActorRefTag => Entity.Type.Roadblock
       case _: Resource.ActorRefTag  => Entity.Type.Resource
       case _: Structure.ActorRefTag => Entity.Type.Structure
       case _: Walker.ActorRefTag    => Entity.Type.Walker

@@ -54,8 +54,5 @@ trait AvailabilityOps {
 
         case None => Future.successful(None)
       }
-    }) match {
-      case Some(future) => future
-      case None         => Future.successful(None)
-    }
+    }).getOrElse(Future.successful(None))
 }

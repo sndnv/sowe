@@ -18,7 +18,7 @@ abstract class ActiveEntity[
   S <: Entity.State: ClassTag,
   M <: Entity.StateModifiers: ClassTag,
   B <: BaseBehaviour[T]: ClassTag,
-  T <: ActiveEntity.ActorRefTag
+  T <: ActiveEntity.ActorRefTag: ClassTag
 ]() extends Entity[T] {
   override type Tag = T
 

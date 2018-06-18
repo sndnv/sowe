@@ -31,10 +31,9 @@ trait GameMap extends Actor with ActorLogging with Stash with Timers with Ops {
   protected val defaultTickStart: Point = Point(0, 0)
   protected val defaultTickEnd: Point = defaultTickStart
 
+  protected val exchange: ActorRef
   protected val tracker: ActorRef
   protected val search: Search
-
-  protected val exchange: ActorRef
 
   private val grid = Grid[CellActorRef](height, width, context.actorOf(Cell.props()).tag[ActorRefTag])
   private var entities: Map[EntityActorRef, Point] = Map.empty
@@ -52,15 +51,43 @@ trait GameMap extends Actor with ActorLogging with Stash with Timers with Ops {
 
     case CreateEntity(entity, cell) =>
       log.debug("Creating entity of type [{}] with size [{}].", entity.`type`, entity.`size`)
-      createEntity(grid, entities, entity, cell, context.system.actorOf).map(UpdateEntities).pipeTo(self)
+
+      val mapEntity = MapEntity(
+        context.system.actorOf(entity.props()).tag[entity.Tag],
+        cell,
+        entity.`size`,
+        entity.`desirability`
+      )
+
+      createEntity(grid, entities, mapEntity, cell)
+        .map {
+          case (updatedEntities, event) =>
+            tracker ! event
+            UpdateEntities(updatedEntities)
+        }
+        .pipeTo(self)
 
     case DestroyEntity(entityID) =>
       log.debug("Destroying entity with ID [{}.", entityID)
-      destroyEntity(grid, entities, entityID).map(UpdateEntities).pipeTo(self)
+
+      destroyEntity(grid, entities, entityID)
+        .map {
+          case (updatedEntities, event) =>
+            tracker ! event
+            UpdateEntities(updatedEntities)
+        }
+        .pipeTo(self)
 
     case MoveEntity(entityID, cell) =>
       log.debug("Moving entity with ID [{}] to [{}].", entityID, cell)
-      moveEntity(grid, entities, entityID, cell).map(UpdateEntities).pipeTo(self)
+
+      moveEntity(grid, entities, entityID, cell)
+        .map {
+          case (updatedEntities, event) =>
+            tracker ! event
+            UpdateEntities(updatedEntities)
+        }
+        .pipeTo(self)
 
     case DistributeCommodities(entityID, commodities) =>
       forwardEntityMessage(grid, entities, entityID, ProcessCommodities(commodities)).pipeTo(sender)
@@ -127,9 +154,12 @@ trait GameMap extends Actor with ActorLogging with Stash with Timers with Ops {
 
 object GameMap {
   sealed trait Message extends owe.Message
+
   private case class UpdateEntities(updatedEntities: Map[EntityActorRef, Point]) extends Message
+
   private[map] case class ProcessTick(start: Point, end: Point) extends Message
   private[map] case class TickProcessed(processedCells: Int) extends Message
+
   case class GetAdvancePath(entityID: Walker.ActiveEntityActorRef, destination: Point) extends Message
   case class GetRoamingPath(entityID: Walker.ActiveEntityActorRef, length: Distance) extends Message
   case class GetNeighbours(entityID: EntityActorRef, radius: Distance) extends Message
@@ -145,11 +175,4 @@ object GameMap {
   case class OccupantsUpdate(entityID: Structure.ActiveEntityActorRef, occupants: Int) extends Message
   case class LabourUpdate(entityID: Structure.ActiveEntityActorRef, employees: Int) extends Message
   case class ForwardExchangeMessage(message: Exchange.Message) extends Message
-
-  def distanceBetween(cell1: Point, cell2: Point): Double = {
-    val x = (cell2.x - cell1.x).abs
-    val y = (cell2.y - cell1.y).abs
-
-    Math.sqrt(x * x + y * y)
-  }
 }

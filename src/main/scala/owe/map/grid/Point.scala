@@ -5,6 +5,8 @@ import scala.language.implicitConversions
 case class Point(x: Int, y: Int) {
   def neighbours(withCornerNeighbours: Boolean): Seq[Point] =
     Point.neighboursOf(this, withCornerNeighbours)
+
+  def distanceBetween(otherPoint: Point): Double = Point.distanceBetween(this, otherPoint)
 }
 
 object Point {
@@ -28,5 +30,12 @@ object Point {
     } else {
       Seq.empty
     }
+  }
+
+  def distanceBetween(point1: Point, point2: Point): Double = {
+    val x = (point2.x - point1.x).abs
+    val y = (point2.y - point1.y).abs
+
+    Math.sqrt(x * x + y * y)
   }
 }

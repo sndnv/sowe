@@ -12,4 +12,8 @@ class AvailabilityOpsSpec extends UnitSpec {
   "Availability ops" should "calculate cell availability" in { _ =>
     fail("Not Implemented", new NotImplementedError())
   }
+
+  it should "find adjacent roads" in { _ =>
+    fail("Not Implemented", new NotImplementedError())
+  }
 }

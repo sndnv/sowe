@@ -11,7 +11,7 @@ import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
 
-trait BaseBehaviour[P <: ActorRefTag] extends Actor with ActorLogging {
+abstract class BaseBehaviour[P <: ActorRefTag: ClassTag] extends Actor with ActorLogging {
   import context.dispatcher
 
   type Behaviour = Receive

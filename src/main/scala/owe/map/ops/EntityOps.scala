@@ -1,10 +1,8 @@
 package owe.map.ops
 
-import akka.actor.{ActorRef, Props}
 import akka.pattern.ask
 import akka.util.Timeout
 import owe.EntityDesirability
-import owe.Tagging._
 import owe.entities.Entity
 import owe.entities.Entity.EntityActorRef
 import owe.entities.active.Structure
@@ -18,57 +16,47 @@ import scala.concurrent.{ExecutionContext, Future}
 
 trait EntityOps { _: AvailabilityOps =>
 
-  protected val tracker: ActorRef
-
   protected implicit val actionTimeout: Timeout
   protected implicit val ec: ExecutionContext
 
-  def createEntity[T <: Entity.ActorRefTag](
+  def createEntity(
     grid: Grid[CellActorRef],
     entities: Map[EntityActorRef, Point],
-    entity: Entity[T],
-    cell: Point,
-    actorFactory: Props => ActorRef
-  ): Future[Map[EntityActorRef, Point]] =
+    entity: MapEntity,
+    cell: Point
+  ): Future[(Map[EntityActorRef, Point], Event)] =
     grid.get(cell) match {
       case Some(mapCell) =>
-        val targetAvailability = requiredAvailability(entity.`type`)
+        val targetAvailability = requiredAvailability(entity.entityType)
         cellAvailability(mapCell).flatMap { availability =>
           if (availability == targetAvailability) {
             Future
               .sequence(Entity.cells(entity.`size`, cell).map(cellAvailability(grid, _)))
               .map { cellsAvailability =>
                 if (cellsAvailability.forall(_ == targetAvailability)) {
-                  val mapEntity = MapEntity(
-                    actorFactory(entity.props()).tag[entity.Tag],
-                    cell,
-                    entity.`size`,
-                    entity.`desirability`
-                  )
-
-                  tracker ! Event(Event.System.EntityCreated, Some(cell))
-                  associateMapEntity(grid, entities, mapEntity, cell)
+                  val event = Event(Event.System.EntityCreated, Some(cell))
+                  (associateMapEntity(grid, entities, entity, cell), event)
                 } else {
-                  tracker ! Event(Event.System.CellsUnavailable, Some(cell))
-                  entities
+                  val event = Event(Event.System.CellsUnavailable, Some(cell))
+                  (entities, event)
                 }
               }
           } else {
-            tracker ! Event(Event.System.CellsUnavailable, Some(cell))
-            Future.successful(entities)
+            val event = Event(Event.System.CellsUnavailable, Some(cell))
+            Future.successful((entities, event))
           }
         }
 
       case None =>
-        tracker ! Event(Event.System.CellOutOfBounds, Some(cell))
-        Future.successful(entities)
+        val event = Event(Event.System.CellOutOfBounds, Some(cell))
+        Future.successful((entities, event))
     }
 
   def destroyEntity(
     grid: Grid[CellActorRef],
     entities: Map[EntityActorRef, Point],
     entityID: EntityActorRef
-  ): Future[Map[EntityActorRef, Point]] =
+  ): Future[(Map[EntityActorRef, Point], Event)] =
     entities
       .get(entityID)
       .flatMap { point =>
@@ -79,22 +67,22 @@ trait EntityOps { _: AvailabilityOps =>
           case Availability.Occupied | Availability.Passable =>
             (mapCell ? GetEntity(entityID)).mapTo[Option[MapEntity]].map {
               case Some(mapEntity) =>
-                tracker ! Event(Event.System.EntityDestroyed, Some(cell))
-                dissociateMapEntity(grid, entities, mapEntity, cell)
+                val event = Event(Event.System.EntityDestroyed, Some(cell))
+                (dissociateMapEntity(grid, entities, mapEntity, cell), event)
 
               case None =>
-                tracker ! Event(Event.System.EntityMissing, Some(cell))
-                entities
+                val event = Event(Event.System.EntityMissing, Some(cell))
+                (entities, event)
             }
 
           case _ =>
-            tracker ! Event(Event.System.EntityMissing, Some(cell))
-            Future.successful(entities)
+            val event = Event(Event.System.EntityMissing, Some(cell))
+            Future.successful((entities, event))
         }
 
       case None =>
-        tracker ! Event(Event.System.CellOutOfBounds, cell = None)
-        Future.successful(entities)
+        val event = Event(Event.System.CellOutOfBounds, cell = None)
+        Future.successful((entities, event))
     }
 
   def moveEntity(
@@ -102,7 +90,7 @@ trait EntityOps { _: AvailabilityOps =>
     entities: Map[EntityActorRef, Point],
     entityID: EntityActorRef,
     newCell: Point
-  ): Future[Map[EntityActorRef, Point]] = {
+  ): Future[(Map[EntityActorRef, Point], Event)] = {
 
     val result = for {
       currentCell <- entities
@@ -154,16 +142,8 @@ trait EntityOps { _: AvailabilityOps =>
     }
 
     result match {
-      case Left(event) =>
-        tracker ! event
-        Future.successful(entities)
-
-      case Right(data) =>
-        data.map {
-          case (updatedEntities, event) =>
-            tracker ! event
-            updatedEntities
-        }
+      case Left(event) => Future.successful((entities, event))
+      case Right(data) => data
     }
   }
 
@@ -177,9 +157,11 @@ trait EntityOps { _: AvailabilityOps =>
     cells.flatMap(grid.get).foreach(_ ! AddEntity(mapEntity.entityRef, mapEntity))
 
     mapEntity.entityRef match {
-      case _: Doodad | _: Road      => addDesirability(grid, mapEntity.desirability, cells)
-      case _: Structure.ActorRefTag => addDesirability(grid, mapEntity.desirability, cells)
-      case _                        => () //do nothing
+      case _: Doodad | _: Road | _: Structure.ActorRefTag =>
+        addDesirability(grid, mapEntity.desirability, cells)
+
+      case _ =>
+        () //do nothing
     }
 
     entities + (mapEntity.entityRef -> cell)
@@ -195,9 +177,11 @@ trait EntityOps { _: AvailabilityOps =>
     cells.flatMap(grid.get).foreach(_ ! RemoveEntity(mapEntity.entityRef))
 
     mapEntity.entityRef match {
-      case _: Doodad | _: Road      => removeDesirability(grid, mapEntity.desirability, cells)
-      case _: Structure.ActorRefTag => removeDesirability(grid, mapEntity.desirability, cells)
-      case _                        => () //do nothing
+      case _: Doodad | _: Road | _: Structure.ActorRefTag =>
+        removeDesirability(grid, mapEntity.desirability, cells)
+
+      case _ =>
+        () //do nothing
     }
 
     entities - mapEntity.entityRef

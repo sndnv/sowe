@@ -23,6 +23,10 @@ class PointSpec extends UnitSpec {
     ((2, 2): Point) should be(Point(2, 2))
   }
 
+  it should "calculate distance between points" in { _ =>
+    fail("Not Implemented", new NotImplementedError())
+  }
+
   it should "have ordering" in { _ =>
     Seq[Point]((1, 2), (3, 14), (0, 0), (1, 1), (2, 0)).sorted should be(
       Seq[Point]((0, 0), (2, 0), (1, 1), (1, 2), (3, 14))
