@@ -1,35 +1,42 @@
 package owe.entities.active.behaviour
 
-import akka.actor.{Actor, ActorLogging, ActorRef}
-import akka.util.Timeout
-import owe.Tagging._
-import owe.entities.ActiveEntity.{ActiveEntityData, ActorRefTag}
-import owe.entities.Entity
-
 import scala.annotation.tailrec
-import scala.concurrent.Future
-import scala.concurrent.duration._
+import scala.concurrent.{ExecutionContext, Future}
 import scala.reflect.ClassTag
 
-abstract class BaseBehaviour[P <: ActorRefTag: ClassTag] extends Actor with ActorLogging {
-  import context.dispatcher
+import akka.actor.typed.scaladsl.Behaviors
+import akka.actor.typed.{ActorRef, Behavior}
+import akka.util.Timeout
+import owe.entities.ActiveEntity._
+import owe.entities.Entity
+import scala.concurrent.duration._
 
-  type Behaviour = Receive
+import akka.actor.Scheduler
 
-  protected implicit val timeout: Timeout = 1.second
+abstract class BaseBehaviour {
+
+  type Behaviour = Behavior[EntityBehaviourMessage]
+
+  def setup()(implicit ec: ExecutionContext): Behaviour = Behaviors.setup { ctx =>
+    ctx.executionContext
+
+    // TODO - + setup
+
+    base.orElse(behaviour)
+  }
 
   protected def base: Behaviour
 
-  protected def behaviour: Behaviour
+  protected def behaviour(implicit ec: ExecutionContext): Behaviour
 
-  private[behaviour] implicit val parentEntity: ActorRef @@ ActorRefTag = context.parent.tag[P]
-
-  final override def receive: Receive = base.orElse(behaviour)
+  protected implicit val scheduler: Scheduler = ??? // TODO
+  protected implicit val timeout: Timeout = 1.second // TODO
+  private[behaviour] implicit val parentEntity: ActorRef[EntityMessage] = ??? // TODO - context.parent.tag[P]
 
   private[behaviour] def withUpdates[D <: ActiveEntityData: ClassTag, S <: Entity.State](
     entity: D,
     updates: Seq[D => S]
-  ): Future[D] =
+  )(implicit ec: ExecutionContext): Future[D] =
     withAsyncUpdates(
       entity,
       updates.map { update => data: D =>
@@ -40,7 +47,7 @@ abstract class BaseBehaviour[P <: ActorRefTag: ClassTag] extends Actor with Acto
   private[behaviour] def withAsyncUpdates[D <: ActiveEntityData: ClassTag, S <: Entity.State](
     entity: D,
     updates: Seq[D => Future[S]]
-  ): Future[D] = {
+  )(implicit ec: ExecutionContext): Future[D] = {
     @tailrec
     def applyUpdates(result: Future[S], remaining: Seq[D => Future[S]]): Future[S] =
       remaining match {

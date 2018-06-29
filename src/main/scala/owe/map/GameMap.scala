@@ -12,9 +12,11 @@ import owe.map.grid.{Grid, Point}
 import owe.map.ops.Ops
 import owe.map.pathfinding.Search
 import owe.production.{Commodity, CommodityAmount, Exchange}
-
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
+
+import owe.entities.active.Structure.StructureActorRef
+import owe.entities.active.Walker.WalkerActorRef
 
 trait GameMap extends Actor with ActorLogging with Stash with Timers with Ops {
 
@@ -53,7 +55,7 @@ trait GameMap extends Actor with ActorLogging with Stash with Timers with Ops {
       log.debug("Creating entity of type [{}] with size [{}].", entity.`type`, entity.`size`)
 
       val mapEntity = MapEntity(
-        context.system.actorOf(entity.props()).tag[entity.Tag],
+        context.system.actorOf(entity.setup(self)), // TODO
         cell,
         entity.`size`,
         entity.`desirability`
@@ -160,19 +162,19 @@ object GameMap {
   private[map] case class ProcessTick(start: Point, end: Point) extends Message
   private[map] case class TickProcessed(processedCells: Int) extends Message
 
-  case class GetAdvancePath(entityID: Walker.ActiveEntityActorRef, destination: Point) extends Message
-  case class GetRoamingPath(entityID: Walker.ActiveEntityActorRef, length: Distance) extends Message
+  case class GetAdvancePath(entityID: WalkerActorRef, destination: Point) extends Message
+  case class GetRoamingPath(entityID: WalkerActorRef, length: Distance) extends Message
   case class GetNeighbours(entityID: EntityActorRef, radius: Distance) extends Message
   case class GetEntities(point: Point) extends Message
   case class GetEntity(entityID: EntityActorRef) extends Message
-  case class CreateEntity[T <: Entity.ActorRefTag](entity: Entity[T], cell: Point) extends Message
+  case class CreateEntity(entity: Entity, cell: Point) extends Message
   case class DestroyEntity(entityID: EntityActorRef) extends Message
   case class MoveEntity(entityID: EntityActorRef, cell: Point) extends Message
   case class DistributeCommodities(entityID: EntityActorRef, commodities: Seq[(Commodity, CommodityAmount)])
       extends Message
   case class AttackEntity(entityID: EntityActorRef, damage: AttackDamage) extends Message
-  case class LabourFound(entityID: Structure.ActiveEntityActorRef) extends Message
-  case class OccupantsUpdate(entityID: Structure.ActiveEntityActorRef, occupants: Int) extends Message
-  case class LabourUpdate(entityID: Structure.ActiveEntityActorRef, employees: Int) extends Message
+  case class LabourFound(entityID: StructureActorRef) extends Message
+  case class OccupantsUpdate(entityID: StructureActorRef, occupants: Int) extends Message
+  case class LabourUpdate(entityID: StructureActorRef, employees: Int) extends Message
   case class ForwardExchangeMessage(message: Exchange.Message) extends Message
 }

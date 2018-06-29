@@ -1,5 +1,6 @@
 package owe.entities.active.behaviour.structure.producing
 
+import akka.actor.typed.scaladsl.Behaviors
 import owe.entities.ActiveEntity.{ProcessEntityTick, StructureData}
 import owe.entities.active.Structure.CommoditiesState
 import owe.entities.active.behaviour.UpdateExchange
@@ -17,43 +18,47 @@ trait ProducingStructure
     with ProcessedTransition
     with GeneratedWalkers {
 
-  import context.dispatcher
-
   override protected def behaviour: Behaviour = producing()
 
-  final protected def producing(): Behaviour = {
-    case ProcessEntityTick(map, structure: StructureData, messages) =>
-      withUpdates(
-        structure,
-        Seq(
-          withProcessedUpdateMessages(_: StructureData, messages),
-          withProducedResources(_: StructureData),
-          withConsumedResources(_: StructureData),
-          withProcessedRisk(_: StructureData),
-          withProcessedTransition(map, _: StructureData),
-          withGeneratedWalkers(_: StructureData)
-        )
-      ).foreach { updatedData: StructureData =>
-        CommodityCalculations
-          .production(structure)
-          .foreach(UpdateExchange.State(_, CommodityState.Produced))
+  final protected def producing(): Behaviour = Behaviors.receive { (ctx, msg) =>
+    import ctx.executionContext
 
-        CommodityCalculations
-          .consumption(structure)
-          .foreach(UpdateExchange.State(_, CommodityState.Used))
+    msg match {
+      case ProcessEntityTick(map, structure: StructureData, messages) =>
+        withUpdates(
+          structure,
+          Seq(
+            withProcessedUpdateMessages(_: StructureData, messages),
+            withProducedResources(_: StructureData),
+            withConsumedResources(_: StructureData),
+            withProcessedRisk(_: StructureData),
+            withProcessedTransition(map, _: StructureData),
+            withGeneratedWalkers(_: StructureData)
+          )
+        ).foreach { updatedData: StructureData =>
+          CommodityCalculations
+            .production(structure)
+            .foreach(UpdateExchange.State(_, CommodityState.Produced))
 
-        CommodityCalculations
-          .requiredCommodities(updatedData)
-          .foreach(UpdateExchange.Stats.requiredCommodities(structure.id, _))
+          CommodityCalculations
+            .consumption(structure)
+            .foreach(UpdateExchange.State(_, CommodityState.Used))
 
-        (structure.state.commodities, updatedData.state.commodities) match {
-          case (CommoditiesState(current, _), CommoditiesState(updated, _)) =>
-            UpdateExchange.Stats.availableCommodities(structure.id, current, updated)
+          CommodityCalculations
+            .requiredCommodities(updatedData)
+            .foreach(UpdateExchange.Stats.requiredCommodities(structure.id, _))
 
-          case _ => //do nothing
+          (structure.state.commodities, updatedData.state.commodities) match {
+            case (CommoditiesState(current, _), CommoditiesState(updated, _)) =>
+              UpdateExchange.Stats.availableCommodities(structure.id, current, updated)
+
+            case _ => //do nothing
+          }
+
+          ctx.self ! Become(() => producing(), updatedData)
         }
+    }
 
-        self ! Become(() => producing(), updatedData)
-      }
+    Behaviors.same // TODO
   }
 }

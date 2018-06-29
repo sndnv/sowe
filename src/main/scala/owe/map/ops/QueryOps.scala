@@ -3,15 +3,16 @@ package owe.map.ops
 import akka.pattern.ask
 import akka.util.Timeout
 import owe.entities.ActiveEntity
-import owe.entities.ActiveEntity.{ActiveEntityData, GetData}
+import owe.entities.ActiveEntity.{ActiveEntityActorRef, ActiveEntityData, GetData}
 import owe.entities.Entity.EntityActorRef
 import owe.entities.active.{Distance, Walker}
 import owe.map.Cell.{CellActorRef, CellData, GetCellData, GetEntity}
 import owe.map._
 import owe.map.grid.{Grid, Point}
-
 import scala.collection.immutable.Queue
 import scala.concurrent.{ExecutionContext, Future}
+
+import owe.entities.active.Walker.WalkerActorRef
 
 trait QueryOps { _: PathfindingOps =>
 
@@ -21,7 +22,7 @@ trait QueryOps { _: PathfindingOps =>
   def getAdvancePath(
     grid: Grid[CellActorRef],
     entities: Map[EntityActorRef, Point],
-    entityID: Walker.ActiveEntityActorRef,
+    entityID: WalkerActorRef,
     destination: Point
   ): Future[Queue[Point]] =
     entities
@@ -32,7 +33,7 @@ trait QueryOps { _: PathfindingOps =>
   def getRoamingPath(
     grid: Grid[CellActorRef],
     entities: Map[EntityActorRef, Point],
-    entityID: Walker.ActiveEntityActorRef,
+    entityID: WalkerActorRef,
     length: Distance
   ): Future[Queue[Point]] =
     entities
@@ -59,7 +60,7 @@ trait QueryOps { _: PathfindingOps =>
                   Future
                     .sequence(
                       cellData.entities.toSeq.collect {
-                        case (id, MapEntity(entity: ActiveEntity.ActorRefTag, _, _, _)) =>
+                        case (id, MapEntity(entity: ActiveEntityActorRef, _, _, _)) =>
                           (entity ? GetData()).mapTo[ActiveEntityData].map(data => (id, data))
                       }
                     )
@@ -81,7 +82,7 @@ trait QueryOps { _: PathfindingOps =>
         (mapCell ? GetCellData()).mapTo[CellData].flatMap { cellData =>
           Future.sequence(
             cellData.entities.values.toSeq.map {
-              case mapEntity @ MapEntity(entity: ActiveEntity.ActorRefTag, _, _, _) =>
+              case mapEntity @ MapEntity(entity: ActiveEntityActorRef, _, _, _) =>
                 (entity ? GetData()).mapTo[ActiveEntityData].map(data => (mapEntity, Some(data)))
 
               case entity =>

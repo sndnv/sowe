@@ -7,18 +7,18 @@ import owe.entities.active.behaviour.walker.DistributionCalculations.Distributio
 import owe.entities.active.behaviour.walker.{BaseWalker, DistributionCalculations}
 import owe.entities.active.{Distance, Structure, Walker}
 import owe.production.CommodityAmount
+import scala.concurrent.{ExecutionContext, Future}
 
-import scala.concurrent.Future
+import owe.entities.active.Structure.StructureActorRef
 
 trait Distributor extends BaseWalker {
-  protected def target: Structure.ActiveEntityActorRef
+  protected def target: StructureActorRef
   protected def distributionRadius: Distance
 
-  import context.dispatcher
+  final override protected def behaviour(implicit ec: ExecutionContext): Behaviour =
+    roaming(DoRepeatableOperation(distribute, continueRoaming))
 
-  final override protected def behaviour: Behaviour = roaming(DoRepeatableOperation(distribute, continueRoaming))
-
-  private def distribute(walker: WalkerData): Future[Walker.State] =
+  private def distribute(walker: WalkerData)(implicit ec: ExecutionContext): Future[Walker.State] =
     getNeighboursData(walker.id, distributionRadius)
       .map { entities =>
         entities.foldLeft(walker.state) {

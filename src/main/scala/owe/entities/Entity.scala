@@ -1,26 +1,23 @@
 package owe.entities
 
-import akka.actor.{ActorRef, Props}
-import akka.util.Timeout
+import akka.actor.typed.{ActorRef, Behavior}
 import owe.EntityDesirability
-import owe.Tagging.@@
+import owe.entities.ActiveEntity.EntityMessage
 import owe.entities.active.AttackDamage
+import owe.map.GameMap
 import owe.map.grid.Point
 import owe.production.{Commodity, CommodityAmount}
 
-trait Entity[T <: Entity.ActorRefTag] {
-  type Tag = T
-
+trait Entity {
   def `size`: Entity.Size
   def `type`: Entity.Type
   def `desirability`: EntityDesirability
 
-  def props()(implicit timeout: Timeout): Props
+  def setup(parentMap: ActorRef[GameMap.Message]): Behavior[EntityMessage]
 }
 
 object Entity {
-  type EntityActorRef = ActorRef @@ ActorRefTag
-  trait ActorRefTag
+  trait EntityActorRef extends ActorRef[EntityMessage]
 
   trait Properties {
     def homePosition: Point

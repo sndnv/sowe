@@ -1,5 +1,8 @@
 package owe.entities.active.behaviour.structure.farming
 
+import scala.concurrent.ExecutionContext
+
+import akka.actor.typed.scaladsl.Behaviors
 import owe.entities.ActiveEntity.{ProcessEntityTick, StructureData}
 import owe.entities.active.Structure.CommoditiesState
 import owe.entities.active.behaviour.UpdateExchange
@@ -20,33 +23,37 @@ trait FarmingStructure
     with ProcessedRisk
     with GeneratedWalkers {
 
-  import context.dispatcher
+  override protected def behaviour(implicit ec: ExecutionContext): Behaviour = farming()
 
-  override protected def behaviour: Behaviour = farming()
+  final protected def farming(): Behaviour = Behaviors.receive { (ctx, msg) =>
+    import ctx.executionContext
 
-  final protected def farming(): Behaviour = {
-    case ProcessEntityTick(map, structure: StructureData, messages) =>
-      withUpdates(
-        structure,
-        Seq(
-          withProcessedUpdateMessages(_: StructureData, messages),
-          withProcessedFarming(map, _: StructureData),
-          withProcessedRisk(_: StructureData),
-          withGeneratedWalkers(_: StructureData)
-        )
-      ).foreach { updatedData: StructureData =>
-        CommodityCalculations
-          .production(structure)
-          .foreach(UpdateExchange.State(_, CommodityState.Produced))
+    msg match {
+      case ProcessEntityTick(map, structure: StructureData, messages) =>
+        withUpdates(
+          structure,
+          Seq(
+            withProcessedUpdateMessages(_: StructureData, messages),
+            withProcessedFarming(map, _: StructureData),
+            withProcessedRisk(_: StructureData),
+            withGeneratedWalkers(_: StructureData)
+          )
+        ).foreach { updatedData: StructureData =>
+          CommodityCalculations
+            .production(structure)
+            .foreach(UpdateExchange.State(_, CommodityState.Produced))
 
-        (structure.state.commodities, updatedData.state.commodities) match {
-          case (CommoditiesState(current, _), CommoditiesState(updated, _)) =>
-            UpdateExchange.Stats.availableCommodities(structure.id, current, updated)
+          (structure.state.commodities, updatedData.state.commodities) match {
+            case (CommoditiesState(current, _), CommoditiesState(updated, _)) =>
+              UpdateExchange.Stats.availableCommodities(structure.id, current, updated)
 
-          case _ => //do nothing
+            case _ => //do nothing
+          }
+
+          ctx.self ! Become(() => farming(), updatedData)
         }
+    }
 
-        self ! Become(() => farming(), updatedData)
-      }
+    Behaviors.same // TODO
   }
 }

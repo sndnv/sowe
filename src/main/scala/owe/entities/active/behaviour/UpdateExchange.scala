@@ -1,8 +1,7 @@
 package owe.entities.active.behaviour
 
-import akka.actor.ActorRef
-import owe.Tagging.@@
-import owe.entities.ActiveEntity.{ActorRefTag, ForwardMessage}
+import akka.actor.typed.ActorRef
+import owe.entities.ActiveEntity.{EntityMessage, ForwardMessage}
 import owe.entities.Entity.EntityActorRef
 import owe.map.GameMap.ForwardExchangeMessage
 import owe.production.Exchange.{CommodityAvailable, CommodityInTransit, CommodityRequired, UpdateCommodityState}
@@ -13,7 +12,7 @@ object UpdateExchange {
     def apply(
       commodities: Map[Commodity, CommodityAmount],
       state: CommodityState
-    )(implicit parentEntity: ActorRef @@ ActorRefTag): Unit =
+    )(implicit parentEntity: ActorRef[EntityMessage]): Unit =
       forwardMessages(
         commodities.flatMap {
           case (commodity, amount) if amount > CommodityAmount(0) =>
@@ -28,7 +27,7 @@ object UpdateExchange {
     def availableCommodities(
       entityID: EntityActorRef,
       commodities: Map[Commodity, CommodityAmount]
-    )(implicit parentEntity: ActorRef @@ ActorRefTag): Unit =
+    )(implicit parentEntity: ActorRef[EntityMessage]): Unit =
       forwardMessages(
         commodities.flatMap {
           case (commodity, updatedAmount) if updatedAmount > CommodityAmount(0) =>
@@ -42,7 +41,7 @@ object UpdateExchange {
       entityID: EntityActorRef,
       initialCommodities: Map[Commodity, CommodityAmount],
       updatedCommodities: Map[Commodity, CommodityAmount]
-    )(implicit parentEntity: ActorRef @@ ActorRefTag): Unit =
+    )(implicit parentEntity: ActorRef[EntityMessage]): Unit =
       forwardMessages(
         updatedCommodities.flatMap {
           case (commodity, updatedAmount) if updatedAmount > CommodityAmount(0) =>
@@ -61,7 +60,7 @@ object UpdateExchange {
     def requiredCommodities(
       entityID: EntityActorRef,
       consumedCommodities: Map[Commodity, CommodityAmount]
-    )(implicit parentEntity: ActorRef @@ ActorRefTag): Unit =
+    )(implicit parentEntity: ActorRef[EntityMessage]): Unit =
       forwardMessages(
         consumedCommodities.flatMap {
           case (commodity, amount) if amount > CommodityAmount(0) =>
@@ -75,7 +74,7 @@ object UpdateExchange {
       source: EntityActorRef,
       destination: EntityActorRef,
       inTransitCommodities: Map[Commodity, CommodityAmount]
-    )(implicit parentEntity: ActorRef @@ ActorRefTag): Unit =
+    )(implicit parentEntity: ActorRef[EntityMessage]): Unit =
       forwardMessages(
         inTransitCommodities.flatMap {
           case (commodity, amount) if amount > CommodityAmount(0) =>
@@ -88,7 +87,7 @@ object UpdateExchange {
 
   private def forwardMessages(
     messages: Seq[Exchange.Message]
-  )(implicit parentEntity: ActorRef @@ ActorRefTag): Unit =
+  )(implicit parentEntity: ActorRef[EntityMessage]): Unit =
     messages.foreach { message =>
       parentEntity ! ForwardMessage(ForwardExchangeMessage(message))
     }

@@ -5,8 +5,12 @@ import owe.Tagging.@@
 import owe._
 import owe.entities.Entity
 import owe.entities.Entity.EntityActorRef
-import owe.entities.active.{Resource, Structure, Walker}
-import owe.entities.passive.{Doodad, Road, Roadblock}
+import owe.entities.active.Resource.ResourceActorRef
+import owe.entities.active.Structure.StructureActorRef
+import owe.entities.active.Walker.WalkerActorRef
+import owe.entities.passive.Doodad.DoodadActorRef
+import owe.entities.passive.Road.RoadActorRef
+import owe.entities.passive.Roadblock.RoadblockActorRef
 
 class Cell extends Actor {
   import Cell._
@@ -47,12 +51,12 @@ class Cell extends Actor {
         .find {
           case (_, mapEntity) =>
             mapEntity.entityRef match {
-              case _: Doodad.ActorRefTag    => true
-              case _: Road.ActorRefTag      => false
-              case _: Roadblock.ActorRefTag => false
-              case _: Structure.ActorRefTag => true
-              case _: Resource.ActorRefTag  => true
-              case _: Walker.ActorRefTag    => false
+              case _: DoodadActorRef    => true
+              case _: RoadActorRef      => false
+              case _: RoadblockActorRef => false
+              case _: StructureActorRef => true
+              case _: ResourceActorRef  => true
+              case _: WalkerActorRef    => false
             }
         } match {
         case Some(_) =>
@@ -72,8 +76,8 @@ class Cell extends Actor {
       val result = data.entities.exists {
         case (_, entity) =>
           entity.entityRef match {
-            case _: Road.ActorRefTag => true
-            case _                   => false
+            case _: RoadActorRef => true
+            case _               => false
           }
       }
 

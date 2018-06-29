@@ -1,23 +1,24 @@
 package owe.entities.active.behaviour.resource
 
-import akka.actor.Actor.Receive
-import owe.entities.ActiveEntity.ResourceData
-import owe.entities.active.Resource
+import akka.actor.typed.Behavior
+import akka.actor.typed.scaladsl.Behaviors
+import owe.entities.ActiveEntity
+import owe.entities.ActiveEntity.{EntityBehaviourMessage, ResourceData, UpdateState}
 import owe.entities.active.behaviour.BaseBehaviour
 import owe.entities.active.behaviour.resource.BaseResource.Become
 
-trait BaseResource extends BaseBehaviour[Resource.ActorRefTag] {
+trait BaseResource extends BaseBehaviour {
 
-  override protected def base: Behaviour = {
-    case Become(behaviour, resource) =>
-      parentEntity ! resource.state
-      become(behaviour, resource)
+  override protected def base: Behaviour = Behaviors.receive { (_, msg) =>
+    msg match {
+      case Become(behaviour, resource) =>
+        parentEntity ! UpdateState(resource.state)
+        behaviour()
+    }
   }
-
-  private def become(behaviour: () => Behaviour, resource: ResourceData): Unit =
-    context.become(base.orElse(behaviour()))
 }
 
 object BaseResource {
-  private[behaviour] case class Become(behaviour: () => Receive, resource: ResourceData)
+  private[behaviour] case class Become(behaviour: () => Behavior[EntityBehaviourMessage], data: ResourceData)
+      extends ActiveEntity.Become
 }

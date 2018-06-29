@@ -3,8 +3,12 @@ package owe.map
 import owe.EntityDesirability
 import owe.entities.Entity
 import owe.entities.Entity.EntityActorRef
-import owe.entities.active.{Resource, Structure, Walker}
-import owe.entities.passive.{Doodad, Road, Roadblock}
+import owe.entities.active.Resource.ResourceActorRef
+import owe.entities.active.Structure.StructureActorRef
+import owe.entities.active.Walker.WalkerActorRef
+import owe.entities.passive.Doodad.DoodadActorRef
+import owe.entities.passive.Road.RoadActorRef
+import owe.entities.passive.Roadblock.RoadblockActorRef
 import owe.map.grid.Point
 
 case class MapEntity(
@@ -17,11 +21,11 @@ case class MapEntity(
 
   def entityType: Entity.Type =
     entityRef match {
-      case _: Doodad.ActorRefTag    => Entity.Type.Doodad
-      case _: Road.ActorRefTag      => Entity.Type.Road
-      case _: Roadblock.ActorRefTag => Entity.Type.Roadblock
-      case _: Resource.ActorRefTag  => Entity.Type.Resource
-      case _: Structure.ActorRefTag => Entity.Type.Structure
-      case _: Walker.ActorRefTag    => Entity.Type.Walker
+      case _: DoodadActorRef    => Entity.Type.Doodad
+      case _: RoadActorRef      => Entity.Type.Road
+      case _: RoadblockActorRef => Entity.Type.Roadblock
+      case _: ResourceActorRef  => Entity.Type.Resource
+      case _: StructureActorRef => Entity.Type.Structure
+      case _: WalkerActorRef    => Entity.Type.Walker
     }
 }

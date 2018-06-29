@@ -1,8 +1,6 @@
 package owe.entities.active
 
-import akka.actor.ActorRef
 import owe.EntityDesirability
-import owe.Tagging.@@
 import owe.entities._
 import owe.entities.active.behaviour.resource.BaseResource
 import owe.map.grid.Point
@@ -13,8 +11,7 @@ trait Resource
       Resource.Properties,
       Resource.State,
       Resource.StateModifiers,
-      BaseResource,
-      Resource.ActorRefTag
+      BaseResource
     ] {
   final override def `size`: Entity.Size = Entity.Size(height = 1, width = 1)
   final override def `type`: Entity.Type = Entity.Type.Resource
@@ -24,8 +21,7 @@ trait Resource
 object Resource {
   type Effect = ActiveEntity.Effect[Properties, State, StateModifiers]
 
-  type ActiveEntityActorRef = ActorRef @@ ActorRefTag
-  trait ActorRefTag extends ActiveEntity.ActorRefTag
+  trait ResourceActorRef extends ActiveEntity.ActiveEntityActorRef
 
   case class Properties(
     homePosition: Point,

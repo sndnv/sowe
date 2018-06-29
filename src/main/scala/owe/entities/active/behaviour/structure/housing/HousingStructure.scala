@@ -1,5 +1,6 @@
 package owe.entities.active.behaviour.structure.housing
 
+import akka.actor.typed.scaladsl.Behaviors
 import owe.entities.ActiveEntity.{ProcessEntityTick, StructureData}
 import owe.entities.active.behaviour.UpdateExchange
 import owe.entities.active.behaviour.structure.BaseStructure.Become
@@ -17,33 +18,37 @@ trait HousingStructure
     with ProcessedTransition
     with GeneratedWalkers {
 
-  import context.dispatcher
-
   override protected def behaviour: Behaviour = housing()
 
-  final protected def housing(): Behaviour = {
-    case ProcessEntityTick(map, structure: StructureData, messages) =>
-      withUpdates(
-        structure,
-        Seq(
-          withProcessedUpdateMessages(_: StructureData, messages),
-          withProcessedHousing(_: StructureData),
-          withProducedResources(_: StructureData),
-          withConsumedResources(_: StructureData),
-          withProcessedRisk(_: StructureData),
-          withProcessedTransition(map, _: StructureData),
-          withGeneratedWalkers(_: StructureData)
-        )
-      ).foreach { updatedData: StructureData =>
-        CommodityCalculations
-          .consumption(structure)
-          .foreach(UpdateExchange.State(_, CommodityState.Used))
+  final protected def housing(): Behaviour = Behaviors.receive { (ctx, msg) =>
+    import ctx.executionContext
 
-        CommodityCalculations
-          .requiredCommodities(updatedData)
-          .foreach(UpdateExchange.Stats.requiredCommodities(structure.id, _))
+    msg match {
+      case ProcessEntityTick(map, structure: StructureData, messages) =>
+        withUpdates(
+          structure,
+          Seq(
+            withProcessedUpdateMessages(_: StructureData, messages),
+            withProcessedHousing(_: StructureData),
+            withProducedResources(_: StructureData),
+            withConsumedResources(_: StructureData),
+            withProcessedRisk(_: StructureData),
+            withProcessedTransition(map, _: StructureData),
+            withGeneratedWalkers(_: StructureData)
+          )
+        ).foreach { updatedData: StructureData =>
+          CommodityCalculations
+            .consumption(structure)
+            .foreach(UpdateExchange.State(_, CommodityState.Used))
 
-        self ! Become(() => housing(), updatedData)
-      }
+          CommodityCalculations
+            .requiredCommodities(updatedData)
+            .foreach(UpdateExchange.Stats.requiredCommodities(structure.id, _))
+
+          ctx.self ! Become(() => housing(), updatedData)
+        }
+    }
+
+    Behaviors.same // TODO
   }
 }

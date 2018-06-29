@@ -11,8 +11,11 @@ import owe.events.Event
 import owe.map.Cell._
 import owe.map._
 import owe.map.grid.{Grid, Point}
-
 import scala.concurrent.{ExecutionContext, Future}
+
+import owe.entities.active.Structure.StructureActorRef
+import owe.entities.passive.Doodad.DoodadActorRef
+import owe.entities.passive.Road.RoadActorRef
 
 trait EntityOps { _: AvailabilityOps =>
 
@@ -157,7 +160,7 @@ trait EntityOps { _: AvailabilityOps =>
     cells.flatMap(grid.get).foreach(_ ! AddEntity(mapEntity.entityRef, mapEntity))
 
     mapEntity.entityRef match {
-      case _: Doodad | _: Road | _: Structure.ActorRefTag =>
+      case _: DoodadActorRef | _: RoadActorRef | _: StructureActorRef =>
         addDesirability(grid, mapEntity.desirability, cells)
 
       case _ =>
@@ -177,7 +180,7 @@ trait EntityOps { _: AvailabilityOps =>
     cells.flatMap(grid.get).foreach(_ ! RemoveEntity(mapEntity.entityRef))
 
     mapEntity.entityRef match {
-      case _: Doodad | _: Road | _: Structure.ActorRefTag =>
+      case _: DoodadActorRef | _: RoadActorRef | _: StructureActorRef =>
         removeDesirability(grid, mapEntity.desirability, cells)
 
       case _ =>

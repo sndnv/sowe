@@ -1,23 +1,21 @@
 package owe.entities.active
 
-import akka.actor.ActorRef
+import scala.collection.immutable.Queue
+
 import owe.EntityDesirability
-import owe.Tagging.@@
 import owe.entities.ActiveEntity.ActiveEntityData
 import owe.entities._
+import owe.entities.active.Structure.StructureActorRef
 import owe.entities.active.behaviour.walker.BaseWalker
 import owe.map.grid.Point
 import owe.production.{Commodity, CommodityAmount}
-
-import scala.collection.immutable.Queue
 
 trait Walker
     extends ActiveEntity[
       Walker.Properties,
       Walker.State,
       Walker.StateModifiers,
-      BaseWalker,
-      Walker.ActorRefTag
+      BaseWalker
     ] {
   final override def `size`: Entity.Size = Entity.Size(height = 1, width = 1)
   final override def `type`: Entity.Type = Entity.Type.Walker
@@ -25,8 +23,7 @@ trait Walker
 }
 
 object Walker {
-  type ActiveEntityActorRef = ActorRef @@ ActorRefTag
-  trait ActorRefTag extends ActiveEntity.ActorRefTag
+  trait WalkerActorRef extends ActiveEntity.ActiveEntityActorRef
 
   type Effect = ActiveEntity.Effect[Properties, State, StateModifiers]
 
@@ -68,7 +65,7 @@ object Walker {
   }
 
   case class Properties(
-    parent: Option[Structure.ActiveEntityActorRef],
+    parent: Option[StructureActorRef],
     homePosition: Point,
     name: String,
     maxLife: Life,

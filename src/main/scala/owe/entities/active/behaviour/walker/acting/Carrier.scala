@@ -8,8 +8,7 @@ import owe.entities.active.behaviour.UpdateExchange
 import owe.entities.active.behaviour.walker.BaseWalker._
 import owe.entities.active.behaviour.walker.DistributionCalculations.DistributionResult
 import owe.entities.active.behaviour.walker.{BaseWalker, DistributionCalculations}
-
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 trait Carrier extends BaseWalker {
   protected def target: EntityActorRef
@@ -17,9 +16,7 @@ trait Carrier extends BaseWalker {
   protected def actions: Seq[Action]
   protected def canReturnCommodities: Boolean
 
-  import context.dispatcher
-
-  private def load(walker: WalkerData, target: EntityActorRef): Future[Walker.State] =
+  private def load(walker: WalkerData, target: EntityActorRef)(implicit ec: ExecutionContext): Future[Walker.State] =
     getEntityData(target).map {
       case structure: StructureData =>
         DistributionCalculations.structureToWalkerTransfer(structure, walker) match {
@@ -47,7 +44,7 @@ trait Carrier extends BaseWalker {
       case _ => walker.state //cannot transfer commodities
     }
 
-  private def unload(walker: WalkerData, target: EntityActorRef): Future[Walker.State] =
+  private def unload(walker: WalkerData, target: EntityActorRef)(implicit ec: ExecutionContext): Future[Walker.State] =
     getEntityData(target).map {
       case structure: StructureData =>
         DistributionCalculations.walkerToStructureTransfer(structure, walker) match {
@@ -83,14 +80,14 @@ trait Carrier extends BaseWalker {
       case (_, false)                      => false //wait for enough free space
     }
 
-  final protected def retrieveResources: Seq[Action] = Seq[Action](
+  final protected def retrieveResources(implicit ec: ExecutionContext): Seq[Action] = Seq[Action](
     GoToEntity(target),
     DoOperation(load(_, target)),
     GoHome(),
     DoRepeatableOperation(unload(_, source), unloadComplete)
   )
 
-  final protected def deliver: Seq[Action] = Seq[Action](
+  final protected def deliver(implicit ec: ExecutionContext): Seq[Action] = Seq[Action](
     DoOperation(load(_, source)),
     GoToEntity(target),
     DoRepeatableOperation(unload(_, target), unloadComplete),
@@ -98,5 +95,5 @@ trait Carrier extends BaseWalker {
     DoRepeatableOperation(unload(_, source), unloadComplete)
   )
 
-  final override protected def behaviour: Behaviour = acting(actions)
+  final override protected def behaviour(implicit ec: ExecutionContext): Behaviour = acting(actions)
 }
