@@ -1,12 +1,10 @@
 package owe.entities
 
-import akka.actor.{Actor, ActorLogging, ActorRef, Props}
+import akka.actor.{Actor, ActorLogging, Props}
 import akka.util.Timeout
-import owe.Tagging.@@
+import owe.entities.Entity.EntityRef
 
-trait PassiveEntity[T <: PassiveEntity.ActorRefTag] extends Entity[T] {
-  override type Tag = T
-
+trait PassiveEntity extends Entity {
   override def `size`: Entity.Size = Entity.Size(height = 1, width = 1)
 
   override def props()(implicit timeout: Timeout): Props = Props(
@@ -22,7 +20,5 @@ trait PassiveEntity[T <: PassiveEntity.ActorRefTag] extends Entity[T] {
 }
 
 object PassiveEntity {
-  type PassiveEntityActorRef = ActorRef @@ ActorRefTag
-
-  trait ActorRefTag extends Entity.ActorRefTag
+  trait PassiveEntityRef extends EntityRef
 }

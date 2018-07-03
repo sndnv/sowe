@@ -1,9 +1,8 @@
 package owe.entities.active.behaviour
 
-import akka.actor.{Actor, ActorLogging, ActorRef}
+import akka.actor.{Actor, ActorLogging}
 import akka.util.Timeout
-import owe.Tagging._
-import owe.entities.ActiveEntity.{ActiveEntityData, ActorRefTag}
+import owe.entities.ActiveEntity.{ActiveEntityData, ActiveEntityRef}
 import owe.entities.Entity
 
 import scala.annotation.tailrec
@@ -11,7 +10,7 @@ import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
 
-abstract class BaseBehaviour[P <: ActorRefTag: ClassTag] extends Actor with ActorLogging {
+trait BaseBehaviour extends Actor with ActorLogging {
   import context.dispatcher
 
   type Behaviour = Receive
@@ -22,7 +21,7 @@ abstract class BaseBehaviour[P <: ActorRefTag: ClassTag] extends Actor with Acto
 
   protected def behaviour: Behaviour
 
-  private[behaviour] implicit val parentEntity: ActorRef @@ ActorRefTag = context.parent.tag[P]
+  private[behaviour] implicit val parentEntity: ActiveEntityRef
 
   final override def receive: Receive = base.orElse(behaviour)
 

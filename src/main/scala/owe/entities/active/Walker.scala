@@ -2,9 +2,10 @@ package owe.entities.active
 
 import akka.actor.ActorRef
 import owe.EntityDesirability
-import owe.Tagging.@@
-import owe.entities.ActiveEntity.ActiveEntityData
+import owe.entities.ActiveEntity.{ActiveEntityData, ActiveEntityRef}
 import owe.entities._
+import owe.entities.active.Structure.StructureRef
+import owe.entities.active.Walker.WalkerRef
 import owe.entities.active.behaviour.walker.BaseWalker
 import owe.map.grid.Point
 import owe.production.{Commodity, CommodityAmount}
@@ -16,17 +17,16 @@ trait Walker
       Walker.Properties,
       Walker.State,
       Walker.StateModifiers,
-      BaseWalker,
-      Walker.ActorRefTag
+      BaseWalker
     ] {
   final override def `size`: Entity.Size = Entity.Size(height = 1, width = 1)
   final override def `type`: Entity.Type = Entity.Type.Walker
   final override def `desirability`: EntityDesirability = EntityDesirability.Neutral
+  final override private[entities] def actorToActiveEntityRef(ref: ActorRef) = WalkerRef(ref)
 }
 
 object Walker {
-  type ActiveEntityActorRef = ActorRef @@ ActorRefTag
-  trait ActorRefTag extends ActiveEntity.ActorRefTag
+  case class WalkerRef(ref: ActorRef) extends ActiveEntityRef
 
   type Effect = ActiveEntity.Effect[Properties, State, StateModifiers]
 
@@ -68,7 +68,7 @@ object Walker {
   }
 
   case class Properties(
-    parent: Option[Structure.ActiveEntityActorRef],
+    parent: Option[StructureRef],
     homePosition: Point,
     name: String,
     maxLife: Life,

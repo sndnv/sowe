@@ -2,9 +2,11 @@ package owe.test.specs.unit.entities.active.behaviour
 
 import akka.actor.ActorSystem
 import akka.testkit.TestProbe
-import owe.Tagging._
 import owe._
 import owe.entities.ActiveEntity.MapData
+import owe.entities.active.Resource.ResourceRef
+import owe.entities.active.Structure.StructureRef
+import owe.entities.active.Walker.WalkerRef
 import owe.entities.active._
 import owe.map.Cell
 import owe.map.grid.Point
@@ -14,13 +16,12 @@ import scala.collection.immutable.Queue
 
 object Fixtures {
   object MockRefs {
-    import owe.entities.active
 
     private implicit val mockRefsActorSystem: ActorSystem = ActorSystem("mockRefsActorSystem")
 
-    val resource: active.Resource.ActiveEntityActorRef = TestProbe().ref.tag[active.Resource.ActorRefTag]
-    val structure: active.Structure.ActiveEntityActorRef = TestProbe().ref.tag[active.Structure.ActorRefTag]
-    val walker: active.Walker.ActiveEntityActorRef = TestProbe().ref.tag[active.Walker.ActorRefTag]
+    val resource: ResourceRef = ResourceRef(TestProbe().ref)
+    val structure: StructureRef = StructureRef(TestProbe().ref)
+    val walker: WalkerRef = WalkerRef(TestProbe().ref)
   }
 
   val defaultCellState: Cell.State = Cell.State(

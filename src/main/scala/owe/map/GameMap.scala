@@ -4,8 +4,11 @@ import akka.actor.{Actor, ActorLogging, ActorRef, Stash, Timers}
 import akka.pattern.pipe
 import akka.util.Timeout
 import owe.Tagging._
+import owe.entities.ActiveEntity.ActiveEntityRef
 import owe.entities.Entity
 import owe.entities.Entity._
+import owe.entities.active.Structure.StructureRef
+import owe.entities.active.Walker.WalkerRef
 import owe.entities.active._
 import owe.map.Cell.{ActorRefTag, CellActorRef}
 import owe.map.grid.{Grid, Point}
@@ -36,7 +39,7 @@ trait GameMap extends Actor with ActorLogging with Stash with Timers with Ops {
   protected val search: Search
 
   private val grid = Grid[CellActorRef](height, width, context.actorOf(Cell.props()).tag[ActorRefTag])
-  private var entities: Map[EntityActorRef, Point] = Map.empty
+  private var entities: Map[EntityRef, Point] = Map.empty
 
   private def scheduleNextTick(): Unit =
     timers.startSingleTimer(
@@ -53,10 +56,11 @@ trait GameMap extends Actor with ActorLogging with Stash with Timers with Ops {
       log.debug("Creating entity of type [{}] with size [{}].", entity.`type`, entity.`size`)
 
       val mapEntity = MapEntity(
-        context.system.actorOf(entity.props()).tag[entity.Tag],
+        context.system.actorOf(entity.props()),
         cell,
         entity.`size`,
-        entity.`desirability`
+        entity.`desirability`,
+        entity.`type`
       )
 
       createEntity(grid, entities, mapEntity, cell)
@@ -155,24 +159,24 @@ trait GameMap extends Actor with ActorLogging with Stash with Timers with Ops {
 object GameMap {
   sealed trait Message extends owe.Message
 
-  private case class UpdateEntities(updatedEntities: Map[EntityActorRef, Point]) extends Message
+  private case class UpdateEntities(updatedEntities: Map[EntityRef, Point]) extends Message
 
   private[map] case class ProcessTick(start: Point, end: Point) extends Message
   private[map] case class TickProcessed(processedCells: Int) extends Message
 
-  case class GetAdvancePath(entityID: Walker.ActiveEntityActorRef, destination: Point) extends Message
-  case class GetRoamingPath(entityID: Walker.ActiveEntityActorRef, length: Distance) extends Message
-  case class GetNeighbours(entityID: EntityActorRef, radius: Distance) extends Message
+  case class GetAdvancePath(entityID: WalkerRef, destination: Point) extends Message
+  case class GetRoamingPath(entityID: WalkerRef, length: Distance) extends Message
+  case class GetNeighbours(entityID: EntityRef, radius: Distance) extends Message
   case class GetEntities(point: Point) extends Message
-  case class GetEntity(entityID: EntityActorRef) extends Message
-  case class CreateEntity[T <: Entity.ActorRefTag](entity: Entity[T], cell: Point) extends Message
-  case class DestroyEntity(entityID: EntityActorRef) extends Message
-  case class MoveEntity(entityID: EntityActorRef, cell: Point) extends Message
-  case class DistributeCommodities(entityID: EntityActorRef, commodities: Seq[(Commodity, CommodityAmount)])
+  case class GetEntity(entityID: EntityRef) extends Message
+  case class CreateEntity(entity: Entity, cell: Point) extends Message
+  case class DestroyEntity(entityID: EntityRef) extends Message
+  case class MoveEntity(entityID: EntityRef, cell: Point) extends Message
+  case class DistributeCommodities(entityID: ActiveEntityRef, commodities: Seq[(Commodity, CommodityAmount)])
       extends Message
-  case class AttackEntity(entityID: EntityActorRef, damage: AttackDamage) extends Message
-  case class LabourFound(entityID: Structure.ActiveEntityActorRef) extends Message
-  case class OccupantsUpdate(entityID: Structure.ActiveEntityActorRef, occupants: Int) extends Message
-  case class LabourUpdate(entityID: Structure.ActiveEntityActorRef, employees: Int) extends Message
+  case class AttackEntity(entityID: EntityRef, damage: AttackDamage) extends Message
+  case class LabourFound(entityID: StructureRef) extends Message
+  case class OccupantsUpdate(entityID: StructureRef, occupants: Int) extends Message
+  case class LabourUpdate(entityID: StructureRef, employees: Int) extends Message
   case class ForwardExchangeMessage(message: Exchange.Message) extends Message
 }

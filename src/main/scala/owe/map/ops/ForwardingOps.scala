@@ -4,9 +4,10 @@ import akka.Done
 import akka.actor.ActorLogging
 import akka.pattern.ask
 import akka.util.Timeout
-import owe.entities.ActiveEntity.AddEntityMessage
-import owe.entities.Entity.EntityActorRef
-import owe.entities.{ActiveEntity, Entity, PassiveEntity}
+import owe.entities.ActiveEntity.{ActiveEntityRef, AddEntityMessage}
+import owe.entities.Entity
+import owe.entities.Entity.EntityRef
+import owe.entities.PassiveEntity.PassiveEntityRef
 import owe.map.Cell.{CellActorRef, GetEntity}
 import owe.map.MapEntity
 import owe.map.grid.{Grid, Point}
@@ -20,8 +21,8 @@ trait ForwardingOps { _: ActorLogging =>
 
   def forwardEntityMessage(
     grid: Grid[CellActorRef],
-    entities: Map[EntityActorRef, Point],
-    entityID: EntityActorRef,
+    entities: Map[EntityRef, Point],
+    entityID: EntityRef,
     message: Entity.Message
   ): Future[Done] = {
     log.debug("Forwarding message [{}] to entity with ID [{}]", message, entityID)
@@ -33,11 +34,11 @@ trait ForwardingOps { _: ActorLogging =>
       (mapCell ? GetEntity(entityID)).mapTo[Option[MapEntity]].flatMap {
         case Some(mapEntity) =>
           mapEntity.entityRef match {
-            case activeEntity: ActiveEntity.ActorRefTag =>
+            case activeEntity: ActiveEntityRef =>
               activeEntity ! AddEntityMessage(message)
               Future.successful(Done)
 
-            case _: PassiveEntity.ActorRefTag =>
+            case _: PassiveEntityRef =>
               val errorMessage = s"Can't forward message [$message] to passive entity with ID [$entityID]."
               log.error(errorMessage)
               Future.failed(new IllegalStateException(errorMessage))

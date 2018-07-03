@@ -1,16 +1,16 @@
 package owe.entities
 
 import akka.actor.{ActorRef, Props}
+import akka.pattern.ask
 import akka.util.Timeout
 import owe.EntityDesirability
-import owe.Tagging.@@
 import owe.entities.active.AttackDamage
 import owe.map.grid.Point
 import owe.production.{Commodity, CommodityAmount}
 
-trait Entity[T <: Entity.ActorRefTag] {
-  type Tag = T
+import scala.concurrent.Future
 
+trait Entity {
   def `size`: Entity.Size
   def `type`: Entity.Type
   def `desirability`: EntityDesirability
@@ -19,8 +19,11 @@ trait Entity[T <: Entity.ActorRefTag] {
 }
 
 object Entity {
-  type EntityActorRef = ActorRef @@ ActorRefTag
-  trait ActorRefTag
+  trait EntityRef {
+    def ref: ActorRef
+    def !(message: Any): Unit = ref ! message
+    def ?(message: Any)(implicit timeout: Timeout): Future[Any] = ref ? message
+  }
 
   trait Properties {
     def homePosition: Point

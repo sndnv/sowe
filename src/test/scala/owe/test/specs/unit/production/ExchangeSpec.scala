@@ -3,8 +3,8 @@ package owe.test.specs.unit.production
 import akka.actor.ActorRef
 import akka.testkit.TestProbe
 import org.scalatest.Outcome
-import owe.Tagging._
-import owe.entities.Entity
+import owe.entities.active.Structure.StructureRef
+import owe.entities.active.Walker.WalkerRef
 import owe.production.Exchange._
 import owe.production.{Commodity, CommodityAmount, CommodityState, Exchange}
 import owe.test.specs.unit.AkkaUnitSpec
@@ -16,11 +16,11 @@ class ExchangeSpec extends AkkaUnitSpec("ExchangeSpec") {
     withFixture(test.toNoArgTest(FixtureParam()))
 
   private val exchange: ActorRef = system.actorOf(Exchange.props())
-  private val testProducer1 = (TestProbe().ref.tag[Entity.ActorRefTag], Commodity("TestCommodity#1"))
-  private val testProducer2 = (TestProbe().ref.tag[Entity.ActorRefTag], Commodity("TestCommodity#1"))
-  private val testConsumer1 = (TestProbe().ref.tag[Entity.ActorRefTag], Commodity("TestCommodity#1"))
-  private val testConsumer2 = (TestProbe().ref.tag[Entity.ActorRefTag], Commodity("TestCommodity#3"))
-  private val testCarrier = (TestProbe().ref.tag[Entity.ActorRefTag], Commodity("TestCommodity#3"))
+  private val testProducer1 = (StructureRef(TestProbe().ref), Commodity("TestCommodity#1"))
+  private val testProducer2 = (StructureRef(TestProbe().ref), Commodity("TestCommodity#1"))
+  private val testConsumer1 = (StructureRef(TestProbe().ref), Commodity("TestCommodity#1"))
+  private val testConsumer2 = (StructureRef(TestProbe().ref), Commodity("TestCommodity#3"))
+  private val testCarrier = (WalkerRef(TestProbe().ref), Commodity("TestCommodity#3"))
 
   "An Exchange" should "add and remove producers and consumers" in { _ =>
     exchange ! AddProducer(testProducer1._1, testProducer1._2)

@@ -1,17 +1,18 @@
 package owe.entities.active.behaviour.walker.roaming
 
 import owe.entities.ActiveEntity.{StructureData, WalkerData}
+import owe.entities.active.Structure.StructureRef
 import owe.entities.active.Walker.CommoditiesState
 import owe.entities.active.behaviour.walker.BaseWalker._
 import owe.entities.active.behaviour.walker.DistributionCalculations.DistributionResult
 import owe.entities.active.behaviour.walker.{BaseWalker, DistributionCalculations}
-import owe.entities.active.{Distance, Structure, Walker}
+import owe.entities.active.{Distance, Walker}
 import owe.production.CommodityAmount
 
 import scala.concurrent.Future
 
 trait Distributor extends BaseWalker {
-  protected def target: Structure.ActiveEntityActorRef
+  protected def target: StructureRef
   protected def distributionRadius: Distance
 
   import context.dispatcher

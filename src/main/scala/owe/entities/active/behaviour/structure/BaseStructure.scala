@@ -1,15 +1,19 @@
 package owe.entities.active.behaviour.structure
 
 import akka.actor.Actor.Receive
+import owe.entities.ActiveEntity
 import owe.entities.ActiveEntity.StructureData
 import owe.entities.Entity.{State => _}
 import owe.entities.active.Structure._
-import owe.entities.active._
 import owe.entities.active.behaviour.structure.BaseStructure.Become
 import owe.entities.active.behaviour.{BaseBehaviour, UpdateExchange}
 import owe.production.{CommodityAmount, CommodityState}
 
-trait BaseStructure extends BaseBehaviour[Structure.ActorRefTag] {
+trait BaseStructure extends BaseBehaviour {
+
+  final override private[behaviour] implicit val parentEntity: ActiveEntity.ActiveEntityRef =
+    StructureRef(context.parent)
+
   override protected def base: Behaviour = {
     case Become(behaviour, structure) =>
       parentEntity ! structure.state

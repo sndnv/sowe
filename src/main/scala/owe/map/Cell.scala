@@ -4,9 +4,13 @@ import akka.actor.{Actor, ActorRef, Props}
 import owe.Tagging.@@
 import owe._
 import owe.entities.Entity
-import owe.entities.Entity.EntityActorRef
-import owe.entities.active.{Resource, Structure, Walker}
-import owe.entities.passive.{Doodad, Road, Roadblock}
+import owe.entities.Entity.EntityRef
+import owe.entities.active.Resource.ResourceRef
+import owe.entities.active.Structure.StructureRef
+import owe.entities.active.Walker.WalkerRef
+import owe.entities.passive.Doodad.DoodadRef
+import owe.entities.passive.Road.RoadRef
+import owe.entities.passive.Roadblock.RoadblockRef
 
 class Cell extends Actor {
   import Cell._
@@ -47,12 +51,12 @@ class Cell extends Actor {
         .find {
           case (_, mapEntity) =>
             mapEntity.entityRef match {
-              case _: Doodad.ActorRefTag    => true
-              case _: Road.ActorRefTag      => false
-              case _: Roadblock.ActorRefTag => false
-              case _: Structure.ActorRefTag => true
-              case _: Resource.ActorRefTag  => true
-              case _: Walker.ActorRefTag    => false
+              case _: DoodadRef    => true
+              case _: RoadRef      => false
+              case _: RoadblockRef => false
+              case _: StructureRef => true
+              case _: ResourceRef  => true
+              case _: WalkerRef    => false
             }
         } match {
         case Some(_) =>
@@ -72,8 +76,8 @@ class Cell extends Actor {
       val result = data.entities.exists {
         case (_, entity) =>
           entity.entityRef match {
-            case _: Road.ActorRefTag => true
-            case _                   => false
+            case _: RoadRef => true
+            case _          => false
           }
       }
 
@@ -90,13 +94,13 @@ object Cell {
   def props(): Props = Props(classOf[Cell])
 
   sealed trait Message
-  case class AddEntity(entityID: EntityActorRef, entity: MapEntity) extends Message
-  case class RemoveEntity(entityID: EntityActorRef) extends Message
+  case class AddEntity(entityID: EntityRef, entity: MapEntity) extends Message
+  case class RemoveEntity(entityID: EntityRef) extends Message
   case class UpdateDesirability(desirability: CellDesirability) extends Message
   case class UpdateFertility(fertility: Fertility) extends Message
   case class UpdateWater(water: Water) extends Message
   case class UpdateBuildAllowed(buildingAllowed: Boolean) extends Message
-  case class GetEntity(entityID: EntityActorRef) extends Message
+  case class GetEntity(entityID: EntityRef) extends Message
   case class GetCellData() extends Message
   case class GetCellAvailability() extends Message
   case class HasRoad() extends Message
@@ -106,7 +110,7 @@ object Cell {
   }
 
   case class CellData(
-    entities: Map[EntityActorRef, MapEntity],
+    entities: Map[EntityRef, MapEntity],
     state: State
   )
 

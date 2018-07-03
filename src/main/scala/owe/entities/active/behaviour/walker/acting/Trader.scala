@@ -1,16 +1,17 @@
 package owe.entities.active.behaviour.walker.acting
 
 import owe.entities.ActiveEntity.{StructureData, WalkerData}
+import owe.entities.active.Structure.StructureRef
+import owe.entities.active.Walker
 import owe.entities.active.Walker.CommoditiesState
 import owe.entities.active.behaviour.walker.BaseWalker._
 import owe.entities.active.behaviour.walker.DistributionCalculations.DistributionResult
 import owe.entities.active.behaviour.walker.{BaseWalker, DistributionCalculations}
-import owe.entities.active.{Structure, Walker}
 
 import scala.concurrent.Future
 
 trait Trader extends BaseWalker {
-  protected def target: Structure.ActiveEntityActorRef
+  protected def target: StructureRef
 
   import context.dispatcher
 

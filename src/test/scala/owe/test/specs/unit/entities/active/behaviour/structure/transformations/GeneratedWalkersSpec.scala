@@ -1,13 +1,11 @@
 package owe.test.specs.unit.entities.active.behaviour.structure.transformations
 
-import akka.actor.ActorRef
 import akka.testkit.TestActors
 import org.scalatest.Outcome
-import owe.Tagging._
 import owe.effects.Effect
 import owe.entities.ActiveEntity
-import owe.entities.ActiveEntity.{ActorRefTag, ForwardMessage, StructureData}
-import owe.entities.active.Structure.{WalkerState, WalkersProperties, WalkersState}
+import owe.entities.ActiveEntity.{ActiveEntityRef, ForwardMessage, StructureData}
+import owe.entities.active.Structure.{StructureRef, WalkerState, WalkersProperties, WalkersState}
 import owe.entities.active.Walker
 import owe.entities.active.behaviour.structure.transformations.GeneratedWalkers
 import owe.entities.active.behaviour.walker.BaseWalker
@@ -23,8 +21,8 @@ class GeneratedWalkersSpec extends AkkaUnitSpec("GeneratedWalkersSpec") {
 
   def withFixture(test: OneArgTest): Outcome = {
     val transformer = new GeneratedWalkers {
-      override val parentEntity: ActorRef @@ ActorRefTag =
-        system.actorOf(TestActors.forwardActorProps(testActor)).tag[ActorRefTag]
+      override val parentEntity: StructureRef =
+        StructureRef(system.actorOf(TestActors.forwardActorProps(testActor)))
     }
 
     val structure = StructureData(
@@ -38,8 +36,7 @@ class GeneratedWalkersSpec extends AkkaUnitSpec("GeneratedWalkersSpec") {
   }
 
   private case class DummyWalker() extends Walker {
-    override protected def createActiveEntityData(
-      ): ActorRef @@ Walker.ActorRefTag => ActiveEntity.ActiveEntityData = ???
+    override protected def createActiveEntityData(): ActiveEntityRef => ActiveEntity.ActiveEntityData = ???
     override protected def createEffects(): Seq[(ActiveEntity.ActiveEntityData => Boolean, Effect)] = ???
     override protected def createBehaviour(): BaseWalker = ???
   }

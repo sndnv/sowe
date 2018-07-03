@@ -1,11 +1,11 @@
 package owe.entities.active.behaviour.walker.roaming
 
 import owe.entities.ActiveEntity.{ForwardMessage, StructureData, WalkerData}
-import owe.entities.active.Structure.{HousingState, NoHousing}
+import owe.entities.active.Structure.{HousingState, NoHousing, StructureRef}
 import owe.entities.active.Walker.MovementMode
 import owe.entities.active.behaviour.walker.BaseWalker
 import owe.entities.active.behaviour.walker.BaseWalker._
-import owe.entities.active.{Distance, Structure, Walker}
+import owe.entities.active.{Distance, Walker}
 import owe.map.GameMap.LabourFound
 
 import scala.concurrent.Future
@@ -42,6 +42,6 @@ trait Recruiter extends BaseWalker {
   private def continueRoaming(walker: WalkerData): Boolean =
     walker.state.mode == MovementMode.Roaming
 
-  private def sendLabourNotification(parentID: Structure.ActiveEntityActorRef): Unit =
+  private def sendLabourNotification(parentID: StructureRef): Unit =
     parentEntity ! ForwardMessage(LabourFound(parentID))
 }

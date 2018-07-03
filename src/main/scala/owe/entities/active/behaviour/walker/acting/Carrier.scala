@@ -1,7 +1,6 @@
 package owe.entities.active.behaviour.walker.acting
 
-import owe.entities.ActiveEntity.{StructureData, WalkerData}
-import owe.entities.Entity.EntityActorRef
+import owe.entities.ActiveEntity.{ActiveEntityRef, StructureData, WalkerData}
 import owe.entities.active.Walker
 import owe.entities.active.Walker.{CommoditiesState, MovementMode}
 import owe.entities.active.behaviour.UpdateExchange
@@ -12,14 +11,14 @@ import owe.entities.active.behaviour.walker.{BaseWalker, DistributionCalculation
 import scala.concurrent.Future
 
 trait Carrier extends BaseWalker {
-  protected def target: EntityActorRef
-  protected def source: EntityActorRef
+  protected def target: ActiveEntityRef
+  protected def source: ActiveEntityRef
   protected def actions: Seq[Action]
   protected def canReturnCommodities: Boolean
 
   import context.dispatcher
 
-  private def load(walker: WalkerData, target: EntityActorRef): Future[Walker.State] =
+  private def load(walker: WalkerData, target: ActiveEntityRef): Future[Walker.State] =
     getEntityData(target).map {
       case structure: StructureData =>
         DistributionCalculations.structureToWalkerTransfer(structure, walker) match {
@@ -47,7 +46,7 @@ trait Carrier extends BaseWalker {
       case _ => walker.state //cannot transfer commodities
     }
 
-  private def unload(walker: WalkerData, target: EntityActorRef): Future[Walker.State] =
+  private def unload(walker: WalkerData, target: ActiveEntityRef): Future[Walker.State] =
     getEntityData(target).map {
       case structure: StructureData =>
         DistributionCalculations.walkerToStructureTransfer(structure, walker) match {

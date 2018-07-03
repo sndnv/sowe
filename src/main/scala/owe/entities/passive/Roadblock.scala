@@ -2,17 +2,15 @@ package owe.entities.passive
 
 import akka.actor.ActorRef
 import owe.EntityDesirability
-import owe.Tagging.@@
-import owe.entities.passive.Roadblock.ActorRefTag
+import owe.entities.PassiveEntity.PassiveEntityRef
 import owe.entities.{Entity, PassiveEntity}
 
-class Roadblock extends PassiveEntity[ActorRefTag] {
+class Roadblock extends PassiveEntity {
   final override def `type`: Entity.Type = Entity.Type.Roadblock
 
   final override def `desirability`: EntityDesirability = EntityDesirability.Neutral
 }
 
 object Roadblock {
-  type PassiveEntityActorRef = ActorRef @@ ActorRefTag
-  trait ActorRefTag extends PassiveEntity.ActorRefTag
+  case class RoadblockRef(ref: ActorRef) extends PassiveEntityRef
 }

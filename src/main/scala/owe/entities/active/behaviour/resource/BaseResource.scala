@@ -1,12 +1,16 @@
 package owe.entities.active.behaviour.resource
 
 import akka.actor.Actor.Receive
+import owe.entities.ActiveEntity
 import owe.entities.ActiveEntity.ResourceData
-import owe.entities.active.Resource
+import owe.entities.active.Resource.ResourceRef
 import owe.entities.active.behaviour.BaseBehaviour
 import owe.entities.active.behaviour.resource.BaseResource.Become
 
-trait BaseResource extends BaseBehaviour[Resource.ActorRefTag] {
+trait BaseResource extends BaseBehaviour {
+
+  final override private[behaviour] implicit val parentEntity: ActiveEntity.ActiveEntityRef =
+    ResourceRef(context.parent)
 
   override protected def base: Behaviour = {
     case Become(behaviour, resource) =>

@@ -3,9 +3,12 @@ package owe.entities
 import akka.actor.{Actor, ActorLogging, ActorRef, Props, Stash}
 import akka.pattern.{ask, pipe}
 import akka.util.Timeout
-import owe.Tagging._
 import owe.effects.Effect
-import owe.entities.ActiveEntity.{ActiveEntityActorRef, ActiveEntityData}
+import owe.entities.ActiveEntity.{ActiveEntityData, ActiveEntityRef}
+import owe.entities.Entity.EntityRef
+import owe.entities.active.Resource.ResourceRef
+import owe.entities.active.Structure.StructureRef
+import owe.entities.active.Walker.WalkerRef
 import owe.entities.active.behaviour.BaseBehaviour
 import owe.entities.active.{Resource, Structure, Walker}
 import owe.map.grid.Point
@@ -17,16 +20,15 @@ abstract class ActiveEntity[
   P <: Entity.Properties: ClassTag,
   S <: Entity.State: ClassTag,
   M <: Entity.StateModifiers: ClassTag,
-  B <: BaseBehaviour[T]: ClassTag,
-  T <: ActiveEntity.ActorRefTag: ClassTag
-]() extends Entity[T] {
-  override type Tag = T
-
-  protected def createActiveEntityData(): ActorRef @@ T => ActiveEntityData
+  B <: BaseBehaviour: ClassTag
+]() extends Entity {
+  protected def createActiveEntityData(): ActiveEntityRef => ActiveEntityData
 
   protected def createEffects(): Seq[(ActiveEntityData => Boolean, Effect)]
 
   protected def createBehaviour(): B
+
+  private[entities] def actorToActiveEntityRef(ref: ActorRef): ActiveEntityRef
 
   override def props()(implicit timeout: Timeout): Props = Props(
     classOf[ActiveEntityActor],
@@ -40,7 +42,7 @@ abstract class ActiveEntity[
   case class ProcessingData(entityData: ActiveEntityData, messages: Seq[Entity.Message])
 
   private class ActiveEntityActor(
-    val initialEntityDataFn: ActiveEntityActorRef => ActiveEntityData,
+    val initialEntityDataFn: ActiveEntityRef => ActiveEntityData,
     val effects: Seq[(ActiveEntityData => Boolean, Effect)]
   )(implicit timeout: Timeout)
       extends Actor
@@ -50,7 +52,9 @@ abstract class ActiveEntity[
     import ActiveEntity._
     import context.dispatcher
 
-    private val initialEntityData = initialEntityDataFn(self.tag[T])
+    private val selfRef: ActiveEntityRef = actorToActiveEntityRef(self)
+
+    private val initialEntityData: ActiveEntityData = initialEntityDataFn(selfRef)
 
     private val behaviourHandler: ActorRef = context.actorOf(
       behaviourProps(),
@@ -133,9 +137,7 @@ abstract class ActiveEntity[
 }
 
 object ActiveEntity {
-  type ActiveEntityActorRef = ActorRef @@ ActorRefTag
-
-  trait ActorRefTag extends Entity.ActorRefTag
+  trait ActiveEntityRef extends EntityRef
 
   trait Effect[
     P <: Entity.Properties,
@@ -151,7 +153,7 @@ object ActiveEntity {
     def properties: Entity.Properties
     def state: Entity.State
     def modifiers: Entity.StateModifiers
-    def id: ActiveEntityActorRef
+    def id: ActiveEntityRef
     def withState(newState: Entity.State): ActiveEntityData
     def withModifiers(newModifiers: Entity.StateModifiers): ActiveEntityData
   }
@@ -160,7 +162,7 @@ object ActiveEntity {
     properties: Resource.Properties,
     state: Resource.State,
     modifiers: Resource.StateModifiers,
-    id: Resource.ActiveEntityActorRef
+    id: ResourceRef
   ) extends ActiveEntityData {
     override def withState(newState: Entity.State): ActiveEntityData =
       newState match {
@@ -177,7 +179,7 @@ object ActiveEntity {
     properties: Structure.Properties,
     state: Structure.State,
     modifiers: Structure.StateModifiers,
-    id: Structure.ActiveEntityActorRef
+    id: StructureRef
   ) extends ActiveEntityData {
     override def withState(newState: Entity.State): ActiveEntityData =
       newState match {
@@ -194,7 +196,7 @@ object ActiveEntity {
     properties: Walker.Properties,
     state: Walker.State,
     modifiers: Walker.StateModifiers,
-    id: Walker.ActiveEntityActorRef
+    id: WalkerRef
   ) extends ActiveEntityData {
     override def withState(newState: Entity.State): ActiveEntityData =
       newState match {

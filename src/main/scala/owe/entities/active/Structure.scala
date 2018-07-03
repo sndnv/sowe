@@ -2,9 +2,9 @@ package owe.entities.active
 
 import akka.actor.ActorRef
 import owe.CellDesirability
-import owe.Tagging.@@
-import owe.entities.ActiveEntity.StructureData
+import owe.entities.ActiveEntity.{ActiveEntityRef, StructureData}
 import owe.entities._
+import owe.entities.active.Structure.StructureRef
 import owe.entities.active.behaviour.structure.BaseStructure
 import owe.map.grid.Point
 import owe.production.{Commodity, CommodityAmount, CommodityAmountModifier}
@@ -14,15 +14,14 @@ trait Structure
       Structure.Properties,
       Structure.State,
       Structure.StateModifiers,
-      BaseStructure,
-      Structure.ActorRefTag
+      BaseStructure
     ] {
   final override def `type`: Entity.Type = Entity.Type.Structure
+  final override private[entities] def actorToActiveEntityRef(ref: ActorRef) = StructureRef(ref)
 }
 
 object Structure {
-  type ActiveEntityActorRef = ActorRef @@ ActorRefTag
-  trait ActorRefTag extends ActiveEntity.ActorRefTag
+  case class StructureRef(ref: ActorRef) extends ActiveEntityRef
 
   type Effect = ActiveEntity.Effect[Properties, State, StateModifiers]
 

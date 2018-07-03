@@ -3,8 +3,9 @@ package owe.map.ops
 import akka.pattern.ask
 import akka.util.Timeout
 import owe.effects.Effect
-import owe.entities.ActiveEntity.MapData
-import owe.entities.{ActiveEntity, PassiveEntity}
+import owe.entities.ActiveEntity
+import owe.entities.ActiveEntity.{ActiveEntityRef, MapData}
+import owe.entities.PassiveEntity.PassiveEntityRef
 import owe.map.Cell
 import owe.map.Cell.{CellActorRef, CellData, GetCellData}
 import owe.map.GameMap.TickProcessed
@@ -37,10 +38,10 @@ trait TickOps {
                 cellData.entities.map {
                   case (_, mapEntity) =>
                     mapEntity.entityRef match {
-                      case entity: ActiveEntity.ActorRefTag =>
+                      case entity: ActiveEntityRef =>
                         (entity ? ActiveEntity.GetActiveEffects()).mapTo[Seq[Effect]]
 
-                      case _: PassiveEntity.ActorRefTag =>
+                      case _: PassiveEntityRef =>
                         Future.successful(Seq.empty)
                     }
                 }
@@ -95,7 +96,7 @@ trait TickOps {
               cellData.entities.foreach {
                 case (_, mapEntity) =>
                   mapEntity.entityRef match {
-                    case entity: ActiveEntity.ActorRefTag =>
+                    case entity: ActiveEntityRef =>
                       entity ! ActiveEntity.ApplyEffects(entityEffects)
                       entity ! ActiveEntity.ProcessGameTick(MapData(mapEntity.parentCell, cellState))
 

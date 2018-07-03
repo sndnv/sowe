@@ -1,9 +1,11 @@
 package owe.entities.active.behaviour.walker
 
 import akka.actor.Actor.Receive
-import akka.pattern.ask
-import owe.entities.ActiveEntity.{ActiveEntityData, ForwardMessage, ProcessEntityTick, WalkerData}
-import owe.entities.Entity.EntityActorRef
+import owe.entities.ActiveEntity
+import owe.entities.ActiveEntity._
+import owe.entities.Entity.EntityRef
+import owe.entities.active.Resource.ResourceRef
+import owe.entities.active.Structure.StructureRef
 import owe.entities.active.Walker._
 import owe.entities.active._
 import owe.entities.active.behaviour.walker.BaseWalker._
@@ -14,7 +16,9 @@ import owe.entities.active.behaviour.walker.transformations.{
   RoamAction
 }
 import owe.entities.active.behaviour.{BaseBehaviour, UpdateExchange}
-import owe.entities.passive.{Doodad, Road, Roadblock}
+import owe.entities.passive.Doodad.DoodadRef
+import owe.entities.passive.Road.RoadRef
+import owe.entities.passive.Roadblock.RoadblockRef
 import owe.map.GameMap._
 import owe.map.MapEntity
 import owe.map.grid.Point
@@ -24,13 +28,16 @@ import scala.collection.immutable.Queue
 import scala.concurrent.Future
 
 trait BaseWalker
-    extends BaseBehaviour[Walker.ActorRefTag]
+    extends BaseBehaviour
     with ProcessedUpdateMessages
     with ProcessedMovement
     with ProcessedPath
     with RoamAction {
 
   import context.dispatcher
+
+  final override private[behaviour] implicit val parentEntity: ActiveEntity.ActiveEntityRef =
+    WalkerRef(context.parent)
 
   final protected def attacking(nextBehaviour: () => Behaviour): Behaviour = {
     case ProcessEntityTick(_, entity: WalkerData, messages) =>
@@ -282,17 +289,17 @@ trait BaseWalker
         .foreach(updatedData => self ! Become(behaviour, updatedData))
   }
 
-  protected def getEntityData(entityID: EntityActorRef): Future[ActiveEntityData] =
+  protected def getEntityData(entityID: EntityRef): Future[ActiveEntityData] =
     (parentEntity ? ForwardMessage(GetEntity(entityID))).mapTo[ActiveEntityData]
 
   protected def getNeighboursData(
-    walkerId: ActiveEntityActorRef,
+    walkerId: WalkerRef,
     radius: Distance
-  ): Future[Seq[(EntityActorRef, ActiveEntityData)]] =
-    (parentEntity ? ForwardMessage(GetNeighbours(walkerId, radius))).mapTo[Seq[(EntityActorRef, ActiveEntityData)]]
+  ): Future[Seq[(ActiveEntityRef, ActiveEntityData)]] =
+    (parentEntity ? ForwardMessage(GetNeighbours(walkerId, radius))).mapTo[Seq[(ActiveEntityRef, ActiveEntityData)]]
 
   protected def distributeCommodities(
-    entityID: EntityActorRef,
+    entityID: ActiveEntityRef,
     commodities: Seq[(Commodity, CommodityAmount)]
   ): Unit =
     parentEntity ! ForwardMessage(DistributeCommodities(entityID, commodities))
@@ -322,13 +329,13 @@ trait BaseWalker
       context.become(destroying())
     }
 
-  private def attackEntity(id: EntityActorRef, damage: AttackDamage): Unit =
+  private def attackEntity(id: ActiveEntityRef, damage: AttackDamage): Unit =
     parentEntity ! ForwardMessage(AttackEntity(id, damage))
 
-  private def moveEntity(id: EntityActorRef, destination: Point): Unit =
+  private def moveEntity(id: ActiveEntityRef, destination: Point): Unit =
     parentEntity ! ForwardMessage(MoveEntity(id, destination))
 
-  private def nextEnemyEntity(walker: WalkerData): Future[Option[(EntityActorRef, AttackDamage)]] =
+  private def nextEnemyEntity(walker: WalkerData): Future[Option[(ActiveEntityRef, AttackDamage)]] =
     (walker.properties.attack, walker.modifiers.attack) match {
       case (attackProperties: AttackProperties, attackModifiers: AttackModifiers) =>
         getNeighboursData(walker.id, attackModifiers.distance(attackProperties.distance))
@@ -345,12 +352,10 @@ trait BaseWalker
   private def getEntitiesData(point: Point): Future[Seq[(MapEntity, Option[ActiveEntityData])]] =
     (parentEntity ? ForwardMessage(GetEntities(point))).mapTo[Seq[(MapEntity, Option[ActiveEntityData])]]
 
-  private def calculateAdvancePath(walkerId: Walker.ActiveEntityActorRef,
-                                   destination: Point): Future[Option[Queue[Point]]] =
+  private def calculateAdvancePath(walkerId: WalkerRef, destination: Point): Future[Option[Queue[Point]]] =
     (parentEntity ? ForwardMessage(GetAdvancePath(walkerId, destination))).mapTo[Option[Queue[Point]]]
 
-  private def calculateRoamingPath(walkerId: Walker.ActiveEntityActorRef,
-                                   length: Distance): Future[Option[Queue[Point]]] =
+  private def calculateRoamingPath(walkerId: WalkerRef, length: Distance): Future[Option[Queue[Point]]] =
     (parentEntity ? ForwardMessage(GetRoamingPath(walkerId, length))).mapTo[Option[Queue[Point]]]
 
   private def nextPosition(walker: WalkerData): Future[Option[(Point, Queue[Point])]] = {
@@ -380,12 +385,12 @@ trait BaseWalker
 
   private def isPassable(mapEntity: MapEntity, entityData: Option[ActiveEntityData], walker: WalkerData): Boolean =
     mapEntity.entityRef match {
-      case _: Doodad                => false
-      case _: Road                  => true
-      case _: Roadblock             => walker.state.mode == MovementMode.Roaming
-      case _: Structure.ActorRefTag => false
-      case _: Resource.ActorRefTag  => false
-      case _: Walker.ActorRefTag =>
+      case _: DoodadRef    => false
+      case _: RoadRef      => true
+      case _: RoadblockRef => walker.state.mode == MovementMode.Roaming
+      case _: StructureRef => false
+      case _: ResourceRef  => false
+      case _: WalkerRef =>
         walker.properties.attack match {
           case props: AttackProperties => !entityData.forall(props.target)
           case _                       => false
@@ -400,7 +405,7 @@ object BaseWalker {
   case class DoOperation(op: WalkerData => Future[State]) extends Action
   case class DoRepeatableOperation(op: WalkerData => Future[State], repeat: WalkerData => Boolean) extends Action
   case class GoToPoint(destination: Point) extends Action
-  case class GoToEntity(entityID: EntityActorRef) extends Action
+  case class GoToEntity(entityID: EntityRef) extends Action
   case class GoHome() extends Action
 
   sealed trait Transition extends Action
@@ -410,7 +415,7 @@ object BaseWalker {
   sealed trait Destination
   case object Home extends Destination
   case class DestinationPoint(point: Point) extends Destination
-  case class DestinationEntity(entityID: EntityActorRef) extends Destination
+  case class DestinationEntity(entityID: EntityRef) extends Destination
 
   private[behaviour] case class Become(behaviour: () => Receive, walker: WalkerData)
 }
