@@ -6,7 +6,7 @@ import owe.entities.active.Resource
 import owe.entities.active.Resource.{Properties, ResourceRef, State, StateModifiers}
 import owe.entities.active.behaviour.resource.producing.ProducingResource
 import owe.map.grid.Point
-import owe.production.{Commodity, CommodityAmount, CommodityAmountModifier}
+import owe.production.Commodity
 
 class CopperVein extends Resource {
   override protected def createActiveEntityData(): ActiveEntityRef => ActiveEntityData = {
@@ -16,14 +16,14 @@ class CopperVein extends Resource {
           name = "CopperVein",
           homePosition = Point(0, 0),
           commodity = Commodity("Copper"),
-          maxAmount = CommodityAmount(50)
+          maxAmount = Commodity.Amount(50)
         ),
         state = State(
-          currentAmount = CommodityAmount(20),
-          replenishAmount = CommodityAmount(5)
+          currentAmount = Commodity.Amount(20),
+          replenishAmount = Commodity.Amount(5)
         ),
         modifiers = StateModifiers(
-          replenishAmount = CommodityAmountModifier(75)
+          replenishAmount = Commodity.AmountModifier(75)
         ),
         id
       )

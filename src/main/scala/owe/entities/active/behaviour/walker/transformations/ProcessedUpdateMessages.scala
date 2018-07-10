@@ -4,7 +4,7 @@ import owe.entities.ActiveEntity.WalkerData
 import owe.entities.Entity
 import owe.entities.Entity.{ProcessAttack, ProcessCommodities}
 import owe.entities.active.Walker.{CommoditiesState, NoCommodities, State}
-import owe.production.CommodityAmount
+import owe.production.Commodity
 
 import scala.concurrent.Future
 
@@ -22,11 +22,11 @@ trait ProcessedUpdateMessages {
                 case CommoditiesState(available, limits) =>
                   val updatedCommodities = available ++ commodities.map {
                     case (commodity, amount) =>
-                      val limitAmount = limits.getOrElse(commodity, CommodityAmount(0))
+                      val limitAmount = limits.getOrElse(commodity, Commodity.Amount(0))
                       val updatedCommodityAmount =
-                        (available.getOrElse(commodity, CommodityAmount(0)) + amount)
+                        (available.getOrElse(commodity, Commodity.Amount(0)) + amount)
                           .min(limitAmount)
-                          .max(CommodityAmount(0))
+                          .max(Commodity.Amount(0))
 
                       (commodity, updatedCommodityAmount)
                   }

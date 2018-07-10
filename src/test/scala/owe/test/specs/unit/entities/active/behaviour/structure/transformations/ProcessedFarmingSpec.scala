@@ -4,10 +4,10 @@ import org.scalatest.Outcome
 import owe.entities.ActiveEntity.{MapData, StructureData}
 import owe.entities.active.Structure.CommoditiesState
 import owe.entities.active.behaviour.structure.transformations.ProcessedFarming
-import owe.production.{Commodity, CommodityAmount}
+import owe.map.Cell.{Fertility, Water}
+import owe.production.Commodity
 import owe.test.specs.unit.UnitSpec
 import owe.test.specs.unit.entities.active.behaviour.Fixtures
-import owe.{Fertility, Water}
 
 class ProcessedFarmingSpec extends UnitSpec {
   case class FixtureParam(
@@ -40,7 +40,7 @@ class ProcessedFarmingSpec extends UnitSpec {
     ) should be(
       fixture.structure.state.copy(
         commodities = commoditiesState.copy(
-          available = Map(Commodity("TestCommodity") -> CommodityAmount(25))
+          available = Map(Commodity("TestCommodity") -> Commodity.Amount(25))
         )
       )
     )
@@ -53,7 +53,7 @@ class ProcessedFarmingSpec extends UnitSpec {
     ) should be(
       fixture.structure.state.copy(
         commodities = commoditiesState.copy(
-          available = Map(Commodity("TestCommodity") -> CommodityAmount(12))
+          available = Map(Commodity("TestCommodity") -> Commodity.Amount(12))
         )
       )
     )
@@ -66,7 +66,7 @@ class ProcessedFarmingSpec extends UnitSpec {
     ) should be(
       fixture.structure.state.copy(
         commodities = commoditiesState.copy(
-          available = Map(Commodity("TestCommodity") -> CommodityAmount(12))
+          available = Map(Commodity("TestCommodity") -> Commodity.Amount(12))
         )
       )
     )
@@ -79,7 +79,7 @@ class ProcessedFarmingSpec extends UnitSpec {
     ) should be(
       fixture.structure.state.copy(
         commodities = commoditiesState.copy(
-          available = Map(Commodity("TestCommodity") -> CommodityAmount(6))
+          available = Map(Commodity("TestCommodity") -> Commodity.Amount(6))
         )
       )
     )

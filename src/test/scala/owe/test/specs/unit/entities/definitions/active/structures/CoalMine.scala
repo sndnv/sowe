@@ -2,14 +2,16 @@ package owe.test.specs.unit.entities.definitions.active.structures
 
 import owe.effects.Effect
 import owe.entities.ActiveEntity.{ActiveEntityData, ActiveEntityRef, StructureData}
+import owe.entities.Entity
+import owe.entities.Entity.Desirability
 import owe.entities.active.Structure._
 import owe.entities.active.behaviour.structure.BaseStructure
 import owe.entities.active.behaviour.structure.producing.Industry
 import owe.entities.active.{Life, RiskAmount, Structure, Walker}
+import owe.map.Cell
 import owe.map.grid.Point
-import owe.production.{Commodity, CommodityAmount, CommodityAmountModifier}
+import owe.production.Commodity
 import owe.test.specs.unit.entities.definitions.active.walkers.Recruiter
-import owe.{entities, CellDesirability, EntityDesirability}
 
 class CoalMine extends Structure {
 
@@ -27,9 +29,9 @@ class CoalMine extends Structure {
 
   private def generateCourier(structure: StructureData): Option[Walker] = ??? //TODO
 
-  override def `size`: entities.Entity.Size = entities.Entity.Size(height = 3, width = 2)
+  override def `size`: Entity.Size = Entity.Size(height = 3, width = 2)
 
-  override def `desirability`: EntityDesirability = EntityDesirability.fromInt(-5, -5, -3, -3, -3, -3)
+  override def `desirability`: Desirability = Desirability.fromInt(-5, -5, -3, -3, -3, -3)
 
   override protected def createActiveEntityData(): ActiveEntityRef => ActiveEntityData = {
     case id: StructureRef =>
@@ -47,7 +49,7 @@ class CoalMine extends Structure {
             stage = StageProperties(
               maxLife = Life(100),
               maxPeople = 15,
-              minDesirability = CellDesirability.Neutral,
+              minDesirability = Cell.Desirability.Neutral,
               commodityShortageLimit = 0
             )
           )
@@ -56,13 +58,13 @@ class CoalMine extends Structure {
           risk = RiskState(fire = RiskAmount(0), damage = RiskAmount(0)),
           commodities = CommoditiesState(
             available = Map.empty,
-            limits = Map(Commodity("Coal") -> CommodityAmount(100))
+            limits = Map(Commodity("Coal") -> Commodity.Amount(100))
           ),
           housing = NoHousing,
           production = ProductionState(
             employees = 0,
             labour = LabourState.None,
-            rates = Map(Commodity("Coal") -> CommodityAmount(25))
+            rates = Map(Commodity("Coal") -> Commodity.Amount(25))
           ),
           currentStage = DefaultStage,
           currentLife = Life(100),
@@ -73,7 +75,7 @@ class CoalMine extends Structure {
         modifiers = StateModifiers(
           risk = RiskModifier(fire = RiskAmount(3), damage = RiskAmount(5)),
           commodities = NoCommodities,
-          production = ProductionModifier(rates = Map(Commodity("Coal") -> CommodityAmountModifier(100))),
+          production = ProductionModifier(rates = Map(Commodity("Coal") -> Commodity.AmountModifier(100))),
           housing = NoHousing
         ),
         id

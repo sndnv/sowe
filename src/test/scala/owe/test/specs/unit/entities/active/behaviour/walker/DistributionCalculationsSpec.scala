@@ -5,7 +5,7 @@ import owe.entities.ActiveEntity.{StructureData, WalkerData}
 import owe.entities.active.behaviour.walker.DistributionCalculations
 import owe.entities.active.behaviour.walker.DistributionCalculations.DistributionResult
 import owe.entities.active.{Structure, Walker}
-import owe.production.{Commodity, CommodityAmount}
+import owe.production.Commodity
 import owe.test.specs.unit.UnitSpec
 import owe.test.specs.unit.entities.active.behaviour.Fixtures
 
@@ -38,16 +38,16 @@ class DistributionCalculationsSpec extends UnitSpec {
       fixture.walker.copy(
         state = fixture.walker.state.copy(
           commodities = Walker.CommoditiesState(
-            available = Map(Commodity("TestCommodity") -> CommodityAmount(50)),
-            limits = Map(Commodity("TestCommodity") -> CommodityAmount(100))
+            available = Map(Commodity("TestCommodity") -> Commodity.Amount(50)),
+            limits = Map(Commodity("TestCommodity") -> Commodity.Amount(100))
           )
         )
       )
     ) should be(
       Some(
         DistributionResult(
-          structureCommodities = Map(Commodity("TestCommodity") -> CommodityAmount(50)),
-          walkerCommodities = Map(Commodity("TestCommodity") -> CommodityAmount(-50))
+          structureCommodities = Map(Commodity("TestCommodity") -> Commodity.Amount(50)),
+          walkerCommodities = Map(Commodity("TestCommodity") -> Commodity.Amount(-50))
         )
       )
     )
@@ -56,24 +56,24 @@ class DistributionCalculationsSpec extends UnitSpec {
       fixture.structure.copy(
         state = fixture.structure.state.copy(
           commodities = Structure.CommoditiesState(
-            available = Map(Commodity("TestCommodity") -> CommodityAmount(80)),
-            limits = Map(Commodity("TestCommodity") -> CommodityAmount(100))
+            available = Map(Commodity("TestCommodity") -> Commodity.Amount(80)),
+            limits = Map(Commodity("TestCommodity") -> Commodity.Amount(100))
           )
         )
       ),
       fixture.walker.copy(
         state = fixture.walker.state.copy(
           commodities = Walker.CommoditiesState(
-            available = Map(Commodity("TestCommodity") -> CommodityAmount(50)),
-            limits = Map(Commodity("TestCommodity") -> CommodityAmount(100))
+            available = Map(Commodity("TestCommodity") -> Commodity.Amount(50)),
+            limits = Map(Commodity("TestCommodity") -> Commodity.Amount(100))
           )
         )
       )
     ) should be(
       Some(
         DistributionResult(
-          structureCommodities = Map(Commodity("TestCommodity") -> CommodityAmount(20)),
-          walkerCommodities = Map(Commodity("TestCommodity") -> CommodityAmount(-20))
+          structureCommodities = Map(Commodity("TestCommodity") -> Commodity.Amount(20)),
+          walkerCommodities = Map(Commodity("TestCommodity") -> Commodity.Amount(-20))
         )
       )
     )
@@ -89,24 +89,24 @@ class DistributionCalculationsSpec extends UnitSpec {
       fixture.structure.copy(
         state = fixture.structure.state.copy(
           commodities = Structure.CommoditiesState(
-            available = Map(Commodity("TestCommodity") -> CommodityAmount(10)),
-            limits = Map(Commodity("TestCommodity") -> CommodityAmount(100))
+            available = Map(Commodity("TestCommodity") -> Commodity.Amount(10)),
+            limits = Map(Commodity("TestCommodity") -> Commodity.Amount(100))
           )
         )
       ),
       fixture.walker.copy(
         state = fixture.walker.state.copy(
           commodities = Walker.CommoditiesState(
-            available = Map(Commodity("TestCommodity") -> CommodityAmount(50)),
-            limits = Map(Commodity("TestCommodity") -> CommodityAmount(100))
+            available = Map(Commodity("TestCommodity") -> Commodity.Amount(50)),
+            limits = Map(Commodity("TestCommodity") -> Commodity.Amount(100))
           )
         )
       )
     ) should be(
       Some(
         DistributionResult(
-          structureCommodities = Map(Commodity("TestCommodity") -> CommodityAmount(-10)),
-          walkerCommodities = Map(Commodity("TestCommodity") -> CommodityAmount(10))
+          structureCommodities = Map(Commodity("TestCommodity") -> Commodity.Amount(-10)),
+          walkerCommodities = Map(Commodity("TestCommodity") -> Commodity.Amount(10))
         )
       )
     )
@@ -115,24 +115,24 @@ class DistributionCalculationsSpec extends UnitSpec {
       fixture.structure.copy(
         state = fixture.structure.state.copy(
           commodities = Structure.CommoditiesState(
-            available = Map(Commodity("TestCommodity") -> CommodityAmount(75)),
-            limits = Map(Commodity("TestCommodity") -> CommodityAmount(100))
+            available = Map(Commodity("TestCommodity") -> Commodity.Amount(75)),
+            limits = Map(Commodity("TestCommodity") -> Commodity.Amount(100))
           )
         )
       ),
       fixture.walker.copy(
         state = fixture.walker.state.copy(
           commodities = Walker.CommoditiesState(
-            available = Map(Commodity("TestCommodity") -> CommodityAmount(50)),
-            limits = Map(Commodity("TestCommodity") -> CommodityAmount(100))
+            available = Map(Commodity("TestCommodity") -> Commodity.Amount(50)),
+            limits = Map(Commodity("TestCommodity") -> Commodity.Amount(100))
           )
         )
       )
     ) should be(
       Some(
         DistributionResult(
-          structureCommodities = Map(Commodity("TestCommodity") -> CommodityAmount(-50)),
-          walkerCommodities = Map(Commodity("TestCommodity") -> CommodityAmount(50))
+          structureCommodities = Map(Commodity("TestCommodity") -> Commodity.Amount(-50)),
+          walkerCommodities = Map(Commodity("TestCommodity") -> Commodity.Amount(50))
         )
       )
     )

@@ -5,7 +5,7 @@ import owe.entities.active.behaviour.UpdateExchange
 import owe.entities.active.behaviour.resource.BaseResource.Become
 import owe.entities.active.behaviour.resource.transformations.{ProcessedUpdateMessages, ReplenishedResources}
 import owe.entities.active.behaviour.resource.{BaseResource, CommodityCalculations}
-import owe.production.CommodityState
+import owe.production.Commodity
 
 trait ProducingResource extends BaseResource with ProcessedUpdateMessages with ReplenishedResources {
 
@@ -27,7 +27,7 @@ trait ProducingResource extends BaseResource with ProcessedUpdateMessages with R
         amountProduced.foreach { amountProduced =>
           UpdateExchange.State(
             Map(resource.properties.commodity -> amountProduced),
-            CommodityState.Produced
+            Commodity.State.Produced
           )
 
           UpdateExchange.Stats.availableCommodities(

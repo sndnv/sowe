@@ -28,7 +28,6 @@ class Courier(parameters: Parameters) extends Walker {
         state = State(
           currentLife = Life(100),
           distanceCovered = Distance(0),
-          destinationPath = Queue.empty,
           commodities = CommoditiesState(
             available = Map.empty,
             limits = Map.empty

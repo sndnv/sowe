@@ -1,11 +1,11 @@
 package owe.test.specs.unit.entities.active.behaviour.structure
 
 import org.scalatest.Outcome
-import owe.CellDesirability
 import owe.entities.active.Structure._
 import owe.entities.active._
 import owe.entities.active.behaviour.structure.BaseStructure.StructureTransition
 import owe.entities.active.behaviour.structure.TransitionCalculations
+import owe.map.Cell
 import owe.test.specs.unit.UnitSpec
 import owe.test.specs.unit.entities.active.behaviour.Fixtures
 
@@ -17,7 +17,7 @@ class TransitionCalculationsSpec extends UnitSpec {
 
   "TransitionCalculations" should "calculate housing structure transitions" in { _ =>
     val map = Fixtures.defaultMapData.copy(
-      cellState = Fixtures.defaultCellState.copy(desirability = CellDesirability(4))
+      cellState = Fixtures.defaultCellState.copy(desirability = Cell.Desirability(4))
     )
 
     val stages = MultiStage(
@@ -25,19 +25,19 @@ class TransitionCalculationsSpec extends UnitSpec {
         StageProperties(
           maxLife = Life(100),
           maxPeople = 5,
-          minDesirability = CellDesirability.Neutral,
+          minDesirability = Cell.Desirability.Neutral,
           commodityShortageLimit = 10
         ),
         StageProperties(
           maxLife = Life(150),
           maxPeople = 15,
-          minDesirability = CellDesirability(4),
+          minDesirability = Cell.Desirability(4),
           commodityShortageLimit = 5
         ),
         StageProperties(
           maxLife = Life(200),
           maxPeople = 50,
-          minDesirability = CellDesirability.Max,
+          minDesirability = Cell.Desirability.Max,
           commodityShortageLimit = 3
         )
       )
@@ -71,7 +71,7 @@ class TransitionCalculationsSpec extends UnitSpec {
         stage = StageProperties(
           maxLife = Life(100),
           maxPeople = 15,
-          minDesirability = CellDesirability.Neutral,
+          minDesirability = Cell.Desirability.Neutral,
           commodityShortageLimit = 0
         )
       ),
@@ -158,7 +158,7 @@ class TransitionCalculationsSpec extends UnitSpec {
 
   it should "calculate producing structure transitions" in { _ =>
     val map = Fixtures.defaultMapData.copy(
-      cellState = Fixtures.defaultCellState.copy(desirability = CellDesirability(4))
+      cellState = Fixtures.defaultCellState.copy(desirability = Cell.Desirability(4))
     )
 
     val stages = MultiStage(
@@ -166,19 +166,19 @@ class TransitionCalculationsSpec extends UnitSpec {
         StageProperties(
           maxLife = Life(100),
           maxPeople = 5,
-          minDesirability = CellDesirability.Neutral,
+          minDesirability = Cell.Desirability.Neutral,
           commodityShortageLimit = 10
         ),
         StageProperties(
           maxLife = Life(150),
           maxPeople = 15,
-          minDesirability = CellDesirability(4),
+          minDesirability = Cell.Desirability(4),
           commodityShortageLimit = 5
         ),
         StageProperties(
           maxLife = Life(200),
           maxPeople = 50,
-          minDesirability = CellDesirability.Max,
+          minDesirability = Cell.Desirability.Max,
           commodityShortageLimit = 3
         )
       )
@@ -192,7 +192,7 @@ class TransitionCalculationsSpec extends UnitSpec {
         stage = StageProperties(
           maxLife = Life(100),
           maxPeople = 15,
-          minDesirability = CellDesirability.Neutral,
+          minDesirability = Cell.Desirability.Neutral,
           commodityShortageLimit = 0
         )
       )

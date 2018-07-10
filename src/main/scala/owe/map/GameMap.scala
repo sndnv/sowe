@@ -14,7 +14,7 @@ import owe.map.Cell.{ActorRefTag, CellActorRef}
 import owe.map.grid.{Grid, Point}
 import owe.map.ops.Ops
 import owe.map.pathfinding.Search
-import owe.production.{Commodity, CommodityAmount, Exchange}
+import owe.production.{Commodity, Exchange}
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
@@ -168,11 +168,11 @@ object GameMap {
   case class GetRoamingPath(entityID: WalkerRef, length: Distance) extends Message
   case class GetNeighbours(entityID: EntityRef, radius: Distance) extends Message
   case class GetEntities(point: Point) extends Message
-  case class GetEntity(entityID: EntityRef) extends Message
+  case class GetEntity(entityID: ActiveEntityRef) extends Message
   case class CreateEntity(entity: Entity, cell: Point) extends Message
   case class DestroyEntity(entityID: EntityRef) extends Message
   case class MoveEntity(entityID: EntityRef, cell: Point) extends Message
-  case class DistributeCommodities(entityID: ActiveEntityRef, commodities: Seq[(Commodity, CommodityAmount)])
+  case class DistributeCommodities(entityID: ActiveEntityRef, commodities: Seq[(Commodity, Commodity.Amount)])
       extends Message
   case class AttackEntity(entityID: EntityRef, damage: AttackDamage) extends Message
   case class LabourFound(entityID: StructureRef) extends Message

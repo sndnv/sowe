@@ -4,7 +4,7 @@ import org.scalatest.Outcome
 import owe.entities.ActiveEntity.StructureData
 import owe.entities.active.Structure.{CommoditiesModifier, CommoditiesState}
 import owe.entities.active.behaviour.structure.transformations.ConsumedResources
-import owe.production.{Commodity, CommodityAmount}
+import owe.production.Commodity
 import owe.test.specs.unit.UnitSpec
 import owe.test.specs.unit.entities.active.behaviour.Fixtures
 
@@ -40,14 +40,14 @@ class ConsumedResourcesSpec extends UnitSpec {
         ),
         modifiers = fixture.structure.modifiers.copy(
           commodities = commoditiesModifier.copy(
-            usageRates = Map(Commodity("TestCommodity") -> CommodityAmount(10))
+            usageRates = Map(Commodity("TestCommodity") -> Commodity.Amount(10))
           )
         )
       )
     ) should be(
       fixture.structure.state.copy(
         commodities = commoditiesState.copy(
-          available = Map(Commodity("TestCommodity") -> CommodityAmount(90))
+          available = Map(Commodity("TestCommodity") -> Commodity.Amount(90))
         )
       )
     )

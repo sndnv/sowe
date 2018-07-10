@@ -3,8 +3,8 @@ package owe.entities.active.behaviour.structure.transformations
 import owe.entities.ActiveEntity.{MapData, StructureData}
 import owe.entities.active.Structure.{CommoditiesState, State}
 import owe.entities.active.behaviour.structure.CommodityCalculations
-import owe.production.CommodityAmount
-import owe.{Fertility, Water}
+import owe.map.Cell.{Fertility, Water}
+import owe.production.Commodity
 
 trait ProcessedFarming {
   def withProcessedFarming(map: MapData, structure: StructureData): State =
@@ -24,7 +24,7 @@ trait ProcessedFarming {
 
                 val actualAmount = amount.basedOn(fertility.basedOn(water))
 
-                (commodity, available.getOrElse(commodity, CommodityAmount(0)) + actualAmount)
+                (commodity, available.getOrElse(commodity, Commodity.Amount(0)) + actualAmount)
             }
 
             structure.state.copy(

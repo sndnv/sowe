@@ -1,5 +1,5 @@
-import sbtrelease.{Version, versionFormatError}
 import sbtrelease.ReleasePlugin.autoImport.ReleaseTransformations._
+import sbtrelease.{Version, versionFormatError}
 
 releaseCrossBuild := true
 

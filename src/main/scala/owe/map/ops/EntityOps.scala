@@ -2,9 +2,8 @@ package owe.map.ops
 
 import akka.pattern.ask
 import akka.util.Timeout
-import owe.EntityDesirability
 import owe.entities.Entity
-import owe.entities.Entity.EntityRef
+import owe.entities.Entity.{Desirability, EntityRef}
 import owe.entities.active.Structure.StructureRef
 import owe.entities.passive.Doodad.DoodadRef
 import owe.entities.passive.Road.RoadRef
@@ -123,7 +122,7 @@ trait EntityOps { _: AvailabilityOps =>
                     val assocEntities = associateMapEntity(
                       grid,
                       dissocEntities,
-                      currentMapEntity.withNewParentCell(newCell),
+                      currentMapEntity.copy(parentCell = newCell),
                       newCell
                     )
 
@@ -155,7 +154,7 @@ trait EntityOps { _: AvailabilityOps =>
     cell: Point
   ): Map[EntityRef, Point] = {
     val cells = Entity.cells(mapEntity.size, mapEntity.parentCell)
-    cells.flatMap(grid.get).foreach(_ ! AddEntity(mapEntity.entityRef, mapEntity))
+    cells.flatMap(grid.get).foreach(_ ! AddEntity(mapEntity))
 
     mapEntity.entityRef match {
       case _: DoodadRef | _: RoadRef | _: StructureRef =>
@@ -190,25 +189,25 @@ trait EntityOps { _: AvailabilityOps =>
 
   def addDesirability(
     grid: Grid[CellActorRef],
-    entityDesirability: EntityDesirability,
+    Desirability: Desirability,
     cells: Seq[Point]
   ): Unit =
-    applyDesirability(grid, entityDesirability, cells, modifier = 1)
+    applyDesirability(grid, Desirability, cells, modifier = 1)
 
   def removeDesirability(
     grid: Grid[CellActorRef],
-    entityDesirability: EntityDesirability,
+    Desirability: Desirability,
     cells: Seq[Point]
   ): Unit =
-    applyDesirability(grid, entityDesirability, cells, modifier = -1)
+    applyDesirability(grid, Desirability, cells, modifier = -1)
 
   private def applyDesirability(
     grid: Grid[CellActorRef],
-    entityDesirability: EntityDesirability,
+    Desirability: Desirability,
     cells: Seq[Point],
     modifier: Int
   ): Unit = {
-    val _ = entityDesirability.toMap.foldLeft(Seq.empty[Point]) {
+    val _ = Desirability.toMap.foldLeft(Seq.empty[Point]) {
       case (processedCells, (radius, desirability)) =>
         val currentWindowCells =
           cells.flatMap(grid.window(_, radius).toMap).filter {

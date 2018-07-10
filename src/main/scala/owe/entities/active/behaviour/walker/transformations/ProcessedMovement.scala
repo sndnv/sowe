@@ -11,8 +11,7 @@ trait ProcessedMovement {
   def withProcessedMovement(walker: WalkerData): Future[State] =
     Future.successful(
       walker.state.copy(
-        distanceCovered = walker.state.distanceCovered + Distance(1),
-        destinationPath = Queue.empty
+        distanceCovered = walker.state.distanceCovered + Distance(1)
       )
     )
 

@@ -11,7 +11,7 @@ import owe.entities.active.behaviour.structure.transformations.{
   ProcessedUpdateMessages
 }
 import owe.entities.active.behaviour.structure.{BaseStructure, CommodityCalculations}
-import owe.production.CommodityState
+import owe.production.Commodity
 
 trait FarmingStructure
     extends BaseStructure
@@ -37,7 +37,7 @@ trait FarmingStructure
       ).foreach { updatedData: StructureData =>
         CommodityCalculations
           .production(structure)
-          .foreach(UpdateExchange.State(_, CommodityState.Produced))
+          .foreach(UpdateExchange.State(_, Commodity.State.Produced))
 
         (structure.state.commodities, updatedData.state.commodities) match {
           case (CommoditiesState(current, _), CommoditiesState(updated, _)) =>

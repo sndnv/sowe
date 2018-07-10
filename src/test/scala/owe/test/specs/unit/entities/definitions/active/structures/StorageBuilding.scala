@@ -2,17 +2,19 @@ package owe.test.specs.unit.entities.definitions.active.structures
 
 import owe.effects.Effect
 import owe.entities.ActiveEntity.{ActiveEntityData, ActiveEntityRef, StructureData}
+import owe.entities.Entity
+import owe.entities.Entity.Desirability
 import owe.entities.active.Structure._
 import owe.entities.active.behaviour.structure.BaseStructure
 import owe.entities.active.behaviour.structure.producing.Industry
 import owe.entities.active.{Life, RiskAmount, Structure}
+import owe.map.Cell
 import owe.map.grid.Point
-import owe.production.{Commodity, CommodityAmount}
-import owe.{entities, CellDesirability, EntityDesirability}
+import owe.production.Commodity
 
 class StorageBuilding extends Structure {
 
-  override def `desirability`: EntityDesirability = EntityDesirability.fromInt(-5, -5, -3, -3, -1, -1)
+  override def `desirability`: Desirability = Desirability.fromInt(-5, -5, -3, -3, -1, -1)
 
   override def createActiveEntityData(): ActiveEntityRef => ActiveEntityData = {
     case id: StructureRef =>
@@ -27,7 +29,7 @@ class StorageBuilding extends Structure {
             stage = StageProperties(
               maxLife = Life(100),
               maxPeople = 10,
-              minDesirability = CellDesirability.Min,
+              minDesirability = Cell.Desirability.Min,
               commodityShortageLimit = 0
             )
           )
@@ -36,11 +38,11 @@ class StorageBuilding extends Structure {
           risk = RiskState(fire = RiskAmount(0), damage = RiskAmount(0)),
           commodities = CommoditiesState(
             available = Map(
-              Commodity("Wood") -> CommodityAmount(25)
+              Commodity("Wood") -> Commodity.Amount(25)
             ),
             limits = Map(
-              Commodity("Wood") -> CommodityAmount(100),
-              Commodity("Copper") -> CommodityAmount(4)
+              Commodity("Wood") -> Commodity.Amount(100),
+              Commodity("Copper") -> Commodity.Amount(4)
             )
           ),
           housing = NoHousing,
@@ -65,5 +67,5 @@ class StorageBuilding extends Structure {
 
   override protected def createEffects(): Seq[(ActiveEntityData => Boolean, Effect)] = Seq.empty
 
-  override def `size`: entities.Entity.Size = entities.Entity.Size(height = 4, width = 4)
+  override def `size`: Entity.Size = Entity.Size(height = 4, width = 4)
 }

@@ -2,10 +2,10 @@ package owe.entities.active.behaviour.structure
 
 import owe.entities.ActiveEntity.StructureData
 import owe.entities.active.Structure._
-import owe.production.{Commodity, CommodityAmount, CommodityAmountModifier}
+import owe.production.Commodity
 
 object CommodityCalculations {
-  def production(structure: StructureData): Option[Map[Commodity, CommodityAmount]] =
+  def production(structure: StructureData): Option[Map[Commodity, Commodity.Amount]] =
     (structure.state.commodities,
      structure.modifiers.commodities,
      structure.state.production,
@@ -21,7 +21,7 @@ object CommodityCalculations {
             case _                                                                => 0 //stage data missing
           }
 
-          val employeeModifier: CommodityAmountModifier = CommodityAmountModifier(employees / maxEmployees * 100)
+          val employeeModifier: Commodity.AmountModifier = Commodity.AmountModifier(employees / maxEmployees * 100)
 
           val hasEnoughCommodities = usageRates.forall {
             case (commodity, amount) =>
@@ -31,7 +31,7 @@ object CommodityCalculations {
           if (hasEnoughCommodities) {
             val actualProductionRates = productionRates.map {
               case (commodity, amount) =>
-                val productionModifier = productionModifierRates.getOrElse(commodity, CommodityAmountModifier(100))
+                val productionModifier = productionModifierRates.getOrElse(commodity, Commodity.AmountModifier(100))
                 val amountModifier = (productionModifier + employeeModifier) / 2
 
                 (commodity, amountModifier(amount))
@@ -39,7 +39,7 @@ object CommodityCalculations {
 
             val isWithinLimits = actualProductionRates.forall {
               case (commodity, producedAmount) =>
-                val currentAmount = available.getOrElse(commodity, CommodityAmount(0))
+                val currentAmount = available.getOrElse(commodity, Commodity.Amount(0))
                 limits.get(commodity).exists(_ >= currentAmount + producedAmount)
             }
 
@@ -58,7 +58,7 @@ object CommodityCalculations {
       case _ => None //data missing
     }
 
-  def consumption(structure: StructureData): Option[Map[Commodity, CommodityAmount]] =
+  def consumption(structure: StructureData): Option[Map[Commodity, Commodity.Amount]] =
     (structure.state.commodities, structure.modifiers.commodities) match {
       case (CommoditiesState(available, _), CommoditiesModifier(usageRates)) =>
         val people = (structure.state.housing, structure.state.production) match {
@@ -85,18 +85,18 @@ object CommodityCalculations {
       case _ => None //data missing
     }
 
-  def requiredCommodities(structure: StructureData): Option[Map[Commodity, CommodityAmount]] =
+  def requiredCommodities(structure: StructureData): Option[Map[Commodity, Commodity.Amount]] =
     (structure.state.commodities, structure.modifiers.commodities) match {
       case (CommoditiesState(available, limits), CommoditiesModifier(usageRates)) =>
         val requiredCommodities = usageRates
           .map {
             case (commodity, _) =>
-              val commodityAvailable = available.getOrElse(commodity, CommodityAmount(0))
-              val commodityLimit = limits.getOrElse(commodity, CommodityAmount(0))
+              val commodityAvailable = available.getOrElse(commodity, Commodity.Amount(0))
+              val commodityLimit = limits.getOrElse(commodity, Commodity.Amount(0))
 
               (commodity, commodityLimit - commodityAvailable)
           }
-          .filter(_._2 > CommodityAmount(0))
+          .filter(_._2 > Commodity.Amount(0))
 
         if (requiredCommodities.nonEmpty)
           Some(requiredCommodities)

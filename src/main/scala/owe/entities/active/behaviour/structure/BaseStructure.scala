@@ -7,7 +7,7 @@ import owe.entities.Entity.{State => _}
 import owe.entities.active.Structure._
 import owe.entities.active.behaviour.structure.BaseStructure.Become
 import owe.entities.active.behaviour.{BaseBehaviour, UpdateExchange}
-import owe.production.{CommodityAmount, CommodityState}
+import owe.production.Commodity
 
 trait BaseStructure extends BaseBehaviour {
 
@@ -26,7 +26,7 @@ trait BaseStructure extends BaseBehaviour {
     } else {
       structure.state.commodities match {
         case CommoditiesState(available, _) =>
-          UpdateExchange.State(available.filter(_._2 > CommodityAmount(0)), CommodityState.Lost)
+          UpdateExchange.State(available.filter(_._2 > Commodity.Amount(0)), Commodity.State.Lost)
 
         case _ => //do nothing
       }

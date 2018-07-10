@@ -6,7 +6,7 @@ import owe.entities.Entity.{ProcessAttack, ProcessCommodities}
 import owe.entities.active.Walker.CommoditiesState
 import owe.entities.active.behaviour.walker.transformations.ProcessedUpdateMessages
 import owe.entities.active.{AttackDamage, Life}
-import owe.production.{Commodity, CommodityAmount}
+import owe.production.Commodity
 import owe.test.specs.unit.AsyncUnitSpec
 import owe.test.specs.unit.entities.active.behaviour.Fixtures
 
@@ -32,7 +32,7 @@ class ProcessedUpdateMessagesSpec extends AsyncUnitSpec {
     val walkerWitMoreAvailableCommodities = fixture.walker.copy(
       state = fixture.walker.state.copy(
         commodities = commoditiesState.copy(
-          available = Map(Commodity("TestCommodity") -> CommodityAmount(60))
+          available = Map(Commodity("TestCommodity") -> Commodity.Amount(60))
         )
       )
     )
@@ -40,7 +40,7 @@ class ProcessedUpdateMessagesSpec extends AsyncUnitSpec {
     val walkerWithLessAvailableCommodities = fixture.walker.copy(
       state = fixture.walker.state.copy(
         commodities = commoditiesState.copy(
-          available = Map(Commodity("TestCommodity") -> CommodityAmount(10))
+          available = Map(Commodity("TestCommodity") -> Commodity.Amount(10))
         )
       )
     )
@@ -53,31 +53,31 @@ class ProcessedUpdateMessagesSpec extends AsyncUnitSpec {
       addToWalkerWithNoCommodities <- fixture.transformer.withProcessedUpdateMessages(
         fixture.walker,
         pendingMessages = Seq(
-          ProcessCommodities(Seq((Commodity("TestCommodity"), CommodityAmount(42))))
+          ProcessCommodities(Seq((Commodity("TestCommodity"), Commodity.Amount(42))))
         )
       )
       addToWalkerWithMoreCommodities <- fixture.transformer.withProcessedUpdateMessages(
         walkerWitMoreAvailableCommodities,
         pendingMessages = Seq(
-          ProcessCommodities(Seq((Commodity("TestCommodity"), CommodityAmount(42))))
+          ProcessCommodities(Seq((Commodity("TestCommodity"), Commodity.Amount(42))))
         )
       )
       removeFromWalkerWithMoreCommodities <- fixture.transformer.withProcessedUpdateMessages(
         walkerWitMoreAvailableCommodities,
         pendingMessages = Seq(
-          ProcessCommodities(Seq((Commodity("TestCommodity"), CommodityAmount(-42))))
+          ProcessCommodities(Seq((Commodity("TestCommodity"), Commodity.Amount(-42))))
         )
       )
       removeFromWalkerWithLessCommodities <- fixture.transformer.withProcessedUpdateMessages(
         walkerWithLessAvailableCommodities,
         pendingMessages = Seq(
-          ProcessCommodities(Seq((Commodity("TestCommodity"), CommodityAmount(-42))))
+          ProcessCommodities(Seq((Commodity("TestCommodity"), Commodity.Amount(-42))))
         )
       )
       removeFromWalkerWithNoCommodities <- fixture.transformer.withProcessedUpdateMessages(
         fixture.walker,
         pendingMessages = Seq(
-          ProcessCommodities(Seq((Commodity("TestCommodity"), CommodityAmount(-42))))
+          ProcessCommodities(Seq((Commodity("TestCommodity"), Commodity.Amount(-42))))
         )
       )
     } yield {
@@ -86,7 +86,7 @@ class ProcessedUpdateMessagesSpec extends AsyncUnitSpec {
       addToWalkerWithNoCommodities should be(
         fixture.walker.state.copy(
           commodities = commoditiesState.copy(
-            available = Map(Commodity("TestCommodity") -> CommodityAmount(42))
+            available = Map(Commodity("TestCommodity") -> Commodity.Amount(42))
           )
         )
       )
@@ -94,7 +94,7 @@ class ProcessedUpdateMessagesSpec extends AsyncUnitSpec {
       addToWalkerWithMoreCommodities should be(
         walkerWitMoreAvailableCommodities.state.copy(
           commodities = commoditiesState.copy(
-            available = Map(Commodity("TestCommodity") -> CommodityAmount(100))
+            available = Map(Commodity("TestCommodity") -> Commodity.Amount(100))
           )
         )
       )
@@ -102,7 +102,7 @@ class ProcessedUpdateMessagesSpec extends AsyncUnitSpec {
       removeFromWalkerWithMoreCommodities should be(
         walkerWitMoreAvailableCommodities.state.copy(
           commodities = commoditiesState.copy(
-            available = Map(Commodity("TestCommodity") -> CommodityAmount(18))
+            available = Map(Commodity("TestCommodity") -> Commodity.Amount(18))
           )
         )
       )
@@ -110,7 +110,7 @@ class ProcessedUpdateMessagesSpec extends AsyncUnitSpec {
       removeFromWalkerWithLessCommodities should be(
         walkerWithLessAvailableCommodities.state.copy(
           commodities = commoditiesState.copy(
-            available = Map(Commodity("TestCommodity") -> CommodityAmount(0))
+            available = Map(Commodity("TestCommodity") -> Commodity.Amount(0))
           )
         )
       )
@@ -118,7 +118,7 @@ class ProcessedUpdateMessagesSpec extends AsyncUnitSpec {
       removeFromWalkerWithNoCommodities should be(
         fixture.walker.state.copy(
           commodities = commoditiesState.copy(
-            available = Map(Commodity("TestCommodity") -> CommodityAmount(0))
+            available = Map(Commodity("TestCommodity") -> Commodity.Amount(0))
           )
         )
       )

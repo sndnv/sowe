@@ -1,14 +1,14 @@
 package owe.entities.active
 
 import akka.actor.ActorRef
-import owe.EntityDesirability
 import owe.entities.ActiveEntity.{ActiveEntityData, ActiveEntityRef}
+import owe.entities.Entity.Desirability
 import owe.entities._
 import owe.entities.active.Structure.StructureRef
 import owe.entities.active.Walker.WalkerRef
 import owe.entities.active.behaviour.walker.BaseWalker
 import owe.map.grid.Point
-import owe.production.{Commodity, CommodityAmount}
+import owe.production.Commodity
 
 import scala.collection.immutable.Queue
 
@@ -21,7 +21,7 @@ trait Walker
     ] {
   final override def `size`: Entity.Size = Entity.Size(height = 1, width = 1)
   final override def `type`: Entity.Type = Entity.Type.Walker
-  final override def `desirability`: EntityDesirability = EntityDesirability.Neutral
+  final override def `desirability`: Desirability = Desirability.Neutral
   final override private[entities] def actorToActiveEntityRef(ref: ActorRef) = WalkerRef(ref)
 }
 
@@ -36,7 +36,7 @@ object Walker {
 
   sealed trait Commodities
   case object NoCommodities extends Commodities with StateOnly
-  case class CommoditiesState(available: Map[Commodity, CommodityAmount], limits: Map[Commodity, CommodityAmount])
+  case class CommoditiesState(available: Map[Commodity, Commodity.Amount], limits: Map[Commodity, Commodity.Amount])
       extends Commodities
       with StateOnly
 
@@ -80,7 +80,6 @@ object Walker {
   case class State(
     currentLife: Life,
     distanceCovered: Distance,
-    destinationPath: Queue[Point],
     commodities: Commodities with StateOnly,
     path: Queue[Point],
     mode: MovementMode

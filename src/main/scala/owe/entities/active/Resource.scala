@@ -1,8 +1,8 @@
 package owe.entities.active
 
 import akka.actor.ActorRef
-import owe.EntityDesirability
 import owe.entities.ActiveEntity.ActiveEntityRef
+import owe.entities.Entity.Desirability
 import owe.entities._
 import owe.entities.active.Resource.ResourceRef
 import owe.entities.active.behaviour.resource.BaseResource
@@ -18,7 +18,7 @@ trait Resource
     ] {
   final override def `size`: Entity.Size = Entity.Size(height = 1, width = 1)
   final override def `type`: Entity.Type = Entity.Type.Resource
-  final override def `desirability`: EntityDesirability = EntityDesirability.Neutral
+  final override def `desirability`: Desirability = Desirability.Neutral
   final override private[entities] def actorToActiveEntityRef(ref: ActorRef) = ResourceRef(ref)
 }
 
@@ -31,15 +31,15 @@ object Resource {
     homePosition: Point,
     name: String,
     commodity: Commodity,
-    maxAmount: CommodityAmount
+    maxAmount: Commodity.Amount
   ) extends Entity.Properties
 
   case class State(
-    currentAmount: CommodityAmount,
-    replenishAmount: CommodityAmount //doc - amount to replenish after `replenishRate` ticks
+    currentAmount: Commodity.Amount,
+    replenishAmount: Commodity.Amount //doc - amount to replenish after `replenishRate` ticks
   ) extends Entity.State
 
   case class StateModifiers(
-    replenishAmount: CommodityAmountModifier //doc - in pct of State.replenishAmount
+    replenishAmount: Commodity.AmountModifier //doc - in pct of State.replenishAmount
   ) extends Entity.StateModifiers
 }

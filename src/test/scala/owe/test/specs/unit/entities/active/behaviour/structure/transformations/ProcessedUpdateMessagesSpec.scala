@@ -6,7 +6,7 @@ import owe.entities.Entity._
 import owe.entities.active.Structure.{CommoditiesState, HousingState, LabourState, ProductionState}
 import owe.entities.active.behaviour.structure.transformations.ProcessedUpdateMessages
 import owe.entities.active.{AttackDamage, Life}
-import owe.production.{Commodity, CommodityAmount}
+import owe.production.Commodity
 import owe.test.specs.unit.UnitSpec
 import owe.test.specs.unit.entities.active.behaviour.Fixtures
 
@@ -39,12 +39,12 @@ class ProcessedUpdateMessagesSpec extends UnitSpec {
     fixture.transformer.withProcessedUpdateMessages(
       structure,
       pendingMessages = Seq(
-        ProcessCommodities(Seq((Commodity("TestCommodity"), CommodityAmount(42))))
+        ProcessCommodities(Seq((Commodity("TestCommodity"), Commodity.Amount(42))))
       )
     ) should be(
       structure.state.copy(
         commodities = commoditiesState.copy(
-          available = Map(Commodity("TestCommodity") -> CommodityAmount(42))
+          available = Map(Commodity("TestCommodity") -> Commodity.Amount(42))
         )
       )
     )
@@ -53,7 +53,7 @@ class ProcessedUpdateMessagesSpec extends UnitSpec {
       val structureWithAvailableCommodities = structure.copy(
         state = structure.state.copy(
           commodities = commoditiesState.copy(
-            available = Map(Commodity("TestCommodity") -> CommodityAmount(60))
+            available = Map(Commodity("TestCommodity") -> Commodity.Amount(60))
           )
         )
       )
@@ -61,12 +61,12 @@ class ProcessedUpdateMessagesSpec extends UnitSpec {
       fixture.transformer.withProcessedUpdateMessages(
         structureWithAvailableCommodities,
         pendingMessages = Seq(
-          ProcessCommodities(Seq((Commodity("TestCommodity"), CommodityAmount(42))))
+          ProcessCommodities(Seq((Commodity("TestCommodity"), Commodity.Amount(42))))
         )
       ) should be(
         structureWithAvailableCommodities.state.copy(
           commodities = commoditiesState.copy(
-            available = Map(Commodity("TestCommodity") -> CommodityAmount(100))
+            available = Map(Commodity("TestCommodity") -> Commodity.Amount(100))
           )
         )
       )
@@ -76,7 +76,7 @@ class ProcessedUpdateMessagesSpec extends UnitSpec {
       val structureWithAvailableCommodities = structure.copy(
         state = structure.state.copy(
           commodities = commoditiesState.copy(
-            available = Map(Commodity("TestCommodity") -> CommodityAmount(60))
+            available = Map(Commodity("TestCommodity") -> Commodity.Amount(60))
           )
         )
       )
@@ -84,12 +84,12 @@ class ProcessedUpdateMessagesSpec extends UnitSpec {
       fixture.transformer.withProcessedUpdateMessages(
         structureWithAvailableCommodities,
         pendingMessages = Seq(
-          ProcessCommodities(Seq((Commodity("TestCommodity"), CommodityAmount(-42))))
+          ProcessCommodities(Seq((Commodity("TestCommodity"), Commodity.Amount(-42))))
         )
       ) should be(
         structureWithAvailableCommodities.state.copy(
           commodities = commoditiesState.copy(
-            available = Map(Commodity("TestCommodity") -> CommodityAmount(18))
+            available = Map(Commodity("TestCommodity") -> Commodity.Amount(18))
           )
         )
       )
@@ -99,7 +99,7 @@ class ProcessedUpdateMessagesSpec extends UnitSpec {
       val structureWithAvailableCommodities = structure.copy(
         state = structure.state.copy(
           commodities = commoditiesState.copy(
-            available = Map(Commodity("TestCommodity") -> CommodityAmount(10))
+            available = Map(Commodity("TestCommodity") -> Commodity.Amount(10))
           )
         )
       )
@@ -107,12 +107,12 @@ class ProcessedUpdateMessagesSpec extends UnitSpec {
       fixture.transformer.withProcessedUpdateMessages(
         structureWithAvailableCommodities,
         pendingMessages = Seq(
-          ProcessCommodities(Seq((Commodity("TestCommodity"), CommodityAmount(-42))))
+          ProcessCommodities(Seq((Commodity("TestCommodity"), Commodity.Amount(-42))))
         )
       ) should be(
         structureWithAvailableCommodities.state.copy(
           commodities = commoditiesState.copy(
-            available = Map(Commodity("TestCommodity") -> CommodityAmount(0))
+            available = Map(Commodity("TestCommodity") -> Commodity.Amount(0))
           )
         )
       )
@@ -121,12 +121,12 @@ class ProcessedUpdateMessagesSpec extends UnitSpec {
     fixture.transformer.withProcessedUpdateMessages(
       structure,
       pendingMessages = Seq(
-        ProcessCommodities(Seq((Commodity("TestCommodity"), CommodityAmount(-42))))
+        ProcessCommodities(Seq((Commodity("TestCommodity"), Commodity.Amount(-42))))
       )
     ) should be(
       structure.state.copy(
         commodities = commoditiesState.copy(
-          available = Map(Commodity("TestCommodity") -> CommodityAmount(0))
+          available = Map(Commodity("TestCommodity") -> Commodity.Amount(0))
         )
       )
     )

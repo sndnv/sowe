@@ -4,7 +4,7 @@ import owe.entities.ActiveEntity.StructureData
 import owe.entities.Entity
 import owe.entities.Entity._
 import owe.entities.active.Structure.{State, _}
-import owe.production.CommodityAmount
+import owe.production.Commodity
 
 trait ProcessedUpdateMessages {
   def withProcessedUpdateMessages(structure: StructureData, pendingMessages: Seq[Entity.Message]): State =
@@ -21,11 +21,11 @@ trait ProcessedUpdateMessages {
 
                 val updatedCommodities = available ++ commodities.map {
                   case (commodity, amount) =>
-                    val limitAmount = limits.getOrElse(commodity, CommodityAmount(0))
+                    val limitAmount = limits.getOrElse(commodity, Commodity.Amount(0))
                     val updatedCommodityAmount =
-                      (available.getOrElse(commodity, CommodityAmount(0)) + amount)
+                      (available.getOrElse(commodity, Commodity.Amount(0)) + amount)
                         .min(if (occupants > 0) limitAmount * occupants else limitAmount)
-                        .max(CommodityAmount(0))
+                        .max(Commodity.Amount(0))
 
                     (commodity, updatedCommodityAmount)
                 }

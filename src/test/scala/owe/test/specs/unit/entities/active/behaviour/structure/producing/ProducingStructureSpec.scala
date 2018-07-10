@@ -9,10 +9,10 @@ import owe.entities.active.Structure._
 import owe.entities.active.behaviour.structure.producing.ProducingStructure
 import owe.entities.active.{AttackDamage, Life}
 import owe.map.GameMap.ForwardExchangeMessage
+import owe.production.Commodity
 import owe.production.Exchange.{CommodityAvailable, CommodityRequired, UpdateCommodityState}
-import owe.production.{Commodity, CommodityAmount, CommodityAmountModifier, CommodityState}
 import owe.test.specs.unit.AkkaUnitSpec
-import owe.test.specs.unit.entities.active.behaviour.{Fixtures, TestParentEntity}
+import owe.test.specs.unit.entities.active.behaviour.{Fixtures, ForwardingParentEntity}
 
 import scala.concurrent.duration._
 
@@ -29,18 +29,18 @@ class ProducingStructureSpec extends AkkaUnitSpec("ProducingStructureSpec") {
         risk = NoRisk,
         commodities = CommoditiesState(
           available = Map(
-            Commodity("TestCommodity#2") -> CommodityAmount(70)
+            Commodity("TestCommodity#2") -> Commodity.Amount(70)
           ),
           limits = Map(
-            Commodity("TestCommodity#1") -> CommodityAmount(50),
-            Commodity("TestCommodity#2") -> CommodityAmount(100)
+            Commodity("TestCommodity#1") -> Commodity.Amount(50),
+            Commodity("TestCommodity#2") -> Commodity.Amount(100)
           )
         ),
         housing = NoHousing,
         production = ProductionState(
           employees = 15,
           labour = LabourState.Found,
-          rates = Map(Commodity("TestCommodity#1") -> CommodityAmount(25))
+          rates = Map(Commodity("TestCommodity#1") -> Commodity.Amount(25))
         ),
         currentStage = DefaultStage,
         currentLife = Life(100),
@@ -50,12 +50,12 @@ class ProducingStructureSpec extends AkkaUnitSpec("ProducingStructureSpec") {
         risk = NoRisk,
         commodities = CommoditiesModifier(
           usageRates = Map(
-            Commodity("TestCommodity#2") -> CommodityAmount(15)
+            Commodity("TestCommodity#2") -> Commodity.Amount(15)
           )
         ),
         production = ProductionModifier(
           rates = Map(
-            Commodity("TestCommodity#1") -> CommodityAmountModifier(100)
+            Commodity("TestCommodity#1") -> Commodity.AmountModifier(100)
           )
         ),
         housing = NoHousing
@@ -63,7 +63,7 @@ class ProducingStructureSpec extends AkkaUnitSpec("ProducingStructureSpec") {
       Fixtures.MockRefs.structure
     )
 
-    val parentEntity = system.actorOf(TestParentEntity.props(testActor, Props(new ProducingStructure {})))
+    val parentEntity = system.actorOf(ForwardingParentEntity.props(testActor, Props(new ProducingStructure {})))
 
     withFixture(test.toNoArgTest(FixtureParam(structure, parentEntity)))
   }
@@ -82,8 +82,8 @@ class ProducingStructureSpec extends AkkaUnitSpec("ProducingStructureSpec") {
         ForwardExchangeMessage(
           UpdateCommodityState(
             Commodity("TestCommodity#1"),
-            CommodityAmount(25),
-            CommodityState.Produced
+            Commodity.Amount(25),
+            Commodity.State.Produced
           )
         )
       )
@@ -94,8 +94,8 @@ class ProducingStructureSpec extends AkkaUnitSpec("ProducingStructureSpec") {
         ForwardExchangeMessage(
           UpdateCommodityState(
             Commodity("TestCommodity#2"),
-            CommodityAmount(15),
-            CommodityState.Used
+            Commodity.Amount(15),
+            Commodity.State.Used
           )
         )
       )
@@ -106,7 +106,7 @@ class ProducingStructureSpec extends AkkaUnitSpec("ProducingStructureSpec") {
         ForwardExchangeMessage(
           CommodityRequired(
             Commodity("TestCommodity#2"),
-            CommodityAmount(45),
+            Commodity.Amount(45),
             Fixtures.MockRefs.structure
           )
         )
@@ -118,7 +118,7 @@ class ProducingStructureSpec extends AkkaUnitSpec("ProducingStructureSpec") {
         ForwardExchangeMessage(
           CommodityAvailable(
             Commodity("TestCommodity#2"),
-            CommodityAmount(55),
+            Commodity.Amount(55),
             Fixtures.MockRefs.structure
           )
         )
@@ -130,7 +130,7 @@ class ProducingStructureSpec extends AkkaUnitSpec("ProducingStructureSpec") {
         ForwardExchangeMessage(
           CommodityAvailable(
             Commodity("TestCommodity#1"),
-            CommodityAmount(25),
+            Commodity.Amount(25),
             Fixtures.MockRefs.structure
           )
         )
@@ -142,12 +142,12 @@ class ProducingStructureSpec extends AkkaUnitSpec("ProducingStructureSpec") {
         currentLife = Life(0),
         commodities = CommoditiesState(
           available = Map(
-            Commodity("TestCommodity#1") -> CommodityAmount(25),
-            Commodity("TestCommodity#2") -> CommodityAmount(55)
+            Commodity("TestCommodity#1") -> Commodity.Amount(25),
+            Commodity("TestCommodity#2") -> Commodity.Amount(55)
           ),
           limits = Map(
-            Commodity("TestCommodity#1") -> CommodityAmount(50),
-            Commodity("TestCommodity#2") -> CommodityAmount(100)
+            Commodity("TestCommodity#1") -> Commodity.Amount(50),
+            Commodity("TestCommodity#2") -> Commodity.Amount(100)
           )
         )
       )

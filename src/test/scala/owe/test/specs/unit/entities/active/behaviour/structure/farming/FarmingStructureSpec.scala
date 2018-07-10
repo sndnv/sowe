@@ -8,10 +8,10 @@ import owe.entities.active.RiskAmount
 import owe.entities.active.Structure.{CommoditiesState, RiskState}
 import owe.entities.active.behaviour.structure.farming.FarmingStructure
 import owe.map.GameMap.ForwardExchangeMessage
+import owe.production.Commodity
 import owe.production.Exchange.{CommodityAvailable, UpdateCommodityState}
-import owe.production.{Commodity, CommodityAmount, CommodityState}
 import owe.test.specs.unit.AkkaUnitSpec
-import owe.test.specs.unit.entities.active.behaviour.{Fixtures, TestParentEntity}
+import owe.test.specs.unit.entities.active.behaviour.{Fixtures, ForwardingParentEntity}
 
 import scala.concurrent.duration._
 
@@ -24,7 +24,8 @@ class FarmingStructureSpec extends AkkaUnitSpec("FarmingStructureSpec") {
   def withFixture(test: OneArgTest): Outcome =
     withFixture(
       test.toNoArgTest(
-        FixtureParam(parentEntity = system.actorOf(TestParentEntity.props(testActor, Props(new FarmingStructure {}))))
+        FixtureParam(
+          parentEntity = system.actorOf(ForwardingParentEntity.props(testActor, Props(new FarmingStructure {}))))
       )
     )
 
@@ -45,8 +46,8 @@ class FarmingStructureSpec extends AkkaUnitSpec("FarmingStructureSpec") {
         ForwardExchangeMessage(
           UpdateCommodityState(
             Commodity("TestCommodity"),
-            CommodityAmount(25),
-            CommodityState.Produced
+            Commodity.Amount(25),
+            Commodity.State.Produced
           )
         )
       )
@@ -57,7 +58,7 @@ class FarmingStructureSpec extends AkkaUnitSpec("FarmingStructureSpec") {
         ForwardExchangeMessage(
           CommodityAvailable(
             Commodity("TestCommodity"),
-            CommodityAmount(25),
+            Commodity.Amount(25),
             Fixtures.MockRefs.structure
           )
         )
@@ -71,7 +72,7 @@ class FarmingStructureSpec extends AkkaUnitSpec("FarmingStructureSpec") {
         .copy(
           risk = RiskState(fire = RiskAmount(3), damage = RiskAmount(5)),
           commodities = commoditiesState.copy(
-            available = Map(Commodity("TestCommodity") -> CommodityAmount(25))
+            available = Map(Commodity("TestCommodity") -> Commodity.Amount(25))
           )
         )
     )

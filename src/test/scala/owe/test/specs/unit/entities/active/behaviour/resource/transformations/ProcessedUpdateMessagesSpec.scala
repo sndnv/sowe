@@ -5,7 +5,7 @@ import owe.entities.ActiveEntity.ResourceData
 import owe.entities.Entity.{ProcessAttack, ProcessCommodities, ProcessLabourFound, ProcessLabourUpdate}
 import owe.entities.active.AttackDamage
 import owe.entities.active.behaviour.resource.transformations.ProcessedUpdateMessages
-import owe.production.CommodityAmount
+import owe.production.Commodity
 import owe.test.specs.unit.UnitSpec
 import owe.test.specs.unit.entities.active.behaviour.Fixtures
 
@@ -38,15 +38,15 @@ class ProcessedUpdateMessagesSpec extends UnitSpec {
     fixture.transformer.withProcessedUpdateMessages(
       resource = fixture.resource,
       pendingMessages = Seq(
-        ProcessCommodities(Seq((fixture.resource.properties.commodity, CommodityAmount(-42))))
+        ProcessCommodities(Seq((fixture.resource.properties.commodity, Commodity.Amount(-42))))
       )
-    ) should be(fixture.resource.state.copy(currentAmount = CommodityAmount(58)))
+    ) should be(fixture.resource.state.copy(currentAmount = Commodity.Amount(58)))
 
     // single, expected but invalid message
     fixture.transformer.withProcessedUpdateMessages(
       resource = fixture.resource,
       pendingMessages = Seq(
-        ProcessCommodities(Seq((fixture.resource.properties.commodity, CommodityAmount(42))))
+        ProcessCommodities(Seq((fixture.resource.properties.commodity, Commodity.Amount(42))))
       )
     ) should be(fixture.resource.state)
 
@@ -54,19 +54,19 @@ class ProcessedUpdateMessagesSpec extends UnitSpec {
     fixture.transformer.withProcessedUpdateMessages(
       resource = fixture.resource,
       pendingMessages = Seq(
-        ProcessCommodities(Seq((fixture.resource.properties.commodity, CommodityAmount(-1)))),
-        ProcessCommodities(Seq((fixture.resource.properties.commodity, CommodityAmount(-11)))),
-        ProcessCommodities(Seq((fixture.resource.properties.commodity, CommodityAmount(-17))))
+        ProcessCommodities(Seq((fixture.resource.properties.commodity, Commodity.Amount(-1)))),
+        ProcessCommodities(Seq((fixture.resource.properties.commodity, Commodity.Amount(-11)))),
+        ProcessCommodities(Seq((fixture.resource.properties.commodity, Commodity.Amount(-17))))
       )
-    ) should be(fixture.resource.state.copy(currentAmount = CommodityAmount(71)))
+    ) should be(fixture.resource.state.copy(currentAmount = Commodity.Amount(71)))
 
     // multiple, expected but invalid messages
     fixture.transformer.withProcessedUpdateMessages(
       resource = fixture.resource,
       pendingMessages = Seq(
-        ProcessCommodities(Seq((fixture.resource.properties.commodity, CommodityAmount(1)))),
-        ProcessCommodities(Seq((fixture.resource.properties.commodity, CommodityAmount(11)))),
-        ProcessCommodities(Seq((fixture.resource.properties.commodity, CommodityAmount(17))))
+        ProcessCommodities(Seq((fixture.resource.properties.commodity, Commodity.Amount(1)))),
+        ProcessCommodities(Seq((fixture.resource.properties.commodity, Commodity.Amount(11)))),
+        ProcessCommodities(Seq((fixture.resource.properties.commodity, Commodity.Amount(17))))
       )
     ) should be(fixture.resource.state)
 
@@ -94,22 +94,22 @@ class ProcessedUpdateMessagesSpec extends UnitSpec {
       pendingMessages = Seq(
         ProcessAttack(AttackDamage(87)),
         ProcessLabourFound(),
-        ProcessCommodities(Seq((fixture.resource.properties.commodity, CommodityAmount(-42)))),
+        ProcessCommodities(Seq((fixture.resource.properties.commodity, Commodity.Amount(-42)))),
         ProcessLabourUpdate(1)
       )
-    ) should be(fixture.resource.state.copy(currentAmount = CommodityAmount(58)))
+    ) should be(fixture.resource.state.copy(currentAmount = Commodity.Amount(58)))
 
     // multiple, mixed (valid and invalid) messages
     fixture.transformer.withProcessedUpdateMessages(
       resource = fixture.resource,
       Seq(
-        ProcessCommodities(Seq((fixture.resource.properties.commodity, CommodityAmount(1)))),
+        ProcessCommodities(Seq((fixture.resource.properties.commodity, Commodity.Amount(1)))),
         ProcessAttack(AttackDamage(-87)),
-        ProcessCommodities(Seq((fixture.resource.properties.commodity, CommodityAmount(-42)))),
+        ProcessCommodities(Seq((fixture.resource.properties.commodity, Commodity.Amount(-42)))),
         ProcessLabourFound(),
-        ProcessCommodities(Seq((fixture.resource.properties.commodity, CommodityAmount(-3)))),
+        ProcessCommodities(Seq((fixture.resource.properties.commodity, Commodity.Amount(-3)))),
         ProcessLabourUpdate(1)
       )
-    ) should be(fixture.resource.state.copy(currentAmount = CommodityAmount(55)))
+    ) should be(fixture.resource.state.copy(currentAmount = Commodity.Amount(55)))
   }
 }

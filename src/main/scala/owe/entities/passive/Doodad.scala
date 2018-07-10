@@ -1,14 +1,14 @@
 package owe.entities.passive
 
 import akka.actor.ActorRef
-import owe.EntityDesirability
+import owe.entities.Entity.Desirability
 import owe.entities.PassiveEntity.PassiveEntityRef
 import owe.entities.{Entity, PassiveEntity}
 
 class Doodad extends PassiveEntity {
   final override def `type`: Entity.Type = Entity.Type.Doodad
 
-  override def `desirability`: EntityDesirability = EntityDesirability.Neutral
+  override def `desirability`: Desirability = Desirability.Neutral
 }
 
 object Doodad {

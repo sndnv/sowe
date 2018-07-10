@@ -1,11 +1,11 @@
 package owe.test.specs.unit.entities.active.behaviour.structure.transformations
 
 import org.scalatest.Outcome
-import owe.CellDesirability
 import owe.entities.ActiveEntity.{MapData, StructureData}
 import owe.entities.active.Life
 import owe.entities.active.Structure.{CurrentStage, MultiStage, StageProperties}
 import owe.entities.active.behaviour.structure.transformations.ProcessedTransition
+import owe.map.Cell
 import owe.test.specs.unit.UnitSpec
 import owe.test.specs.unit.entities.active.behaviour.Fixtures
 
@@ -24,19 +24,19 @@ class ProcessedTransitionSpec extends UnitSpec {
         StageProperties(
           maxLife = Life(100),
           maxPeople = 5,
-          minDesirability = CellDesirability.Neutral,
+          minDesirability = Cell.Desirability.Neutral,
           commodityShortageLimit = 10
         ),
         StageProperties(
           maxLife = Life(150),
           maxPeople = 15,
-          minDesirability = CellDesirability(4),
+          minDesirability = Cell.Desirability(4),
           commodityShortageLimit = 5
         ),
         StageProperties(
           maxLife = Life(200),
           maxPeople = 50,
-          minDesirability = CellDesirability.Max,
+          minDesirability = Cell.Desirability.Max,
           commodityShortageLimit = 3
         )
       )
@@ -50,7 +50,7 @@ class ProcessedTransitionSpec extends UnitSpec {
     )
 
     val map = Fixtures.defaultMapData.copy(
-      cellState = Fixtures.defaultCellState.copy(desirability = CellDesirability(4))
+      cellState = Fixtures.defaultCellState.copy(desirability = Cell.Desirability(4))
     )
 
     withFixture(test.toNoArgTest(FixtureParam(transformer, structure, map)))
@@ -59,7 +59,7 @@ class ProcessedTransitionSpec extends UnitSpec {
   "A ProcessedTransition transformation" should "upgrade a structure" in { fixture =>
     fixture.transformer.withProcessedTransition(
       fixture.map.copy(
-        cellState = fixture.map.cellState.copy(desirability = CellDesirability.Max)
+        cellState = fixture.map.cellState.copy(desirability = Cell.Desirability.Max)
       ),
       fixture.structure
     ) should be(
@@ -70,7 +70,7 @@ class ProcessedTransitionSpec extends UnitSpec {
   it should "downgrade a structure" in { fixture =>
     fixture.transformer.withProcessedTransition(
       fixture.map.copy(
-        cellState = fixture.map.cellState.copy(desirability = CellDesirability.Min)
+        cellState = fixture.map.cellState.copy(desirability = Cell.Desirability.Min)
       ),
       fixture.structure
     ) should be(

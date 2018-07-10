@@ -4,7 +4,7 @@ import org.scalatest.Outcome
 import owe.entities.ActiveEntity.StructureData
 import owe.entities.active.Structure.CommoditiesState
 import owe.entities.active.behaviour.structure.transformations.ProducedResources
-import owe.production.{Commodity, CommodityAmount}
+import owe.production.Commodity
 import owe.test.specs.unit.UnitSpec
 import owe.test.specs.unit.entities.active.behaviour.Fixtures
 
@@ -35,7 +35,7 @@ class ProducedResourcesSpec extends UnitSpec {
     ) should be(
       fixture.structure.state.copy(
         commodities = commoditiesState.copy(
-          available = Map(Commodity("TestCommodity") -> CommodityAmount(25))
+          available = Map(Commodity("TestCommodity") -> Commodity.Amount(25))
         )
       )
     )

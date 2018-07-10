@@ -3,7 +3,7 @@ package owe.entities.active.behaviour.structure.transformations
 import owe.entities.ActiveEntity.StructureData
 import owe.entities.active.Structure.{CommoditiesModifier, CommoditiesState, State}
 import owe.entities.active.behaviour.structure.CommodityCalculations
-import owe.production.CommodityAmount
+import owe.production.Commodity
 
 trait ConsumedResources {
   def withConsumedResources(structure: StructureData): State =
@@ -13,7 +13,7 @@ trait ConsumedResources {
           case Some(consumedCommodities) =>
             val updatedResources = available ++ consumedCommodities.map {
               case (commodity, amount) =>
-                (commodity, available.getOrElse(commodity, CommodityAmount(0)) - amount)
+                (commodity, available.getOrElse(commodity, Commodity.Amount(0)) - amount)
             }
 
             structure.state.copy(

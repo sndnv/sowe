@@ -7,10 +7,10 @@ import owe.entities.ActiveEntity.{ForwardMessage, ProcessEntityTick, ResourceDat
 import owe.entities.Entity.ProcessCommodities
 import owe.entities.active.behaviour.resource.producing.ProducingResource
 import owe.map.GameMap.ForwardExchangeMessage
+import owe.production.Commodity
 import owe.production.Exchange.{CommodityAvailable, UpdateCommodityState}
-import owe.production.{CommodityAmount, CommodityState}
 import owe.test.specs.unit.AkkaUnitSpec
-import owe.test.specs.unit.entities.active.behaviour.{Fixtures, TestParentEntity}
+import owe.test.specs.unit.entities.active.behaviour.{Fixtures, ForwardingParentEntity}
 
 import scala.concurrent.duration._
 
@@ -23,7 +23,8 @@ class ProducingResourceSpec extends AkkaUnitSpec("ProducingResourceSpec") {
   def withFixture(test: OneArgTest): Outcome =
     withFixture(
       test.toNoArgTest(
-        FixtureParam(parentEntity = system.actorOf(TestParentEntity.props(testActor, Props(new ProducingResource {}))))
+        FixtureParam(
+          parentEntity = system.actorOf(ForwardingParentEntity.props(testActor, Props(new ProducingResource {}))))
       )
     )
 
@@ -45,7 +46,7 @@ class ProducingResourceSpec extends AkkaUnitSpec("ProducingResourceSpec") {
           UpdateCommodityState(
             Fixtures.Resource.properties.commodity,
             Fixtures.Resource.state.replenishAmount,
-            CommodityState.Produced
+            Commodity.State.Produced
           )
         )
       )
@@ -79,16 +80,16 @@ class ProducingResourceSpec extends AkkaUnitSpec("ProducingResourceSpec") {
         Fixtures.MockRefs.resource
       ),
       messages = Seq(
-        ProcessCommodities(Seq((Fixtures.Resource.properties.commodity, CommodityAmount(-42)))),
-        ProcessCommodities(Seq((Fixtures.Resource.properties.commodity, CommodityAmount(-1))))
+        ProcessCommodities(Seq((Fixtures.Resource.properties.commodity, Commodity.Amount(-42)))),
+        ProcessCommodities(Seq((Fixtures.Resource.properties.commodity, Commodity.Amount(-1))))
       )
     )
 
     val expectedFinalAmount =
       (Fixtures.Resource.state.currentAmount
         + Fixtures.Resource.state.replenishAmount
-        - CommodityAmount(42)
-        - CommodityAmount(1))
+        - Commodity.Amount(42)
+        - Commodity.Amount(1))
 
     expectMsg(
       ForwardMessage(
@@ -96,7 +97,7 @@ class ProducingResourceSpec extends AkkaUnitSpec("ProducingResourceSpec") {
           UpdateCommodityState(
             Fixtures.Resource.properties.commodity,
             Fixtures.Resource.state.replenishAmount,
-            CommodityState.Produced
+            Commodity.State.Produced
           )
         )
       )

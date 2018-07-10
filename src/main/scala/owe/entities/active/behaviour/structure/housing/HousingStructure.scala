@@ -5,7 +5,7 @@ import owe.entities.active.behaviour.UpdateExchange
 import owe.entities.active.behaviour.structure.BaseStructure.Become
 import owe.entities.active.behaviour.structure.transformations._
 import owe.entities.active.behaviour.structure.{BaseStructure, CommodityCalculations}
-import owe.production.CommodityState
+import owe.production.Commodity
 
 trait HousingStructure
     extends BaseStructure
@@ -37,7 +37,7 @@ trait HousingStructure
       ).foreach { updatedData: StructureData =>
         CommodityCalculations
           .consumption(structure)
-          .foreach(UpdateExchange.State(_, CommodityState.Used))
+          .foreach(UpdateExchange.State(_, Commodity.State.Used))
 
         CommodityCalculations
           .requiredCommodities(updatedData)

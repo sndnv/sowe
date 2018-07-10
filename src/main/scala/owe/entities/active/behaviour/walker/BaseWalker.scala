@@ -3,7 +3,6 @@ package owe.entities.active.behaviour.walker
 import akka.actor.Actor.Receive
 import owe.entities.ActiveEntity
 import owe.entities.ActiveEntity._
-import owe.entities.Entity.EntityRef
 import owe.entities.active.Resource.ResourceRef
 import owe.entities.active.Structure.StructureRef
 import owe.entities.active.Walker._
@@ -22,7 +21,7 @@ import owe.entities.passive.Roadblock.RoadblockRef
 import owe.map.GameMap._
 import owe.map.MapEntity
 import owe.map.grid.Point
-import owe.production.{Commodity, CommodityAmount, CommodityState}
+import owe.production.Commodity
 
 import scala.collection.immutable.Queue
 import scala.concurrent.Future
@@ -118,18 +117,21 @@ trait BaseWalker
 
                     case None =>
                       //no free path; can't move
-                      calculateRoamingPath(entity.id, maxDistance).map {
+                      calculateRoamingPath(entity.id, maxDistance - distanceCovered).map {
                         case Some(newRoamingPath) =>
                           Seq(
                             withProcessedUpdateMessages(_, messages),
                             withRoamAction(_, roamAction),
                             withProcessedPath(_, newRoamingPath),
-                            withMovementMode(_, MovementMode.Idling)
+                            withMovementMode(_, MovementMode.Roaming)
                           )
 
                         case None =>
                           log.error("Failed to generate new roaming path for entity [{}].", entity.id)
-                          Seq.empty
+                          Seq(
+                            withProcessedUpdateMessages(_, messages),
+                            withMovementMode(_, MovementMode.Idling)
+                          )
                       }
                   }
 
@@ -192,12 +194,15 @@ trait BaseWalker
                       Seq(
                         withProcessedUpdateMessages(_, messages),
                         withProcessedPath(_, newAdvancePath),
-                        withMovementMode(_, MovementMode.Idling)
+                        withMovementMode(_, mode)
                       )
 
                     case None =>
                       log.error("Failed to generate new advance path for entity [{}].", entity.id)
-                      Seq.empty
+                      Seq(
+                        withProcessedUpdateMessages(_, messages),
+                        withMovementMode(_, MovementMode.Idling)
+                      )
                   }
               }
 
@@ -224,11 +229,17 @@ trait BaseWalker
               )
 
             case DoRepeatableOperation(op, repeat) =>
-              (
-                Seq(withProcessedUpdateMessages(_: WalkerData, messages), op),
-                if (repeat(entity))() => acting(actions)
-                else () => acting(remainingActions)
-              )
+              if (repeat(entity)) {
+                (
+                  Seq(withProcessedUpdateMessages(_: WalkerData, messages), op),
+                  () => acting(actions)
+                )
+              } else {
+                (
+                  Seq(withProcessedUpdateMessages(_: WalkerData, messages)),
+                  () => acting(remainingActions)
+                )
+              }
 
             case GoToPoint(destination) =>
               (
@@ -289,7 +300,7 @@ trait BaseWalker
         .foreach(updatedData => self ! Become(behaviour, updatedData))
   }
 
-  protected def getEntityData(entityID: EntityRef): Future[ActiveEntityData] =
+  protected def getEntityData(entityID: ActiveEntityRef): Future[ActiveEntityData] =
     (parentEntity ? ForwardMessage(GetEntity(entityID))).mapTo[ActiveEntityData]
 
   protected def getNeighboursData(
@@ -300,7 +311,7 @@ trait BaseWalker
 
   protected def distributeCommodities(
     entityID: ActiveEntityRef,
-    commodities: Seq[(Commodity, CommodityAmount)]
+    commodities: Seq[(Commodity, Commodity.Amount)]
   ): Unit =
     parentEntity ! ForwardMessage(DistributeCommodities(entityID, commodities))
 
@@ -321,7 +332,7 @@ trait BaseWalker
       context.become(base.orElse(behaviour()))
     } else {
       walker.state.commodities match {
-        case CommoditiesState(available, _) => UpdateExchange.State(available, CommodityState.Lost)
+        case CommoditiesState(available, _) => UpdateExchange.State(available, Commodity.State.Lost)
         case _                              => //do nothing
       }
 
@@ -405,7 +416,7 @@ object BaseWalker {
   case class DoOperation(op: WalkerData => Future[State]) extends Action
   case class DoRepeatableOperation(op: WalkerData => Future[State], repeat: WalkerData => Boolean) extends Action
   case class GoToPoint(destination: Point) extends Action
-  case class GoToEntity(entityID: EntityRef) extends Action
+  case class GoToEntity(entityID: ActiveEntityRef) extends Action
   case class GoHome() extends Action
 
   sealed trait Transition extends Action
@@ -415,7 +426,7 @@ object BaseWalker {
   sealed trait Destination
   case object Home extends Destination
   case class DestinationPoint(point: Point) extends Destination
-  case class DestinationEntity(entityID: EntityRef) extends Destination
+  case class DestinationEntity(entityID: ActiveEntityRef) extends Destination
 
   private[behaviour] case class Become(behaviour: () => Receive, walker: WalkerData)
 }

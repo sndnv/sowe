@@ -7,7 +7,7 @@ import owe.entities.active.behaviour.walker.BaseWalker._
 import owe.entities.active.behaviour.walker.DistributionCalculations.DistributionResult
 import owe.entities.active.behaviour.walker.{BaseWalker, DistributionCalculations}
 import owe.entities.active.{Distance, Walker}
-import owe.production.CommodityAmount
+import owe.production.Commodity
 
 import scala.concurrent.Future
 
@@ -46,7 +46,7 @@ trait Distributor extends BaseWalker {
 
   private def continueRoaming(walker: WalkerData): Boolean =
     walker.state.commodities match {
-      case CommoditiesState(available, _) => available.exists(_._2 > CommodityAmount(0))
+      case CommoditiesState(available, _) => available.exists(_._2 > Commodity.Amount(0))
       case _                              => false //no commodities to work with
     }
 }

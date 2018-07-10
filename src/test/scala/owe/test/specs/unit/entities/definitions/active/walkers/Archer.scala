@@ -33,7 +33,6 @@ class Archer extends Walker {
         state = State(
           currentLife = Life(100),
           distanceCovered = Distance(0),
-          destinationPath = Queue.empty,
           commodities = NoCommodities,
           path = Queue.empty,
           mode = MovementMode.Advancing

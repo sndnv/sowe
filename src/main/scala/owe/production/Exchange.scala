@@ -33,20 +33,20 @@ class Exchange() extends Actor {
 
     case UpdateCommodityState(commodity, amount, state) =>
       val updatedStats = state match {
-        case CommodityState.Produced =>
+        case Commodity.State.Produced =>
           stats.copy(
             produced = stats.produced + (commodity -> (stats.produced
-              .getOrElse(commodity, CommodityAmount(0)) + amount))
+              .getOrElse(commodity, Commodity.Amount(0)) + amount))
           )
 
-        case CommodityState.Used =>
+        case Commodity.State.Used =>
           stats.copy(
-            used = stats.used + (commodity -> (stats.used.getOrElse(commodity, CommodityAmount(0)) + amount))
+            used = stats.used + (commodity -> (stats.used.getOrElse(commodity, Commodity.Amount(0)) + amount))
           )
 
-        case CommodityState.Lost =>
+        case Commodity.State.Lost =>
           stats.copy(
-            lost = stats.lost + (commodity -> (stats.lost.getOrElse(commodity, CommodityAmount(0)) + amount))
+            lost = stats.lost + (commodity -> (stats.lost.getOrElse(commodity, Commodity.Amount(0)) + amount))
           )
       }
 
@@ -128,9 +128,9 @@ object Exchange {
   }
 
   case class ExchangeCommodities(
-    required: Map[(Commodity, ActiveEntityRef), CommodityAmount],
-    available: Map[(Commodity, ActiveEntityRef), CommodityAmount],
-    inTransit: Map[(Commodity, ActiveEntityRef), (CommodityAmount, ActiveEntityRef)]
+    required: Map[(Commodity, ActiveEntityRef), Commodity.Amount],
+    available: Map[(Commodity, ActiveEntityRef), Commodity.Amount],
+    inTransit: Map[(Commodity, ActiveEntityRef), (Commodity.Amount, ActiveEntityRef)]
   )
 
   object ExchangeCommodities {
@@ -142,9 +142,9 @@ object Exchange {
   }
 
   case class ExchangeStats(
-    produced: Map[Commodity, CommodityAmount],
-    used: Map[Commodity, CommodityAmount],
-    lost: Map[Commodity, CommodityAmount]
+    produced: Map[Commodity, Commodity.Amount],
+    used: Map[Commodity, Commodity.Amount],
+    lost: Map[Commodity, Commodity.Amount]
   )
 
   object ExchangeStats {
@@ -157,27 +157,27 @@ object Exchange {
 
   case class CommodityRequired(
     commodity: Commodity,
-    amount: CommodityAmount,
+    amount: Commodity.Amount,
     source: ActiveEntityRef
   ) extends Message
 
   case class CommodityAvailable(
     commodity: Commodity,
-    amount: CommodityAmount,
+    amount: Commodity.Amount,
     source: ActiveEntityRef
   ) extends Message
 
   case class CommodityInTransit(
     commodity: Commodity,
-    amount: CommodityAmount,
+    amount: Commodity.Amount,
     source: ActiveEntityRef,
     destination: ActiveEntityRef
   ) extends Message
 
   case class UpdateCommodityState(
     commodity: Commodity,
-    amount: CommodityAmount,
-    state: CommodityState
+    amount: Commodity.Amount,
+    state: Commodity.State
   ) extends Message
 
   def props(): Props = Props(classOf[Exchange])

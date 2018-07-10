@@ -1,13 +1,13 @@
 package owe.entities.active
 
 import akka.actor.ActorRef
-import owe.CellDesirability
 import owe.entities.ActiveEntity.{ActiveEntityRef, StructureData}
 import owe.entities._
 import owe.entities.active.Structure.StructureRef
 import owe.entities.active.behaviour.structure.BaseStructure
+import owe.map.Cell
 import owe.map.grid.Point
-import owe.production.{Commodity, CommodityAmount, CommodityAmountModifier}
+import owe.production.Commodity
 
 trait Structure
     extends ActiveEntity[
@@ -50,14 +50,14 @@ object Structure {
   case object NoCommodities extends Commodities with StateOnly with StateModifiersOnly
 
   case class CommoditiesState(
-    available: Map[Commodity, CommodityAmount],
-    limits: Map[Commodity, CommodityAmount]
+    available: Map[Commodity, Commodity.Amount],
+    limits: Map[Commodity, Commodity.Amount]
   ) extends Commodities
       with StateOnly
 
   //docs - controls consumption rate for houses && affects production rate
   case class CommoditiesModifier(
-    usageRates: Map[Commodity, CommodityAmount] //docs - per occupant (housing) or tick (production)
+    usageRates: Map[Commodity, Commodity.Amount] //docs - per occupant (housing) or tick (production)
   ) extends Commodities
       with StateModifiersOnly
 
@@ -118,19 +118,19 @@ object Structure {
   case class ProductionState(
     employees: Int,
     labour: LabourState,
-    rates: Map[Commodity, CommodityAmount]
+    rates: Map[Commodity, Commodity.Amount]
   ) extends Production
       with StateOnly
 
   case class ProductionModifier(
-    rates: Map[Commodity, CommodityAmountModifier] //doc - in pct of Production.rate
+    rates: Map[Commodity, Commodity.AmountModifier] //doc - in pct of Production.rate
   ) extends Production
       with StateModifiersOnly
 
   case class StageProperties(
     maxLife: Life,
     maxPeople: Int,
-    minDesirability: CellDesirability,
+    minDesirability: Cell.Desirability,
     commodityShortageLimit: Int
   )
 

@@ -3,7 +3,7 @@ package owe.test.specs.unit.entities.active.behaviour.resource
 import org.scalatest.Outcome
 import owe.entities.ActiveEntity.ResourceData
 import owe.entities.active.behaviour.resource.CommodityCalculations
-import owe.production.CommodityAmount
+import owe.production.Commodity
 import owe.test.specs.unit.UnitSpec
 import owe.test.specs.unit.entities.active.behaviour.Fixtures
 
@@ -32,10 +32,10 @@ class CommodityCalculationsSpec extends UnitSpec {
     CommodityCalculations.amountProduced(
       fixture.resource.copy(
         state = fixture.resource.state.copy(
-          currentAmount = fixture.resource.properties.maxAmount - CommodityAmount(11)
+          currentAmount = fixture.resource.properties.maxAmount - Commodity.Amount(11)
         )
       )
-    ) should be(Some(CommodityAmount(11)))
+    ) should be(Some(Commodity.Amount(11)))
 
     CommodityCalculations.amountProduced(
       fixture.resource.copy(

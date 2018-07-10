@@ -8,10 +8,10 @@ import owe.entities.active.Structure._
 import owe.entities.active._
 import owe.entities.active.behaviour.structure.housing.HousingStructure
 import owe.map.GameMap.ForwardExchangeMessage
+import owe.production.Commodity
 import owe.production.Exchange.{CommodityRequired, UpdateCommodityState}
-import owe.production.{Commodity, CommodityAmount, CommodityState}
 import owe.test.specs.unit.AkkaUnitSpec
-import owe.test.specs.unit.entities.active.behaviour.{Fixtures, TestParentEntity}
+import owe.test.specs.unit.entities.active.behaviour.{Fixtures, ForwardingParentEntity}
 
 import scala.concurrent.duration._
 
@@ -24,7 +24,8 @@ class HousingStructureSpec extends AkkaUnitSpec("HousingStructureSpec") {
   def withFixture(test: OneArgTest): Outcome =
     withFixture(
       test.toNoArgTest(
-        FixtureParam(parentEntity = system.actorOf(TestParentEntity.props(testActor, Props(new HousingStructure {}))))
+        FixtureParam(
+          parentEntity = system.actorOf(ForwardingParentEntity.props(testActor, Props(new HousingStructure {}))))
       )
     )
 
@@ -41,14 +42,14 @@ class HousingStructureSpec extends AkkaUnitSpec("HousingStructureSpec") {
             ),
           commodities = CommoditiesState(
             available = Map(
-              Commodity("TestCommodity#1") -> CommodityAmount(25),
-              Commodity("TestCommodity#2") -> CommodityAmount(5),
-              Commodity("TestCommodity#3") -> CommodityAmount(25)
+              Commodity("TestCommodity#1") -> Commodity.Amount(25),
+              Commodity("TestCommodity#2") -> Commodity.Amount(5),
+              Commodity("TestCommodity#3") -> Commodity.Amount(25)
             ),
             limits = Map(
-              Commodity("TestCommodity#1") -> CommodityAmount(100),
-              Commodity("TestCommodity#2") -> CommodityAmount(10),
-              Commodity("TestCommodity#3") -> CommodityAmount(200)
+              Commodity("TestCommodity#1") -> Commodity.Amount(100),
+              Commodity("TestCommodity#2") -> Commodity.Amount(10),
+              Commodity("TestCommodity#3") -> Commodity.Amount(200)
             )
           )
         ),
@@ -63,8 +64,8 @@ class HousingStructureSpec extends AkkaUnitSpec("HousingStructureSpec") {
         ForwardExchangeMessage(
           UpdateCommodityState(
             Commodity("TestCommodity#1"),
-            CommodityAmount(5),
-            CommodityState.Used
+            Commodity.Amount(5),
+            Commodity.State.Used
           )
         )
       )
@@ -75,8 +76,8 @@ class HousingStructureSpec extends AkkaUnitSpec("HousingStructureSpec") {
         ForwardExchangeMessage(
           UpdateCommodityState(
             Commodity("TestCommodity#2"),
-            CommodityAmount(1),
-            CommodityState.Used
+            Commodity.Amount(1),
+            Commodity.State.Used
           )
         )
       )
@@ -87,8 +88,8 @@ class HousingStructureSpec extends AkkaUnitSpec("HousingStructureSpec") {
         ForwardExchangeMessage(
           UpdateCommodityState(
             Commodity("TestCommodity#3"),
-            CommodityAmount(5),
-            CommodityState.Used
+            Commodity.Amount(5),
+            Commodity.State.Used
           )
         )
       )
@@ -99,7 +100,7 @@ class HousingStructureSpec extends AkkaUnitSpec("HousingStructureSpec") {
         ForwardExchangeMessage(
           CommodityRequired(
             Commodity("TestCommodity#1"),
-            CommodityAmount(100),
+            Commodity.Amount(80),
             Fixtures.MockRefs.structure
           )
         )
@@ -111,7 +112,7 @@ class HousingStructureSpec extends AkkaUnitSpec("HousingStructureSpec") {
         ForwardExchangeMessage(
           CommodityRequired(
             Commodity("TestCommodity#2"),
-            CommodityAmount(10),
+            Commodity.Amount(6),
             Fixtures.MockRefs.structure
           )
         )
@@ -123,7 +124,7 @@ class HousingStructureSpec extends AkkaUnitSpec("HousingStructureSpec") {
         ForwardExchangeMessage(
           CommodityRequired(
             Commodity("TestCommodity#3"),
-            CommodityAmount(200),
+            Commodity.Amount(180),
             Fixtures.MockRefs.structure
           )
         )
@@ -137,9 +138,9 @@ class HousingStructureSpec extends AkkaUnitSpec("HousingStructureSpec") {
         risk = RiskState(fire = RiskAmount(3), damage = RiskAmount(5)),
         commodities = commoditiesState.copy(
           available = Map(
-            Commodity("TestCommodity#1") -> CommodityAmount(20),
-            Commodity("TestCommodity#2") -> CommodityAmount(4),
-            Commodity("TestCommodity#3") -> CommodityAmount(20)
+            Commodity("TestCommodity#1") -> Commodity.Amount(20),
+            Commodity("TestCommodity#2") -> Commodity.Amount(4),
+            Commodity("TestCommodity#3") -> Commodity.Amount(20)
           )
         ),
         housing = HousingState(

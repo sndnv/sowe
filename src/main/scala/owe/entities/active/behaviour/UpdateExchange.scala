@@ -3,17 +3,17 @@ package owe.entities.active.behaviour
 import owe.entities.ActiveEntity.{ActiveEntityRef, ForwardMessage}
 import owe.map.GameMap.ForwardExchangeMessage
 import owe.production.Exchange.{CommodityAvailable, CommodityInTransit, CommodityRequired, UpdateCommodityState}
-import owe.production.{Commodity, CommodityAmount, CommodityState, Exchange}
+import owe.production.{Commodity, Exchange}
 
 object UpdateExchange {
   object State {
     def apply(
-      commodities: Map[Commodity, CommodityAmount],
-      state: CommodityState
+      commodities: Map[Commodity, Commodity.Amount],
+      state: Commodity.State
     )(implicit parentEntity: ActiveEntityRef): Unit =
       forwardMessages(
         commodities.flatMap {
-          case (commodity, amount) if amount > CommodityAmount(0) =>
+          case (commodity, amount) if amount > Commodity.Amount(0) =>
             Some(UpdateCommodityState(commodity, amount, state))
 
           case _ => None
@@ -24,11 +24,11 @@ object UpdateExchange {
   object Stats {
     def availableCommodities(
       entityID: ActiveEntityRef,
-      commodities: Map[Commodity, CommodityAmount]
+      commodities: Map[Commodity, Commodity.Amount]
     )(implicit parentEntity: ActiveEntityRef): Unit =
       forwardMessages(
         commodities.flatMap {
-          case (commodity, updatedAmount) if updatedAmount > CommodityAmount(0) =>
+          case (commodity, updatedAmount) if updatedAmount > Commodity.Amount(0) =>
             Some(CommodityAvailable(commodity, updatedAmount, entityID))
 
           case _ => None
@@ -37,13 +37,13 @@ object UpdateExchange {
 
     def availableCommodities(
       entityID: ActiveEntityRef,
-      initialCommodities: Map[Commodity, CommodityAmount],
-      updatedCommodities: Map[Commodity, CommodityAmount]
+      initialCommodities: Map[Commodity, Commodity.Amount],
+      updatedCommodities: Map[Commodity, Commodity.Amount]
     )(implicit parentEntity: ActiveEntityRef): Unit =
       forwardMessages(
         updatedCommodities.flatMap {
-          case (commodity, updatedAmount) if updatedAmount > CommodityAmount(0) =>
-            val currentAmount = initialCommodities.getOrElse(commodity, CommodityAmount(0))
+          case (commodity, updatedAmount) if updatedAmount > Commodity.Amount(0) =>
+            val currentAmount = initialCommodities.getOrElse(commodity, Commodity.Amount(0))
 
             if (currentAmount != updatedAmount) {
               Some(CommodityAvailable(commodity, updatedAmount, entityID))
@@ -57,11 +57,11 @@ object UpdateExchange {
 
     def requiredCommodities(
       entityID: ActiveEntityRef,
-      consumedCommodities: Map[Commodity, CommodityAmount]
+      consumedCommodities: Map[Commodity, Commodity.Amount]
     )(implicit parentEntity: ActiveEntityRef): Unit =
       forwardMessages(
         consumedCommodities.flatMap {
-          case (commodity, amount) if amount > CommodityAmount(0) =>
+          case (commodity, amount) if amount > Commodity.Amount(0) =>
             Some(CommodityRequired(commodity, amount, entityID))
 
           case _ => None
@@ -71,11 +71,11 @@ object UpdateExchange {
     def inTransitCommodities(
       source: ActiveEntityRef,
       destination: ActiveEntityRef,
-      inTransitCommodities: Map[Commodity, CommodityAmount]
+      inTransitCommodities: Map[Commodity, Commodity.Amount]
     )(implicit parentEntity: ActiveEntityRef): Unit =
       forwardMessages(
         inTransitCommodities.flatMap {
-          case (commodity, amount) if amount > CommodityAmount(0) =>
+          case (commodity, amount) if amount > Commodity.Amount(0) =>
             Some(CommodityInTransit(commodity, amount, source, destination))
 
           case _ => None

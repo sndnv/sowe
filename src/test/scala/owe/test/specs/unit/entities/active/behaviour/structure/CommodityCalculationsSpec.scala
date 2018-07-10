@@ -4,7 +4,7 @@ import org.scalatest.Outcome
 import owe.entities.ActiveEntity.StructureData
 import owe.entities.active.Structure.{CommoditiesModifier, CommoditiesState, ProductionState}
 import owe.entities.active.behaviour.structure.CommodityCalculations
-import owe.production.{Commodity, CommodityAmount}
+import owe.production.Commodity
 import owe.test.specs.unit.UnitSpec
 import owe.test.specs.unit.entities.active.behaviour.Fixtures
 
@@ -82,11 +82,11 @@ class CommodityCalculationsSpec extends UnitSpec {
         ),
         modifiers = fixture.structure.modifiers.copy(
           commodities = commoditiesModifier.copy(
-            usageRates = Map(Commodity("TestCommodity") -> CommodityAmount(10))
+            usageRates = Map(Commodity("TestCommodity") -> Commodity.Amount(10))
           )
         )
       )
-    ) should be(Some(Map(Commodity("TestCommodity") -> CommodityAmount(10))))
+    ) should be(Some(Map(Commodity("TestCommodity") -> Commodity.Amount(10))))
 
     // should fail; no usage rates
     CommodityCalculations.consumption(
@@ -104,7 +104,7 @@ class CommodityCalculationsSpec extends UnitSpec {
       fixture.structure.copy(
         modifiers = fixture.structure.modifiers.copy(
           commodities = commoditiesModifier.copy(
-            usageRates = Map(Commodity("TestCommodity") -> CommodityAmount(10))
+            usageRates = Map(Commodity("TestCommodity") -> Commodity.Amount(10))
           )
         )
       )
@@ -121,7 +121,7 @@ class CommodityCalculationsSpec extends UnitSpec {
         ),
         modifiers = fixture.structure.modifiers.copy(
           commodities = commoditiesModifier.copy(
-            usageRates = Map(Commodity("TestCommodity") -> CommodityAmount(10))
+            usageRates = Map(Commodity("TestCommodity") -> Commodity.Amount(10))
           )
         )
       )
@@ -137,13 +137,13 @@ class CommodityCalculationsSpec extends UnitSpec {
       fixture.structure.copy(
         modifiers = fixture.structure.modifiers.copy(
           commodities = commoditiesModifier.copy(
-            usageRates = Map(Commodity("TestCommodity") -> CommodityAmount(10))
+            usageRates = Map(Commodity("TestCommodity") -> Commodity.Amount(10))
           )
         )
       )
     ) should be(
       Some(
-        Map(Commodity("TestCommodity") -> CommodityAmount(100))
+        Map(Commodity("TestCommodity") -> Commodity.Amount(100))
       )
     )
 
@@ -168,7 +168,7 @@ class CommodityCalculationsSpec extends UnitSpec {
         ),
         modifiers = fixture.structure.modifiers.copy(
           commodities = commoditiesModifier.copy(
-            usageRates = Map(Commodity("TestCommodity") -> CommodityAmount(10))
+            usageRates = Map(Commodity("TestCommodity") -> Commodity.Amount(10))
           )
         )
       )
@@ -189,7 +189,7 @@ class CommodityCalculationsSpec extends UnitSpec {
         ),
         modifiers = fixture.structure.modifiers.copy(
           commodities = commoditiesModifier.copy(
-            usageRates = Map(Commodity("TestCommodity") -> CommodityAmount(10))
+            usageRates = Map(Commodity("TestCommodity") -> Commodity.Amount(10))
           )
         )
       )
@@ -200,7 +200,7 @@ class CommodityCalculationsSpec extends UnitSpec {
       fixture.structure.copy(
         modifiers = fixture.structure.modifiers.copy(
           commodities = commoditiesModifier.copy(
-            usageRates = Map(Commodity("TestCommodity") -> CommodityAmount(10))
+            usageRates = Map(Commodity("TestCommodity") -> Commodity.Amount(10))
           )
         )
       )

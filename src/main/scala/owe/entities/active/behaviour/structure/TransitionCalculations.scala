@@ -1,9 +1,9 @@
 package owe.entities.active.behaviour.structure
 
-import owe.CellDesirability
 import owe.entities.ActiveEntity.MapData
 import owe.entities.active.Structure._
 import owe.entities.active.behaviour.structure.BaseStructure.StructureTransition
+import owe.map.Cell
 
 object TransitionCalculations {
   def housing(
@@ -24,7 +24,7 @@ object TransitionCalculations {
     ) = housingState
 
     if (occupants > 0) {
-      val cellDesirability = map.cellState.desirability.min(CellDesirability.Max)
+      val cellDesirability = map.cellState.desirability.min(Cell.Desirability.Max)
 
       (currentStage, definedStages) match {
         case (DefaultStage, SingleStage(_)) =>
@@ -74,7 +74,7 @@ object TransitionCalculations {
     currentStage: Stages with StateOnly,
     definedStages: Stages with PropertiesOnly
   ): StructureTransition = {
-    val cellDesirability = map.cellState.desirability.min(CellDesirability.Max)
+    val cellDesirability = map.cellState.desirability.min(Cell.Desirability.Max)
 
     (currentStage, definedStages) match {
       case (DefaultStage, SingleStage(_)) =>
