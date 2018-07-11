@@ -4,7 +4,7 @@ import akka.actor.{ActorRef, Props}
 import akka.pattern.ask
 import akka.util.Timeout
 import owe.entities.Entity.Desirability
-import owe.entities.active.AttackDamage
+import owe.entities.active.attributes.AttackDamage
 import owe.map.Cell
 import owe.map.grid.Point
 import owe.production.Commodity

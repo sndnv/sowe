@@ -2,8 +2,9 @@ package owe.test.specs.unit.entities.definitions.active.walkers
 
 import owe.effects.Effect
 import owe.entities.ActiveEntity.{ActiveEntityData, ActiveEntityRef, WalkerData}
+import owe.entities.active.Walker
 import owe.entities.active.Walker._
-import owe.entities.active._
+import owe.entities.active.attributes._
 import owe.entities.active.behaviour.walker
 import owe.entities.active.behaviour.walker.BaseWalker
 import owe.map.grid.Point
@@ -35,8 +36,8 @@ class Recruiter extends Walker {
           mode = MovementMode.Roaming
         ),
         modifiers = StateModifiers(
-          movementSpeed = SpeedModifier(100),
-          maxRoamingDistance = DistanceModifier(100),
+          movementSpeed = Speed.Modifier(100),
+          maxRoamingDistance = Distance.Modifier(100),
           attack = NoAttack
         ),
         id

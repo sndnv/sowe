@@ -5,7 +5,7 @@ import akka.testkit.TestProbe
 import owe.entities.ActiveEntity._
 import owe.entities.Entity
 import owe.entities.Entity.Desirability
-import owe.entities.active.Distance
+import owe.entities.active.attributes.Distance
 import owe.entities.active.Resource.ResourceRef
 import owe.entities.active.Structure.StructureRef
 import owe.entities.active.Walker.WalkerRef

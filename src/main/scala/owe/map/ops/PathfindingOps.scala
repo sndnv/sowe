@@ -1,6 +1,6 @@
 package owe.map.ops
 
-import owe.entities.active.Distance
+import owe.entities.active.attributes.Distance
 import owe.map.Cell.{Availability, CellActorRef}
 import owe.map.grid.{Grid, Point}
 import owe.map.pathfinding.Search

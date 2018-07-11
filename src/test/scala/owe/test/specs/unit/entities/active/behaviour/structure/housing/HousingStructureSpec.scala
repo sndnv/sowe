@@ -6,6 +6,7 @@ import org.scalatest.Outcome
 import owe.entities.ActiveEntity.{ForwardMessage, ProcessEntityTick, StructureData}
 import owe.entities.active.Structure._
 import owe.entities.active._
+import owe.entities.active.attributes.RiskAmount
 import owe.entities.active.behaviour.structure.housing.HousingStructure
 import owe.map.GameMap.ForwardExchangeMessage
 import owe.production.Commodity

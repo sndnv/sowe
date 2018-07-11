@@ -1,8 +1,8 @@
 package owe.entities.active.behaviour.walker.transformations
 
 import owe.entities.ActiveEntity.WalkerData
-import owe.entities.active.Distance
 import owe.entities.active.Walker.{MovementMode, State}
+import owe.entities.active.attributes.Distance
 
 import scala.collection.immutable.Queue
 import scala.concurrent.Future

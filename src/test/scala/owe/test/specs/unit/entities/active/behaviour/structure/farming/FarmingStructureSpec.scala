@@ -4,7 +4,7 @@ import akka.actor.{ActorRef, Props}
 import akka.util.Timeout
 import org.scalatest.Outcome
 import owe.entities.ActiveEntity.{ForwardMessage, ProcessEntityTick, StructureData}
-import owe.entities.active.RiskAmount
+import owe.entities.active.attributes.RiskAmount
 import owe.entities.active.Structure.{CommoditiesState, RiskState}
 import owe.entities.active.behaviour.structure.farming.FarmingStructure
 import owe.map.GameMap.ForwardExchangeMessage

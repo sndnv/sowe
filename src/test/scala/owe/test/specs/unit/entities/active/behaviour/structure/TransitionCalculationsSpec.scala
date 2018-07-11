@@ -3,6 +3,7 @@ package owe.test.specs.unit.entities.active.behaviour.structure
 import org.scalatest.Outcome
 import owe.entities.active.Structure._
 import owe.entities.active._
+import owe.entities.active.attributes._
 import owe.entities.active.behaviour.structure.BaseStructure.StructureTransition
 import owe.entities.active.behaviour.structure.TransitionCalculations
 import owe.map.Cell

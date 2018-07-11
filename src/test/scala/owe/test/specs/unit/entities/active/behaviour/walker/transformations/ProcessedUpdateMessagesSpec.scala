@@ -5,7 +5,7 @@ import owe.entities.ActiveEntity.WalkerData
 import owe.entities.Entity.{ProcessAttack, ProcessCommodities}
 import owe.entities.active.Walker.CommoditiesState
 import owe.entities.active.behaviour.walker.transformations.ProcessedUpdateMessages
-import owe.entities.active.{AttackDamage, Life}
+import owe.entities.active.attributes.{AttackDamage, Life}
 import owe.production.Commodity
 import owe.test.specs.unit.AsyncUnitSpec
 import owe.test.specs.unit.entities.active.behaviour.Fixtures

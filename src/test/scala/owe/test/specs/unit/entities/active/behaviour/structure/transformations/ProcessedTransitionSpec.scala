@@ -2,7 +2,7 @@ package owe.test.specs.unit.entities.active.behaviour.structure.transformations
 
 import org.scalatest.Outcome
 import owe.entities.ActiveEntity.{MapData, StructureData}
-import owe.entities.active.Life
+import owe.entities.active.attributes.Life
 import owe.entities.active.Structure.{CurrentStage, MultiStage, StageProperties}
 import owe.entities.active.behaviour.structure.transformations.ProcessedTransition
 import owe.map.Cell

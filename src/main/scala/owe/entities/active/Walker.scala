@@ -6,6 +6,7 @@ import owe.entities.Entity.Desirability
 import owe.entities._
 import owe.entities.active.Structure.StructureRef
 import owe.entities.active.Walker.WalkerRef
+import owe.entities.active.attributes._
 import owe.entities.active.behaviour.walker.BaseWalker
 import owe.map.grid.Point
 import owe.production.Commodity
@@ -45,7 +46,7 @@ object Walker {
   case object NoAttack extends Attack with PropertiesOnly with StateModifiersOnly
 
   case class AttackProperties(
-    rate: AttackRate,
+    rate: AttackRate, // TODO - use attack rate to calculate final damage
     damage: AttackDamage,
     distance: Distance,
     target: ActiveEntityData => Boolean
@@ -53,9 +54,9 @@ object Walker {
       with PropertiesOnly
 
   case class AttackModifiers(
-    rate: AttackRateModifier,
-    damage: AttackDamageModifier,
-    distance: DistanceModifier
+    rate: AttackRate.Modifier, // TODO - use attack rate to calculate final damage
+    damage: AttackDamage.Modifier,
+    distance: Distance.Modifier
   ) extends Attack
       with StateModifiersOnly
 
@@ -86,8 +87,8 @@ object Walker {
   ) extends Entity.State
 
   case class StateModifiers(
-    movementSpeed: SpeedModifier,
-    maxRoamingDistance: DistanceModifier,
+    movementSpeed: Speed.Modifier,
+    maxRoamingDistance: Distance.Modifier,
     attack: Attack with StateModifiersOnly
   ) extends Entity.StateModifiers
 }

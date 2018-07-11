@@ -6,7 +6,7 @@ import owe.entities.ActiveEntity._
 import owe.entities.active.Resource.ResourceRef
 import owe.entities.active.Structure.StructureRef
 import owe.entities.active.Walker._
-import owe.entities.active._
+import owe.entities.active.attributes.{AttackDamage, Distance}
 import owe.entities.active.behaviour.walker.BaseWalker._
 import owe.entities.active.behaviour.walker.transformations.{
   ProcessedMovement,

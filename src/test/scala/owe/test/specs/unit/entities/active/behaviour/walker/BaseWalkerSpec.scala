@@ -5,9 +5,8 @@ import akka.testkit.TestProbe
 import org.scalatest.Outcome
 import owe.entities.ActiveEntity.{ForwardMessage, ProcessEntityTick, WalkerData}
 import owe.entities.active.Structure.StructureRef
-import owe.entities.active._
 import owe.entities.active.Walker._
-import owe.entities.active.behaviour.UpdateExchange
+import owe.entities.active.attributes._
 import owe.entities.active.behaviour.walker.BaseWalker
 import owe.entities.active.behaviour.walker.BaseWalker._
 import owe.map.GameMap.{AttackEntity, DestroyEntity, ForwardExchangeMessage, MoveEntity}
@@ -214,8 +213,8 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
         mode = MovementMode.Roaming
       ),
       modifiers = StateModifiers(
-        movementSpeed = SpeedModifier(100),
-        maxRoamingDistance = DistanceModifier(100),
+        movementSpeed = Speed.Modifier(100),
+        maxRoamingDistance = Distance.Modifier(100),
         attack = NoAttack
       ),
       Fixtures.MockRefs.walker
@@ -428,8 +427,8 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
         mode = MovementMode.Advancing
       ),
       modifiers = StateModifiers(
-        movementSpeed = SpeedModifier(100),
-        maxRoamingDistance = DistanceModifier(100),
+        movementSpeed = Speed.Modifier(100),
+        maxRoamingDistance = Distance.Modifier(100),
         attack = NoAttack
       ),
       Fixtures.MockRefs.walker
@@ -525,8 +524,8 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
         mode = MovementMode.Advancing
       ),
       modifiers = StateModifiers(
-        movementSpeed = SpeedModifier(100),
-        maxRoamingDistance = DistanceModifier(100),
+        movementSpeed = Speed.Modifier(100),
+        maxRoamingDistance = Distance.Modifier(100),
         attack = NoAttack
       ),
       Fixtures.MockRefs.walker
@@ -590,8 +589,8 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
         mode = MovementMode.Advancing
       ),
       modifiers = StateModifiers(
-        movementSpeed = SpeedModifier(100),
-        maxRoamingDistance = DistanceModifier(100),
+        movementSpeed = Speed.Modifier(100),
+        maxRoamingDistance = Distance.Modifier(100),
         attack = NoAttack
       ),
       Fixtures.MockRefs.walker
@@ -654,8 +653,8 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
         mode = MovementMode.Idling
       ),
       modifiers = StateModifiers(
-        movementSpeed = SpeedModifier(100),
-        maxRoamingDistance = DistanceModifier(100),
+        movementSpeed = Speed.Modifier(100),
+        maxRoamingDistance = Distance.Modifier(100),
         attack = NoAttack
       ),
       Fixtures.MockRefs.walker

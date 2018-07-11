@@ -2,10 +2,11 @@ package owe.entities.active.behaviour.walker.roaming
 
 import owe.entities.ActiveEntity.{ForwardMessage, StructureData, WalkerData}
 import owe.entities.active.Structure.{HousingState, NoHousing, StructureRef}
+import owe.entities.active.Walker
 import owe.entities.active.Walker.MovementMode
+import owe.entities.active.attributes.Distance
 import owe.entities.active.behaviour.walker.BaseWalker
 import owe.entities.active.behaviour.walker.BaseWalker._
-import owe.entities.active.{Distance, Walker}
 import owe.map.GameMap.LabourFound
 
 import scala.concurrent.Future

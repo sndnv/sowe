@@ -5,7 +5,7 @@ import owe.entities.ActiveEntity.StructureData
 import owe.entities.Entity._
 import owe.entities.active.Structure.{CommoditiesState, HousingState, LabourState, ProductionState}
 import owe.entities.active.behaviour.structure.transformations.ProcessedUpdateMessages
-import owe.entities.active.{AttackDamage, Life}
+import owe.entities.active.attributes.{AttackDamage, Life}
 import owe.production.Commodity
 import owe.test.specs.unit.UnitSpec
 import owe.test.specs.unit.entities.active.behaviour.Fixtures

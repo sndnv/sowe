@@ -2,7 +2,7 @@ package owe.test.specs.unit.entities.active.behaviour.walker.transformations
 
 import org.scalatest.FutureOutcome
 import owe.entities.ActiveEntity.WalkerData
-import owe.entities.active.Distance
+import owe.entities.active.attributes.Distance
 import owe.entities.active.Walker.MovementMode
 import owe.entities.active.behaviour.walker.transformations.ProcessedMovement
 import owe.test.specs.unit.AsyncUnitSpec

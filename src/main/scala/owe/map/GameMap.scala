@@ -9,7 +9,7 @@ import owe.entities.Entity
 import owe.entities.Entity._
 import owe.entities.active.Structure.StructureRef
 import owe.entities.active.Walker.WalkerRef
-import owe.entities.active._
+import owe.entities.active.attributes.{AttackDamage, Distance}
 import owe.map.Cell.{ActorRefTag, CellActorRef}
 import owe.map.grid.{Grid, Point}
 import owe.map.ops.Ops

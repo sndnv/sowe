@@ -3,7 +3,7 @@ package owe.test.specs.unit.entities.active.behaviour.resource.transformations
 import org.scalatest.Outcome
 import owe.entities.ActiveEntity.ResourceData
 import owe.entities.Entity.{ProcessAttack, ProcessCommodities, ProcessLabourFound, ProcessLabourUpdate}
-import owe.entities.active.AttackDamage
+import owe.entities.active.attributes.AttackDamage
 import owe.entities.active.behaviour.resource.transformations.ProcessedUpdateMessages
 import owe.production.Commodity
 import owe.test.specs.unit.UnitSpec

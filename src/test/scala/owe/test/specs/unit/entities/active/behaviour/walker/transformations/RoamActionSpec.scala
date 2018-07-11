@@ -2,7 +2,7 @@ package owe.test.specs.unit.entities.active.behaviour.walker.transformations
 
 import org.scalatest.FutureOutcome
 import owe.entities.ActiveEntity.WalkerData
-import owe.entities.active.Life
+import owe.entities.active.attributes.Life
 import owe.entities.active.behaviour.walker.BaseWalker._
 import owe.entities.active.behaviour.walker.transformations.RoamAction
 import owe.map.grid.Point

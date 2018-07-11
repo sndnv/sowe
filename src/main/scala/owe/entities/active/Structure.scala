@@ -4,6 +4,7 @@ import akka.actor.ActorRef
 import owe.entities.ActiveEntity.{ActiveEntityRef, StructureData}
 import owe.entities._
 import owe.entities.active.Structure.StructureRef
+import owe.entities.active.attributes.{Life, RiskAmount}
 import owe.entities.active.behaviour.structure.BaseStructure
 import owe.map.Cell
 import owe.map.grid.Point

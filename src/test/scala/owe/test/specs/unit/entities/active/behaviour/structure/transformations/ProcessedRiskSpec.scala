@@ -4,7 +4,7 @@ import org.scalatest.Outcome
 import owe.entities.ActiveEntity.StructureData
 import owe.entities.active.Structure.{NoRisk, RiskState}
 import owe.entities.active.behaviour.structure.transformations.ProcessedRisk
-import owe.entities.active.{Life, RiskAmount}
+import owe.entities.active.attributes.{Life, RiskAmount}
 import owe.test.specs.unit.UnitSpec
 import owe.test.specs.unit.entities.active.behaviour.Fixtures
 

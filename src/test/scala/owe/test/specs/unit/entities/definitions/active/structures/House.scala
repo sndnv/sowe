@@ -4,9 +4,10 @@ import owe.effects.Effect
 import owe.entities.ActiveEntity.{ActiveEntityData, ActiveEntityRef, StructureData}
 import owe.entities.Entity
 import owe.entities.Entity.Desirability
+import owe.entities.active.Structure
 import owe.entities.active.Structure._
 import owe.entities.active.behaviour.structure.{housing, BaseStructure}
-import owe.entities.active.{Life, RiskAmount, Structure}
+import owe.entities.active.attributes.{Life, RiskAmount}
 import owe.map.Cell
 import owe.map.grid.Point
 import owe.production.Commodity

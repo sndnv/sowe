@@ -3,8 +3,9 @@ package owe.test.specs.unit.entities.definitions.active.walkers
 import owe.effects.Effect
 import owe.entities.ActiveEntity.{ActiveEntityData, ActiveEntityRef, WalkerData}
 import owe.entities.active.Structure.StructureRef
+import owe.entities.active.Walker
 import owe.entities.active.Walker._
-import owe.entities.active._
+import owe.entities.active.attributes._
 import owe.entities.active.behaviour.walker.BaseWalker
 import owe.entities.active.behaviour.walker.acting.Carrier
 import owe.map.grid.Point
@@ -36,8 +37,8 @@ class Courier(parameters: Parameters) extends Walker {
           mode = MovementMode.Advancing
         ),
         modifiers = StateModifiers(
-          movementSpeed = SpeedModifier(75),
-          maxRoamingDistance = DistanceModifier(100),
+          movementSpeed = Speed.Modifier(75),
+          maxRoamingDistance = Distance.Modifier(100),
           attack = NoAttack
         ),
         id

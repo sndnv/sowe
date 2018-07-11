@@ -2,8 +2,9 @@ package owe.test.specs.unit.entities.definitions.active.walkers
 
 import owe.effects.Effect
 import owe.entities.ActiveEntity.{ActiveEntityData, ActiveEntityRef, WalkerData}
+import owe.entities.active.Walker
 import owe.entities.active.Walker._
-import owe.entities.active._
+import owe.entities.active.attributes._
 import owe.entities.active.behaviour.walker.BaseWalker
 import owe.entities.active.behaviour.walker.idling.Military
 import owe.map.grid.Point
@@ -38,12 +39,12 @@ class Archer extends Walker {
           mode = MovementMode.Advancing
         ),
         modifiers = StateModifiers(
-          movementSpeed = SpeedModifier(100),
-          maxRoamingDistance = DistanceModifier(100),
+          movementSpeed = Speed.Modifier(100),
+          maxRoamingDistance = Distance.Modifier(100),
           attack = AttackModifiers(
-            rate = AttackRateModifier(200),
-            damage = AttackDamageModifier(50),
-            distance = DistanceModifier(100)
+            rate = AttackRate.Modifier(200),
+            damage = AttackDamage.Modifier(50),
+            distance = Distance.Modifier(100)
           )
         ),
         id

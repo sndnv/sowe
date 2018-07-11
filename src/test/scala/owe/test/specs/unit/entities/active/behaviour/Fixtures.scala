@@ -7,6 +7,7 @@ import owe.entities.active.Resource.ResourceRef
 import owe.entities.active.Structure.StructureRef
 import owe.entities.active.Walker.WalkerRef
 import owe.entities.active._
+import owe.entities.active.attributes._
 import owe.map.Cell
 import owe.map.Cell.{Fertility, Water}
 import owe.map.grid.Point
@@ -218,12 +219,12 @@ object Fixtures {
     )
 
     val modifiers: StateModifiers = StateModifiers(
-      movementSpeed = SpeedModifier(100),
-      maxRoamingDistance = DistanceModifier(100),
+      movementSpeed = Speed.Modifier(100),
+      maxRoamingDistance = Distance.Modifier(100),
       attack = AttackModifiers(
-        rate = AttackRateModifier(200),
-        damage = AttackDamageModifier(50),
-        distance = DistanceModifier(100)
+        rate = AttackRate.Modifier(200),
+        damage = AttackDamage.Modifier(50),
+        distance = Distance.Modifier(100)
       )
     )
   }

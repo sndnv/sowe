@@ -7,7 +7,8 @@ import owe.entities.Entity.Desirability
 import owe.entities.active.Structure._
 import owe.entities.active.behaviour.structure.BaseStructure
 import owe.entities.active.behaviour.structure.producing.Industry
-import owe.entities.active.{Life, RiskAmount, Structure, Walker}
+import owe.entities.active.attributes.{Life, RiskAmount}
+import owe.entities.active.{Structure, Walker}
 import owe.map.Cell
 import owe.map.grid.Point
 import owe.production.Commodity

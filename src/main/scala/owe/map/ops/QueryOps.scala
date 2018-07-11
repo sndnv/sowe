@@ -4,8 +4,8 @@ import akka.pattern.ask
 import akka.util.Timeout
 import owe.entities.ActiveEntity.{ActiveEntityData, ActiveEntityRef, GetData}
 import owe.entities.Entity.EntityRef
-import owe.entities.active.Distance
 import owe.entities.active.Walker.WalkerRef
+import owe.entities.active.attributes.Distance
 import owe.map.Cell.{CellActorRef, CellData, GetCellData, GetEntity}
 import owe.map._
 import owe.map.grid.{Grid, Point}
