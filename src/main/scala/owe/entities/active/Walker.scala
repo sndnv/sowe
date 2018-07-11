@@ -23,7 +23,7 @@ trait Walker
   final override def `size`: Entity.Size = Entity.Size(height = 1, width = 1)
   final override def `type`: Entity.Type = Entity.Type.Walker
   final override def `desirability`: Desirability = Desirability.Neutral
-  final override private[entities] def actorToActiveEntityRef(ref: ActorRef) = WalkerRef(ref)
+  final override protected def actorToActiveEntityRef(ref: ActorRef) = WalkerRef(ref)
 }
 
 object Walker {

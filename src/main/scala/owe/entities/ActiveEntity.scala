@@ -28,7 +28,7 @@ abstract class ActiveEntity[
 
   protected def createBehaviour(): B
 
-  private[entities] def actorToActiveEntityRef(ref: ActorRef): ActiveEntityRef
+  protected def actorToActiveEntityRef(ref: ActorRef): ActiveEntityRef
 
   override def props()(implicit timeout: Timeout): Props = Props(
     classOf[ActiveEntityActor],

@@ -18,7 +18,7 @@ trait Structure
       BaseStructure
     ] {
   final override def `type`: Entity.Type = Entity.Type.Structure
-  final override private[entities] def actorToActiveEntityRef(ref: ActorRef) = StructureRef(ref)
+  final override protected def actorToActiveEntityRef(ref: ActorRef) = StructureRef(ref)
 }
 
 object Structure {
