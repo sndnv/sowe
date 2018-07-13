@@ -115,7 +115,7 @@ class ActiveEntitySpec extends AkkaUnitSpec("ActiveEntitySpec") {
     fixture.testProbe.receiveOne(timeout.duration).asInstanceOf[ResourceData].state should be(entityState)
   }
 
-  it should "it should stash unsupported messages when active" in { fixture =>
+  it should "stash unsupported messages when active" in { fixture =>
     fixture.entityActor.tell(ProcessGameTick(mapData), fixture.testProbe.ref)
     fixture.testProbe.expectMsgType[ProcessEntityTick]
 

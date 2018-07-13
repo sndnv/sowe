@@ -54,9 +54,9 @@ object Entity {
   case class ProcessLabourUpdate(employees: Int) extends Message
 
   def cells(entitySize: Entity.Size, parentCell: Point): Seq[Point] =
-    (parentCell.x until entitySize.width)
+    (parentCell.x until (parentCell.x + entitySize.width))
       .flatMap(
-        x => (parentCell.y until entitySize.height).map(y => Point(x, y))
+        x => (parentCell.y until (parentCell.y + entitySize.height)).map(y => Point(x, y))
       )
 
   final case class Desirability(

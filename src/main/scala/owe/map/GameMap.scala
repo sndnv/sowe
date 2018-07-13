@@ -42,11 +42,47 @@ trait GameMap extends Actor with ActorLogging with Stash with Timers with Ops {
   private var entities: Map[EntityRef, Point] = Map.empty
 
   private def scheduleNextTick(): Unit =
-    timers.startSingleTimer(
-      TickTimer,
-      ProcessTick(defaultTickStart, defaultTickEnd),
-      tickInterval
-    )
+    if (tickInterval.toMillis > 0L) {
+      timers.startSingleTimer(
+        TickTimer,
+        ProcessTick(defaultTickStart, defaultTickEnd),
+        tickInterval
+      )
+    }
+
+  private def active: Receive = {
+    case ProcessTick(start, end) =>
+      log.debug("Started processing tick from [{}] to [{}].", start, end)
+      processTick(grid, start, end).pipeTo(self)
+
+    case GetAdvancePath(entityID, destination) =>
+      log.debug("Generating advance path for entity [{}] to [{}].", entityID, destination)
+      sender ! getAdvancePath(grid, entities, entityID, destination)
+
+    case GetRoamingPath(entityID, length) =>
+      log.debug("Generating roaming path for entity [{}].", entityID)
+      sender ! getRoamingPath(grid, entities, entityID, length)
+
+    case GetNeighbours(entityID, radius) =>
+      log.debug("Retrieving neighbours for entity [{}] in radius [{}].", entityID, radius)
+      getNeighbours(grid, entities, entityID, radius).pipeTo(sender)
+
+    case GetEntities(point) =>
+      log.debug("Retrieving entities in cell [{}]", point)
+      getEntities(grid, entities, point).pipeTo(sender)
+
+    case GetEntity(entityID) =>
+      log.debug("Retrieving data for entity [{}]", entityID)
+      getEntity(grid, entities, entityID).pipeTo(sender)
+
+    case TickProcessed(processedCells) =>
+      log.debug("[{}] cells processed by tick.", processedCells)
+      scheduleNextTick()
+      unstashAll()
+      context.become(idle)
+
+    case _ => stash()
+  }
 
   private def idle: Receive = {
     case UpdateEntities(updatedEntities) =>
@@ -115,40 +151,6 @@ trait GameMap extends Actor with ActorLogging with Stash with Timers with Ops {
     case message: ProcessTick =>
       self ! message
       context.become(active)
-  }
-
-  private def active: Receive = {
-    case ProcessTick(start, end) =>
-      log.debug("Started processing tick from [{}] to [{}].", start, end)
-      processTick(grid, start, end).pipeTo(self)
-
-    case GetAdvancePath(entityID, destination) =>
-      log.debug("Generating advance path for entity [{}] to [{}].", entityID, destination)
-      sender ! getAdvancePath(grid, entities, entityID, destination)
-
-    case GetRoamingPath(entityID, length) =>
-      log.debug("Generating roaming path for entity [{}].", entityID)
-      sender ! getRoamingPath(grid, entities, entityID, length)
-
-    case GetNeighbours(entityID, radius) =>
-      log.debug("Retrieving neighbours for entity [{}] in radius [{}].", entityID, radius)
-      getNeighbours(grid, entities, entityID, radius).pipeTo(sender)
-
-    case GetEntities(point) =>
-      log.debug("Retrieving entities in cell [{}]", point)
-      getEntities(grid, entities, point).pipeTo(sender)
-
-    case GetEntity(entityID) =>
-      log.debug("Retrieving data for entity [{}]", entityID)
-      getEntity(grid, entities, entityID).pipeTo(sender)
-
-    case TickProcessed(processedCells) =>
-      log.debug("[{}] cells processed by tick.", processedCells)
-      scheduleNextTick()
-      unstashAll()
-      context.become(idle)
-
-    case _ => stash()
   }
 
   override def receive: Receive = idle

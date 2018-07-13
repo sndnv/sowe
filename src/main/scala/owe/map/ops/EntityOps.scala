@@ -189,26 +189,26 @@ trait EntityOps { _: AvailabilityOps =>
 
   def addDesirability(
     grid: Grid[CellActorRef],
-    Desirability: Desirability,
+    desirability: Desirability,
     cells: Seq[Point]
   ): Unit =
-    applyDesirability(grid, Desirability, cells, modifier = 1)
+    applyDesirability(grid, desirability, cells, modifier = 1)
 
   def removeDesirability(
     grid: Grid[CellActorRef],
-    Desirability: Desirability,
+    desirability: Desirability,
     cells: Seq[Point]
   ): Unit =
-    applyDesirability(grid, Desirability, cells, modifier = -1)
+    applyDesirability(grid, desirability, cells, modifier = -1)
 
   private def applyDesirability(
     grid: Grid[CellActorRef],
-    Desirability: Desirability,
+    desirability: Desirability,
     cells: Seq[Point],
     modifier: Int
   ): Unit = {
-    val _ = Desirability.toMap.foldLeft(Seq.empty[Point]) {
-      case (processedCells, (radius, desirability)) =>
+    val _ = desirability.toMap.foldLeft(Seq.empty[Point]) {
+      case (processedCells, (radius, currentDesirability)) =>
         val currentWindowCells =
           cells.flatMap(grid.window(_, radius).toMap).filter {
             case (point, _) => !processedCells.contains(point)
@@ -216,7 +216,7 @@ trait EntityOps { _: AvailabilityOps =>
 
         currentWindowCells.foreach {
           case (_, affectedCell) =>
-            affectedCell ! UpdateDesirability(desirability * modifier)
+            affectedCell ! UpdateDesirability(currentDesirability * modifier)
         }
 
         processedCells ++ currentWindowCells.map(_._1)

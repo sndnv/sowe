@@ -20,6 +20,16 @@ class EntitySpec extends UnitSpec {
       Point(0, 0)
     ) should be(Seq[Point]((0, 0)))
 
+    Entity.cells(
+      Entity.Size(1, 1),
+      Point(1, 0)
+    ) should be(Seq[Point]((1, 0)))
+
+    Entity.cells(
+      Entity.Size(1, 1),
+      Point(0, 1)
+    ) should be(Seq[Point]((0, 1)))
+
     (Entity.cells(
       Entity.Size(2, 2),
       Point(0, 0)
@@ -29,6 +39,30 @@ class EntitySpec extends UnitSpec {
         (0, 1),
         (1, 0),
         (1, 1)
+      )
+    )
+
+    (Entity.cells(
+      Entity.Size(2, 2),
+      Point(1, 0)
+    ) should contain).theSameElementsAs(
+      Seq[Point](
+        (1, 0),
+        (1, 1),
+        (2, 0),
+        (2, 1)
+      )
+    )
+
+    (Entity.cells(
+      Entity.Size(2, 2),
+      Point(0, 1)
+    ) should contain).theSameElementsAs(
+      Seq[Point](
+        (0, 1),
+        (0, 2),
+        (1, 1),
+        (1, 2)
       )
     )
 
@@ -47,6 +81,34 @@ class EntitySpec extends UnitSpec {
     )
 
     (Entity.cells(
+      Entity.Size(2, 3),
+      Point(1, 0)
+    ) should contain).theSameElementsAs(
+      Seq[Point](
+        (1, 0),
+        (2, 0),
+        (3, 0),
+        (1, 1),
+        (2, 1),
+        (3, 1)
+      )
+    )
+
+    (Entity.cells(
+      Entity.Size(2, 3),
+      Point(0, 1)
+    ) should contain).theSameElementsAs(
+      Seq[Point](
+        (0, 1),
+        (1, 1),
+        (2, 1),
+        (0, 2),
+        (1, 2),
+        (2, 2)
+      )
+    )
+
+    (Entity.cells(
       Entity.Size(3, 2),
       Point(0, 0)
     ) should contain).theSameElementsAs(
@@ -57,6 +119,34 @@ class EntitySpec extends UnitSpec {
         (1, 0),
         (1, 1),
         (1, 2)
+      )
+    )
+
+    (Entity.cells(
+      Entity.Size(3, 2),
+      Point(1, 0)
+    ) should contain).theSameElementsAs(
+      Seq[Point](
+        (1, 0),
+        (1, 1),
+        (1, 2),
+        (2, 0),
+        (2, 1),
+        (2, 2)
+      )
+    )
+
+    (Entity.cells(
+      Entity.Size(3, 2),
+      Point(0, 1)
+    ) should contain).theSameElementsAs(
+      Seq[Point](
+        (0, 1),
+        (0, 2),
+        (0, 3),
+        (1, 1),
+        (1, 2),
+        (1, 3)
       )
     )
   }

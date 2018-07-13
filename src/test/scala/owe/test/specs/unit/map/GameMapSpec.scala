@@ -9,63 +9,79 @@ class GameMapSpec extends UnitSpec {
   def withFixture(test: OneArgTest): Outcome =
     withFixture(test.toNoArgTest(FixtureParam()))
 
-  "A GameMap" should "add entities to cell" in { _ =>
+  "A GameMap" should "process game ticks when active" in { _ =>
     fail("Not Implemented", new NotImplementedError())
   }
 
-  it should "remove entities from cell" in { _ =>
+  it should "respond with advance paths when active" in { _ =>
     fail("Not Implemented", new NotImplementedError())
   }
 
-  it should "not add overlapping entities" in { _ =>
+  it should "respond with roaming paths when active" in { _ =>
     fail("Not Implemented", new NotImplementedError())
   }
 
-  it should "remove entities from all cells they use" in { _ =>
+  it should "respond with neighbours when active" in { _ =>
     fail("Not Implemented", new NotImplementedError())
   }
 
-  it should "not remove entities not in cell" in { _ =>
+  it should "respond with multiple entities when active" in { _ =>
     fail("Not Implemented", new NotImplementedError())
   }
 
-  it should "not remove entities when invalid id supplied" in { _ =>
+  it should "respond with single entities when active" in { _ =>
     fail("Not Implemented", new NotImplementedError())
   }
 
-  it should "not add entities outside of bounds" in { _ =>
+  it should "complete a game tick when active" in { _ =>
     fail("Not Implemented", new NotImplementedError())
   }
 
-  it should "not remove entities outside of bounds" in { _ =>
+  it should "stash all unsupported messages when active" in { _ =>
     fail("Not Implemented", new NotImplementedError())
   }
 
-  it should "find named entities" in { _ =>
+  it should "update entities when idle" in { _ =>
     fail("Not Implemented", new NotImplementedError())
   }
 
-  it should "find closest named entity" in { _ =>
+  it should "create entities when idle" in { _ =>
     fail("Not Implemented", new NotImplementedError())
   }
 
-  it should "find first adjacent entity of type" in { _ =>
+  it should "destroy entities when idle" in { _ =>
     fail("Not Implemented", new NotImplementedError())
   }
 
-  "A GameMap without entities" should "report correct cell neighbors" in { _ =>
+  it should "move entities when idle" in { _ =>
     fail("Not Implemented", new NotImplementedError())
   }
 
-  it should "calculate paths between cells" in { _ =>
+  it should "process commodity distribution when idle" in { _ =>
     fail("Not Implemented", new NotImplementedError())
   }
 
-  "A GameMap with entities" should "report correct cell neighbors" in { _ =>
+  it should "process entity attacks when idle" in { _ =>
     fail("Not Implemented", new NotImplementedError())
   }
 
-  it should "calculate paths between cells" in { _ =>
+  it should "process labour found updates when idle" in { _ =>
+    fail("Not Implemented", new NotImplementedError())
+  }
+
+  it should "process occupants updates when idle" in { _ =>
+    fail("Not Implemented", new NotImplementedError())
+  }
+
+  it should "process labour updates when idle" in { _ =>
+    fail("Not Implemented", new NotImplementedError())
+  }
+
+  it should "forward messages to commodity exchange when idle" in { _ =>
+    fail("Not Implemented", new NotImplementedError())
+  }
+
+  it should "start tick processing when idle" in { _ =>
     fail("Not Implemented", new NotImplementedError())
   }
 }
