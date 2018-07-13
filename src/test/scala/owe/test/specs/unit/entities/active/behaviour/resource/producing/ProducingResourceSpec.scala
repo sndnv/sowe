@@ -3,7 +3,8 @@ package owe.test.specs.unit.entities.active.behaviour.resource.producing
 import akka.actor.{ActorRef, Props}
 import akka.util.Timeout
 import org.scalatest.Outcome
-import owe.entities.ActiveEntity.{ForwardMessage, ProcessEntityTick, ResourceData}
+import owe.entities.ActiveEntity.ResourceData
+import owe.entities.ActiveEntityActor.{ForwardMessage, ProcessEntityTick}
 import owe.entities.Entity.ProcessCommodities
 import owe.entities.active.behaviour.resource.producing.ProducingResource
 import owe.map.GameMap.ForwardExchangeMessage

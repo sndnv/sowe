@@ -1,7 +1,7 @@
 package owe.test.specs.unit.entities.definitions.active.walkers
 
 import owe.effects.Effect
-import owe.entities.ActiveEntity.{ActiveEntityData, ActiveEntityRef, WalkerData}
+import owe.entities.ActiveEntity.{ActiveEntityRef, Data, WalkerData}
 import owe.entities.active.Walker
 import owe.entities.active.Walker._
 import owe.entities.active.attributes._
@@ -16,7 +16,7 @@ class Recruiter extends Walker {
     override protected def recruitmentRadius: Distance = Distance(3)
   }
 
-  override protected def createActiveEntityData(): ActiveEntityRef => ActiveEntityData = {
+  override protected def createActiveEntityData(): ActiveEntityRef => Data = {
     case id: WalkerRef =>
       WalkerData(
         properties = Properties(
@@ -44,5 +44,5 @@ class Recruiter extends Walker {
       )
   }
 
-  override protected def createEffects(): Seq[(ActiveEntityData => Boolean, Effect)] = Seq.empty
+  override protected def createEffects(): Seq[(Data => Boolean, Effect)] = Seq.empty
 }

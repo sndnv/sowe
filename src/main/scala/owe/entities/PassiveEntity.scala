@@ -10,13 +10,6 @@ trait PassiveEntity extends Entity {
   override def props()(implicit timeout: Timeout): Props = Props(
     classOf[PassiveEntityActor]
   )
-
-  private class PassiveEntityActor extends Actor with ActorLogging {
-    override def receive: Receive = {
-      case message: owe.Message =>
-        log.error(s"Passive entity received message [$message]!")
-    }
-  }
 }
 
 object PassiveEntity {

@@ -3,7 +3,7 @@ package owe.test.specs.unit.entities.active
 import akka.actor.ActorRef
 import org.scalatest.Outcome
 import owe.effects.Effect
-import owe.entities.ActiveEntity.{ActiveEntityData, ActiveEntityRef}
+import owe.entities.ActiveEntity.{ActiveEntityRef, Data}
 import owe.entities.Entity
 import owe.entities.Entity.Desirability
 import owe.entities.active.Structure
@@ -18,8 +18,8 @@ class StructureSpec extends UnitSpec {
     withFixture(test.toNoArgTest(FixtureParam()))
 
   private class UndefinedStructure extends Structure {
-    override protected def createActiveEntityData(): ActiveEntityRef => ActiveEntityData = ???
-    override protected def createEffects(): Seq[(ActiveEntityData => Boolean, Effect)] = ???
+    override protected def createActiveEntityData(): ActiveEntityRef => Data = ???
+    override protected def createEffects(): Seq[(Data => Boolean, Effect)] = ???
     override protected def createBehaviour(): BaseStructure = ???
     override def `size`: Entity.Size = Entity.Size(height = 7, width = 3)
     override def `desirability`: Desirability = Desirability.Max

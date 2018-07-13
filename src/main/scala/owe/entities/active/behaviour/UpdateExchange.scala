@@ -1,6 +1,7 @@
 package owe.entities.active.behaviour
 
-import owe.entities.ActiveEntity.{ActiveEntityRef, ForwardMessage}
+import owe.entities.ActiveEntity.ActiveEntityRef
+import owe.entities.ActiveEntityActor.ForwardMessage
 import owe.map.GameMap.ForwardExchangeMessage
 import owe.production.Exchange.{CommodityAvailable, CommodityInTransit, CommodityRequired, UpdateCommodityState}
 import owe.production.{Commodity, Exchange}

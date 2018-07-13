@@ -3,6 +3,7 @@ package owe.entities.active.behaviour.walker
 import akka.actor.Actor.Receive
 import owe.entities.ActiveEntity
 import owe.entities.ActiveEntity._
+import owe.entities.ActiveEntityActor.{ForwardMessage, ProcessEntityTick}
 import owe.entities.active.Resource.ResourceRef
 import owe.entities.active.Structure.StructureRef
 import owe.entities.active.Walker._
@@ -300,14 +301,14 @@ trait BaseWalker
         .foreach(updatedData => self ! Become(behaviour, updatedData))
   }
 
-  protected def getEntityData(entityID: ActiveEntityRef): Future[ActiveEntityData] =
-    (parentEntity ? ForwardMessage(GetEntity(entityID))).mapTo[ActiveEntityData]
+  protected def getEntityData(entityID: ActiveEntityRef): Future[Data] =
+    (parentEntity ? ForwardMessage(GetEntity(entityID))).mapTo[Data]
 
   protected def getNeighboursData(
     walkerId: WalkerRef,
     radius: Distance
-  ): Future[Seq[(ActiveEntityRef, ActiveEntityData)]] =
-    (parentEntity ? ForwardMessage(GetNeighbours(walkerId, radius))).mapTo[Seq[(ActiveEntityRef, ActiveEntityData)]]
+  ): Future[Seq[(ActiveEntityRef, Data)]] =
+    (parentEntity ? ForwardMessage(GetNeighbours(walkerId, radius))).mapTo[Seq[(ActiveEntityRef, Data)]]
 
   protected def distributeCommodities(
     entityID: ActiveEntityRef,
@@ -360,8 +361,8 @@ trait BaseWalker
       case _ => Future.successful(None)
     }
 
-  private def getEntitiesData(point: Point): Future[Seq[(MapEntity, Option[ActiveEntityData])]] =
-    (parentEntity ? ForwardMessage(GetEntities(point))).mapTo[Seq[(MapEntity, Option[ActiveEntityData])]]
+  private def getEntitiesData(point: Point): Future[Seq[(MapEntity, Option[Data])]] =
+    (parentEntity ? ForwardMessage(GetEntities(point))).mapTo[Seq[(MapEntity, Option[Data])]]
 
   private def calculateAdvancePath(walkerId: WalkerRef, destination: Point): Future[Option[Queue[Point]]] =
     (parentEntity ? ForwardMessage(GetAdvancePath(walkerId, destination))).mapTo[Option[Queue[Point]]]
@@ -394,7 +395,7 @@ trait BaseWalker
   private def cellsPerTick(walker: WalkerData): Int =
     walker.modifiers.movementSpeed(walker.properties.movementSpeed).value
 
-  private def isPassable(mapEntity: MapEntity, entityData: Option[ActiveEntityData], walker: WalkerData): Boolean =
+  private def isPassable(mapEntity: MapEntity, entityData: Option[Data], walker: WalkerData): Boolean =
     mapEntity.entityRef match {
       case _: DoodadRef    => false
       case _: RoadRef      => true

@@ -1,7 +1,7 @@
 package owe.test.specs.unit.entities.definitions.active.walkers
 
 import owe.effects.Effect
-import owe.entities.ActiveEntity.{ActiveEntityData, ActiveEntityRef, WalkerData}
+import owe.entities.ActiveEntity.{ActiveEntityRef, Data, WalkerData}
 import owe.entities.active.Structure.StructureRef
 import owe.entities.active.Walker
 import owe.entities.active.Walker._
@@ -14,7 +14,7 @@ import owe.test.specs.unit.entities.definitions.active.walkers.Courier.Parameter
 import scala.collection.immutable.Queue
 
 class Courier(parameters: Parameters) extends Walker {
-  override protected def createActiveEntityData(): ActiveEntityRef => ActiveEntityData = {
+  override protected def createActiveEntityData(): ActiveEntityRef => Data = {
     case id: WalkerRef =>
       WalkerData(
         properties = Properties(
@@ -55,7 +55,7 @@ class Courier(parameters: Parameters) extends Walker {
     override protected def target: StructureRef = parameters.target
   }
 
-  override protected def createEffects(): Seq[(ActiveEntityData => Boolean, Effect)] = Seq.empty
+  override protected def createEffects(): Seq[(Data => Boolean, Effect)] = Seq.empty
 }
 
 object Courier {

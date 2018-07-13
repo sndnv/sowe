@@ -1,6 +1,7 @@
 package owe.entities.active.behaviour.resource.producing
 
-import owe.entities.ActiveEntity.{ProcessEntityTick, ResourceData}
+import owe.entities.ActiveEntity.ResourceData
+import owe.entities.ActiveEntityActor.ProcessEntityTick
 import owe.entities.active.behaviour.UpdateExchange
 import owe.entities.active.behaviour.resource.BaseResource.Become
 import owe.entities.active.behaviour.resource.transformations.{ProcessedUpdateMessages, ReplenishedResources}

@@ -1,7 +1,7 @@
 package owe.test.specs.unit.entities.definitions.active.structures
 
 import owe.effects.Effect
-import owe.entities.ActiveEntity.{ActiveEntityData, ActiveEntityRef, StructureData}
+import owe.entities.ActiveEntity.{ActiveEntityRef, Data, StructureData}
 import owe.entities.Entity
 import owe.entities.Entity.Desirability
 import owe.entities.active.Structure._
@@ -34,7 +34,7 @@ class CoalMine extends Structure {
 
   override def `desirability`: Desirability = Desirability.fromInt(-5, -5, -3, -3, -3, -3)
 
-  override protected def createActiveEntityData(): ActiveEntityRef => ActiveEntityData = {
+  override protected def createActiveEntityData(): ActiveEntityRef => Data = {
     case id: StructureRef =>
       StructureData(
         properties = Properties(
@@ -85,5 +85,5 @@ class CoalMine extends Structure {
 
   override protected def createBehaviour(): BaseStructure = new Industry {}
 
-  override protected def createEffects(): Seq[(ActiveEntityData => Boolean, Effect)] = Seq.empty
+  override protected def createEffects(): Seq[(Data => Boolean, Effect)] = Seq.empty
 }

@@ -3,7 +3,7 @@ package owe.test.specs.unit.entities.active
 import akka.actor.ActorRef
 import org.scalatest.Outcome
 import owe.effects.Effect
-import owe.entities.ActiveEntity.{ActiveEntityData, ActiveEntityRef}
+import owe.entities.ActiveEntity.{ActiveEntityRef, Data}
 import owe.entities.Entity
 import owe.entities.Entity.Desirability
 import owe.entities.active.Walker
@@ -18,8 +18,8 @@ class WalkerSpec extends UnitSpec {
     withFixture(test.toNoArgTest(FixtureParam()))
 
   private class UndefinedWalker extends Walker {
-    override protected def createActiveEntityData(): ActiveEntityRef => ActiveEntityData = ???
-    override protected def createEffects(): Seq[(ActiveEntityData => Boolean, Effect)] = ???
+    override protected def createActiveEntityData(): ActiveEntityRef => Data = ???
+    override protected def createEffects(): Seq[(Data => Boolean, Effect)] = ???
     override protected def createBehaviour(): BaseWalker = ???
 
     def createEntityRef(ref: ActorRef): ActiveEntityRef = actorToActiveEntityRef(ref)

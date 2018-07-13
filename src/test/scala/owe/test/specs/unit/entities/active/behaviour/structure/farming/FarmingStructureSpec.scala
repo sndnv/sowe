@@ -3,7 +3,8 @@ package owe.test.specs.unit.entities.active.behaviour.structure.farming
 import akka.actor.{ActorRef, Props}
 import akka.util.Timeout
 import org.scalatest.Outcome
-import owe.entities.ActiveEntity.{ForwardMessage, ProcessEntityTick, StructureData}
+import owe.entities.ActiveEntity.StructureData
+import owe.entities.ActiveEntityActor.{ForwardMessage, ProcessEntityTick}
 import owe.entities.active.attributes.RiskAmount
 import owe.entities.active.Structure.{CommoditiesState, RiskState}
 import owe.entities.active.behaviour.structure.farming.FarmingStructure

@@ -4,7 +4,8 @@ import akka.Done
 import akka.actor.ActorLogging
 import akka.pattern.ask
 import akka.util.Timeout
-import owe.entities.ActiveEntity.{ActiveEntityRef, AddEntityMessage}
+import owe.entities.ActiveEntity.ActiveEntityRef
+import owe.entities.ActiveEntityActor.AddEntityMessage
 import owe.entities.Entity
 import owe.entities.Entity.EntityRef
 import owe.entities.PassiveEntity.PassiveEntityRef

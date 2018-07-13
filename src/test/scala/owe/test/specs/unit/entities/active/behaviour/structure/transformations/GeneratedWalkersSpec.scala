@@ -4,7 +4,8 @@ import akka.testkit.TestActors
 import org.scalatest.Outcome
 import owe.effects.Effect
 import owe.entities.ActiveEntity
-import owe.entities.ActiveEntity.{ActiveEntityRef, ForwardMessage, StructureData}
+import owe.entities.ActiveEntity.{ActiveEntityRef, StructureData}
+import owe.entities.ActiveEntityActor.ForwardMessage
 import owe.entities.active.Structure.{StructureRef, WalkerState, WalkersProperties, WalkersState}
 import owe.entities.active.Walker
 import owe.entities.active.behaviour.structure.transformations.GeneratedWalkers
@@ -36,8 +37,8 @@ class GeneratedWalkersSpec extends AkkaUnitSpec("GeneratedWalkersSpec") {
   }
 
   private case class DummyWalker() extends Walker {
-    override protected def createActiveEntityData(): ActiveEntityRef => ActiveEntity.ActiveEntityData = ???
-    override protected def createEffects(): Seq[(ActiveEntity.ActiveEntityData => Boolean, Effect)] = ???
+    override protected def createActiveEntityData(): ActiveEntityRef => ActiveEntity.Data = ???
+    override protected def createEffects(): Seq[(ActiveEntity.Data => Boolean, Effect)] = ???
     override protected def createBehaviour(): BaseWalker = ???
   }
 

@@ -1,7 +1,7 @@
 package owe.entities.active
 
 import akka.actor.ActorRef
-import owe.entities.ActiveEntity.{ActiveEntityData, ActiveEntityRef}
+import owe.entities.ActiveEntity.{ActiveEntityRef, Data}
 import owe.entities.Entity.Desirability
 import owe.entities._
 import owe.entities.active.Structure.StructureRef
@@ -49,7 +49,7 @@ object Walker {
     rate: AttackRate, // TODO - use attack rate to calculate final damage
     damage: AttackDamage,
     distance: Distance,
-    target: ActiveEntityData => Boolean
+    target: Data => Boolean
   ) extends Attack
       with PropertiesOnly
 

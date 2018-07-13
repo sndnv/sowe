@@ -1,6 +1,7 @@
 package owe.entities.active.behaviour.structure.transformations
 
-import owe.entities.ActiveEntity.{ActiveEntityRef, ForwardMessage, StructureData}
+import owe.entities.ActiveEntity.{ActiveEntityRef, StructureData}
+import owe.entities.ActiveEntityActor.ForwardMessage
 import owe.entities.active.Structure.{State, WalkerState, WalkersProperties, WalkersState}
 import owe.map.GameMap.CreateEntity
 

@@ -3,11 +3,12 @@ package owe.test.specs.unit.entities.active.behaviour.structure.producing
 import akka.actor.{ActorRef, Props}
 import akka.util.Timeout
 import org.scalatest.Outcome
-import owe.entities.ActiveEntity.{ForwardMessage, ProcessEntityTick, StructureData}
+import owe.entities.ActiveEntity.StructureData
+import owe.entities.ActiveEntityActor.{ForwardMessage, ProcessEntityTick}
 import owe.entities.Entity.ProcessAttack
 import owe.entities.active.Structure._
-import owe.entities.active.behaviour.structure.producing.ProducingStructure
 import owe.entities.active.attributes.{AttackDamage, Life}
+import owe.entities.active.behaviour.structure.producing.ProducingStructure
 import owe.map.GameMap.ForwardExchangeMessage
 import owe.production.Commodity
 import owe.production.Exchange.{CommodityAvailable, CommodityRequired, UpdateCommodityState}

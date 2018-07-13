@@ -3,7 +3,8 @@ package owe.test.specs.unit.entities.active.behaviour.structure.housing
 import akka.actor.{ActorRef, Props}
 import akka.util.Timeout
 import org.scalatest.Outcome
-import owe.entities.ActiveEntity.{ForwardMessage, ProcessEntityTick, StructureData}
+import owe.entities.ActiveEntity.StructureData
+import owe.entities.ActiveEntityActor.{ForwardMessage, ProcessEntityTick}
 import owe.entities.active.Structure._
 import owe.entities.active._
 import owe.entities.active.attributes.RiskAmount

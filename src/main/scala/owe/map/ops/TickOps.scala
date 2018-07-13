@@ -3,8 +3,8 @@ package owe.map.ops
 import akka.pattern.ask
 import akka.util.Timeout
 import owe.effects.Effect
-import owe.entities.ActiveEntity
 import owe.entities.ActiveEntity.{ActiveEntityRef, MapData}
+import owe.entities.ActiveEntityActor.{ApplyEffects, GetActiveEffects, ProcessGameTick}
 import owe.entities.PassiveEntity.PassiveEntityRef
 import owe.map.Cell
 import owe.map.Cell.{CellActorRef, CellData, GetCellData}
@@ -39,7 +39,7 @@ trait TickOps {
                   case (_, mapEntity) =>
                     mapEntity.entityRef match {
                       case entity: ActiveEntityRef =>
-                        (entity ? ActiveEntity.GetActiveEffects()).mapTo[Seq[Effect]]
+                        (entity ? GetActiveEffects()).mapTo[Seq[Effect]]
 
                       case _: PassiveEntityRef =>
                         Future.successful(Seq.empty)
@@ -97,8 +97,8 @@ trait TickOps {
                 case (_, mapEntity) =>
                   mapEntity.entityRef match {
                     case entity: ActiveEntityRef =>
-                      entity ! ActiveEntity.ApplyEffects(entityEffects)
-                      entity ! ActiveEntity.ProcessGameTick(MapData(mapEntity.parentCell, cellState))
+                      entity ! ApplyEffects(entityEffects)
+                      entity ! ProcessGameTick(MapData(mapEntity.parentCell, cellState))
 
                     case _ => () //do nothing
                   }

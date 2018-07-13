@@ -2,7 +2,7 @@ package owe.entities.active.behaviour
 
 import akka.actor.{Actor, ActorLogging}
 import akka.util.Timeout
-import owe.entities.ActiveEntity.{ActiveEntityData, ActiveEntityRef}
+import owe.entities.ActiveEntity.{ActiveEntityRef, Data}
 import owe.entities.Entity
 
 import scala.annotation.tailrec
@@ -25,7 +25,7 @@ trait BaseBehaviour extends Actor with ActorLogging {
 
   final override def receive: Receive = base.orElse(behaviour)
 
-  private[behaviour] def withUpdates[D <: ActiveEntityData: ClassTag, S <: Entity.State](
+  private[behaviour] def withUpdates[D <: Data: ClassTag, S <: Entity.State](
     entity: D,
     updates: Seq[D => S]
   ): Future[D] =
@@ -36,7 +36,7 @@ trait BaseBehaviour extends Actor with ActorLogging {
       }
     )
 
-  private[behaviour] def withAsyncUpdates[D <: ActiveEntityData: ClassTag, S <: Entity.State](
+  private[behaviour] def withAsyncUpdates[D <: Data: ClassTag, S <: Entity.State](
     entity: D,
     updates: Seq[D => Future[S]]
   ): Future[D] = {

@@ -1,6 +1,7 @@
 package owe.entities.active.behaviour.structure.housing
 
-import owe.entities.ActiveEntity.{ProcessEntityTick, StructureData}
+import owe.entities.ActiveEntity.StructureData
+import owe.entities.ActiveEntityActor.ProcessEntityTick
 import owe.entities.active.behaviour.UpdateExchange
 import owe.entities.active.behaviour.structure.BaseStructure.Become
 import owe.entities.active.behaviour.structure.transformations._

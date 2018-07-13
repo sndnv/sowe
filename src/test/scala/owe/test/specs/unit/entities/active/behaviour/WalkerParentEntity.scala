@@ -3,6 +3,7 @@ package owe.test.specs.unit.entities.active.behaviour
 import akka.actor.{Actor, ActorRef, Props}
 import akka.testkit.TestProbe
 import owe.entities.ActiveEntity._
+import owe.entities.ActiveEntityActor.{ForwardMessage, ProcessEntityTick}
 import owe.entities.Entity
 import owe.entities.Entity.Desirability
 import owe.entities.active.attributes.Distance
@@ -25,7 +26,7 @@ class WalkerParentEntity(ref: ActorRef, childProps: Props) extends Actor {
     case tick: ProcessEntityTick => child ! tick
 
     case ForwardMessage(GetEntity(entityID)) =>
-      val result: ActiveEntityData = entityID match {
+      val result: Data = entityID match {
         case entityRef: WalkerRef =>
           WalkerData(
             Fixtures.Walker.properties,
@@ -54,7 +55,7 @@ class WalkerParentEntity(ref: ActorRef, childProps: Props) extends Actor {
       sender ! result
 
     case ForwardMessage(GetNeighbours(_, radius)) =>
-      val result: Seq[(ActiveEntityRef, ActiveEntityData)] = if (radius > Distance(1)) {
+      val result: Seq[(ActiveEntityRef, Data)] = if (radius > Distance(1)) {
         val testWalkerRef1 = WalkerRef(TestProbe().ref)
         val testWalkerRef2 = WalkerRef(TestProbe().ref)
 
@@ -81,7 +82,7 @@ class WalkerParentEntity(ref: ActorRef, childProps: Props) extends Actor {
       sender ! result
 
     case ForwardMessage(GetEntities(point)) =>
-      val result: Seq[(MapEntity, Option[ActiveEntityData])] = if (point == Point(0, 0)) {
+      val result: Seq[(MapEntity, Option[Data])] = if (point == Point(0, 0)) {
         val walkerRef = WalkerRef(TestProbe().ref)
 
         val walkerEntity = MapEntity(

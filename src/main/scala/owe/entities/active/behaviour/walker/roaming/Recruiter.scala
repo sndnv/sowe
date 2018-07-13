@@ -1,6 +1,7 @@
 package owe.entities.active.behaviour.walker.roaming
 
-import owe.entities.ActiveEntity.{ForwardMessage, StructureData, WalkerData}
+import owe.entities.ActiveEntity.{StructureData, WalkerData}
+import owe.entities.ActiveEntityActor.ForwardMessage
 import owe.entities.active.Structure.{HousingState, NoHousing, StructureRef}
 import owe.entities.active.Walker
 import owe.entities.active.Walker.MovementMode

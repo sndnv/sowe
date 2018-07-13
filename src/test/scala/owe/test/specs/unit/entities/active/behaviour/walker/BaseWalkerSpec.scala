@@ -3,7 +3,8 @@ package owe.test.specs.unit.entities.active.behaviour.walker
 import akka.actor.Props
 import akka.testkit.TestProbe
 import org.scalatest.Outcome
-import owe.entities.ActiveEntity.{ForwardMessage, ProcessEntityTick, WalkerData}
+import owe.entities.ActiveEntity.WalkerData
+import owe.entities.ActiveEntityActor.{ForwardMessage, ProcessEntityTick}
 import owe.entities.active.Structure.StructureRef
 import owe.entities.active.Walker._
 import owe.entities.active.attributes._

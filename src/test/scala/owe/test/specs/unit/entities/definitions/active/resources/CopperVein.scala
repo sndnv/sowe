@@ -1,7 +1,7 @@
 package owe.test.specs.unit.entities.definitions.active.resources
 
 import owe.effects.Effect
-import owe.entities.ActiveEntity.{ActiveEntityData, ActiveEntityRef, ResourceData}
+import owe.entities.ActiveEntity.{ActiveEntityRef, Data, ResourceData}
 import owe.entities.active.Resource
 import owe.entities.active.Resource.{Properties, ResourceRef, State, StateModifiers}
 import owe.entities.active.behaviour.resource.producing.ProducingResource
@@ -9,7 +9,7 @@ import owe.map.grid.Point
 import owe.production.Commodity
 
 class CopperVein extends Resource {
-  override protected def createActiveEntityData(): ActiveEntityRef => ActiveEntityData = {
+  override protected def createActiveEntityData(): ActiveEntityRef => Data = {
     case id: ResourceRef =>
       ResourceData(
         properties = Properties(
@@ -31,5 +31,5 @@ class CopperVein extends Resource {
 
   override protected def createBehaviour(): ProducingResource = new ProducingResource {}
 
-  override protected def createEffects(): Seq[(ActiveEntityData => Boolean, Effect)] = Seq.empty
+  override protected def createEffects(): Seq[(Data => Boolean, Effect)] = Seq.empty
 }
