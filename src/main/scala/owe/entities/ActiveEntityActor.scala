@@ -101,6 +101,9 @@ class ActiveEntityActor[
       }
       sender ! activeEffects
 
+    case GetData() =>
+      sender ! processingData.entityData
+
     case ForwardMessage(message) =>
       (parentMap ? message).pipeTo(sender)
 

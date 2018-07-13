@@ -56,7 +56,7 @@ trait GameMap extends Actor with ActorLogging with Stash with Timers with Ops {
       log.debug("Creating entity of type [{}] with size [{}].", entity.`type`, entity.`size`)
 
       val mapEntity = MapEntity(
-        context.system.actorOf(entity.props()),
+        context.actorOf(entity.props()),
         cell,
         entity.`size`,
         entity.`desirability`,
