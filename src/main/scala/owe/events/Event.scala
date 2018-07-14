@@ -17,6 +17,8 @@ object Event {
     case object CellOutOfBounds extends System
     case object EntityMissing extends System
     case object DestinationUnreachable extends System
+    case object MessageForwarded extends System
+    case object UnexpectedEntityFound extends System
   }
 
   //doc - to be extended per game

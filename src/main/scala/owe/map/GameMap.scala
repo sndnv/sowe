@@ -1,5 +1,6 @@
 package owe.map
 
+import akka.Done
 import akka.actor.{Actor, ActorLogging, ActorRef, Stash, Timers}
 import akka.pattern.pipe
 import akka.util.Timeout
@@ -129,20 +130,30 @@ trait GameMap extends Actor with ActorLogging with Stash with Timers with Ops {
         }
         .pipeTo(self)
 
-    case DistributeCommodities(entityID, commodities) =>
-      forwardEntityMessage(grid, entities, entityID, ProcessCommodities(commodities)).pipeTo(sender)
+    case message @ DistributeCommodities(entityID, commodities) =>
+      log.debug("Forwarding entity message [{}]", message)
+      forwardEntityMessage(grid, entities, entityID, ProcessCommodities(commodities)).map(e => tracker ! e)
+      sender ! Done
 
-    case AttackEntity(entityID, damage) =>
-      forwardEntityMessage(grid, entities, entityID, ProcessAttack(damage)).pipeTo(sender)
+    case message @ AttackEntity(entityID, damage) =>
+      log.debug("Forwarding entity message [{}]", message)
+      forwardEntityMessage(grid, entities, entityID, ProcessAttack(damage)).map(e => tracker ! e)
+      sender ! Done
 
-    case LabourFound(entityID) =>
-      forwardEntityMessage(grid, entities, entityID, ProcessLabourFound()).pipeTo(sender)
+    case message @ LabourFound(entityID) =>
+      log.debug("Forwarding entity message [{}]", message)
+      forwardEntityMessage(grid, entities, entityID, ProcessLabourFound()).map(e => tracker ! e)
+      sender ! Done
 
-    case OccupantsUpdate(entityID, occupants) =>
-      forwardEntityMessage(grid, entities, entityID, ProcessOccupantsUpdate(occupants)).pipeTo(sender)
+    case message @ OccupantsUpdate(entityID, occupants) =>
+      log.debug("Forwarding entity message [{}]", message)
+      forwardEntityMessage(grid, entities, entityID, ProcessOccupantsUpdate(occupants)).map(e => tracker ! e)
+      sender ! Done
 
-    case LabourUpdate(entityID, employees) =>
-      forwardEntityMessage(grid, entities, entityID, ProcessLabourUpdate(employees)).pipeTo(sender)
+    case message @ LabourUpdate(entityID, employees) =>
+      log.debug("Forwarding entity message [{}]", message)
+      forwardEntityMessage(grid, entities, entityID, ProcessLabourUpdate(employees)).map(e => tracker ! e)
+      sender ! Done
 
     case ForwardExchangeMessage(message) =>
       log.debug("Forwarding message [{}] to commodity exchange.", message)
