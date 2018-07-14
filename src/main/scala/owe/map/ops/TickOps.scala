@@ -1,5 +1,6 @@
 package owe.map.ops
 
+import akka.Done
 import akka.pattern.ask
 import akka.util.Timeout
 import owe.effects.Effect
@@ -27,7 +28,7 @@ trait TickOps {
     }
 
   //doc -> a map of points -> effects to be applied to those points
-  private def gatherActiveEffects(grid: Grid[CellActorRef]): Future[Map[Point, Seq[Effect]]] = {
+  def gatherActiveEffects(grid: Grid[CellActorRef]): Future[Map[Point, Seq[Effect]]] = {
     val indexedGrid = grid.indexes()
     Future
       .traverse(
@@ -50,13 +51,14 @@ trait TickOps {
           }
         }
       ) {
-        case (point, future) =>
-          future.map { result =>
-            result.map(effect => (effect, indexedGrid.window(point, effect.radius).toSeq))
+        case (cell, future) =>
+          future.map { effectsFromCell =>
+            effectsFromCell
+              .map(effect => (effect, indexedGrid.window(cell, effect.radius).toSeq))
           }
       }
-      .map { result =>
-        result.flatten.foldLeft(Map.empty[Point, Seq[Effect]]) {
+      .map { effectsOnCells =>
+        effectsOnCells.flatten.foldLeft(Map.empty[Point, Seq[Effect]]) {
           case (map, (effect, points)) =>
             val updates = points.map { point =>
               (point, map.getOrElse(point, Seq.empty) :+ effect)
@@ -68,7 +70,7 @@ trait TickOps {
   }
 
   //doc -> end is inclusive
-  private def processCells(
+  def processCells(
     grid: Grid[CellActorRef],
     activeEffects: Map[Point, Seq[Effect]],
     start: Point,
@@ -76,48 +78,63 @@ trait TickOps {
   ): Future[Int] = {
     def processCell(currentCell: Point, processedCells: Int): Future[Int] =
       grid
-        .get(currentCell)
-        .flatMap { cell =>
-          activeEffects.get(currentCell).map { effects =>
-            val (cellEffects, entityEffects) =
-              effects.foldLeft((Seq.empty[Cell.Effect], Seq.empty[Effect])) {
-                case ((ce, ee), effect) =>
-                  effect match {
-                    case effect: Cell.Effect => (ce :+ effect, ee)
-                    case _                   => (ce, ee :+ effect)
-                  }
+        .get(currentCell) match {
+        case Some(cell) =>
+          val activeEffectsApplied = activeEffects
+            .get(currentCell)
+            .map { effects =>
+              val (cellEffects, entityEffects) =
+                effects.foldLeft((Seq.empty[Cell.Effect], Seq.empty[Effect])) {
+                  case ((ce, ee), effect) =>
+                    effect match {
+                      case effect: Cell.Effect => (ce :+ effect, ee)
+                      case _                   => (ce, ee :+ effect)
+                    }
+                }
+
+              (cell ? GetCellData()).mapTo[CellData].map { cellData =>
+                val cellState = cellEffects.foldLeft(cellData.state) {
+                  case (state, effect) => effect(state)
+                }
+
+                cellData.entities.foreach {
+                  case (_, mapEntity) =>
+                    mapEntity.entityRef match {
+                      case entity: ActiveEntityRef =>
+                        entity ! ApplyEffects(entityEffects)
+                        entity ! ProcessGameTick(MapData(mapEntity.parentCell, cellState))
+
+                      case _ => () //do nothing
+                    }
+                }
+
+                Done
               }
+            } match {
+            case Some(future) => future.map(_ => Done)
+            case None         => Future.successful(Done)
+          }
 
-            (cell ? GetCellData()).mapTo[CellData].flatMap { cellData =>
-              val cellState = cellEffects.foldLeft(cellData.state) {
-                case (state, effect) => effect(state)
-              }
-
-              cellData.entities.foreach {
-                case (_, mapEntity) =>
-                  mapEntity.entityRef match {
-                    case entity: ActiveEntityRef =>
-                      entity ! ApplyEffects(entityEffects)
-                      entity ! ProcessGameTick(MapData(mapEntity.parentCell, cellState))
-
-                    case _ => () //do nothing
-                  }
-              }
-
+          activeEffectsApplied.flatMap { _ =>
+            if (currentCell == end) {
+              Future.successful(processedCells + 1)
+            } else {
               grid
                 .nextPoint(currentCell)
                 .map { nextCell =>
-                  if (nextCell == end) {
-                    Future.successful(processedCells + 1)
-                  } else {
-                    processCell(nextCell, processedCells + 1)
-                  }
+                  processCell(nextCell, processedCells + 1)
                 }
-                .getOrElse(Future.failed(new IllegalStateException(s"Failed to find next cell after [$currentCell]")))
+                .getOrElse(
+                  Future.failed(
+                    new IllegalStateException(s"Failed to find next cell after [$currentCell]")
+                  )
+                )
             }
           }
-        }
-        .getOrElse(Future.failed(new IllegalArgumentException(s"Failed to find cell at [$currentCell]")))
+
+        case None =>
+          Future.failed(new IllegalArgumentException(s"Failed to find cell at [$currentCell]"))
+      }
 
     processCell(currentCell = start, processedCells = 0)
   }

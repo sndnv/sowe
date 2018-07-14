@@ -10,7 +10,6 @@ import owe.entities.active.Walker.WalkerRef
 import owe.entities.passive.Doodad.DoodadRef
 import owe.entities.passive.Road.RoadRef
 import owe.entities.passive.Roadblock.RoadblockRef
-import owe.map.Cell.Availability
 
 class Cell extends Actor {
   import Cell._
