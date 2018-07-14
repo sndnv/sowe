@@ -29,11 +29,11 @@ trait EntityOps { _: AvailabilityOps =>
       case Some(mapCell) =>
         val targetAvailability = requiredAvailability(entity.entityType)
         cellAvailability(mapCell).flatMap { availability =>
-          if (availability == targetAvailability) {
+          if (availability >= targetAvailability) {
             Future
               .sequence(Entity.cells(entity.`size`, cell).map(cellAvailability(grid, _)))
               .map { cellsAvailability =>
-                if (cellsAvailability.forall(_ == targetAvailability)) {
+                if (cellsAvailability.forall(_ >= targetAvailability)) {
                   val event = Event(Event.System.EntityCreated, Some(cell))
                   (associateMapEntity(grid, entities, entity, cell), event)
                 } else {
@@ -98,20 +98,20 @@ trait EntityOps { _: AvailabilityOps =>
         .toRight(Event(Event.System.CellsUnavailable, cell = None)): Either[Event, Point]
       currentMapCell <- grid
         .get(currentCell)
-        .toRight(Event(Event.System.EntityMissing, Some(currentCell))): Either[Event, CellActorRef]
+        .toRight(Event(Event.System.CellOutOfBounds, Some(currentCell))): Either[Event, CellActorRef]
       newMapCell <- grid
         .get(newCell)
-        .toRight(Event(Event.System.CellsUnavailable, Some(newCell))): Either[Event, CellActorRef]
+        .toRight(Event(Event.System.CellOutOfBounds, Some(newCell))): Either[Event, CellActorRef]
     } yield {
       (currentMapCell ? GetEntity(entityID)).mapTo[Option[MapEntity]].flatMap {
         case Some(currentMapEntity) =>
           val targetAvailability = requiredAvailability(currentMapEntity.entityType)
           cellAvailability(newMapCell).flatMap { availability =>
-            if (availability == targetAvailability) {
+            if (availability >= targetAvailability) {
               Future
                 .sequence(Entity.cells(currentMapEntity.size, newCell).map(cellAvailability(grid, _)))
                 .map { cellsAvailability =>
-                  if (cellsAvailability.forall(_ == targetAvailability)) {
+                  if (cellsAvailability.forall(_ >= targetAvailability)) {
                     val dissocEntities = dissociateMapEntity(
                       grid,
                       entities,

@@ -10,6 +10,7 @@ import owe.entities.active.Walker.WalkerRef
 import owe.entities.passive.Doodad.DoodadRef
 import owe.entities.passive.Road.RoadRef
 import owe.entities.passive.Roadblock.RoadblockRef
+import owe.map.Cell.Availability
 
 class Cell extends Actor {
   import Cell._
@@ -178,6 +179,21 @@ object Cell {
     case object Passable extends Availability
     case object Occupied extends Availability
     case object OutOfBounds extends Availability
+  }
+
+  implicit class AvailabilityAsInt(val availability: Availability) extends AnyVal {
+    def toInt: Int =
+      availability match {
+        case Availability.Buildable   => 3
+        case Availability.Passable    => 2
+        case Availability.Occupied    => 1
+        case Availability.OutOfBounds => 0
+      }
+
+    def >(other: Availability): Boolean = availability.toInt > other.toInt
+    def <(other: Availability): Boolean = availability.toInt < other.toInt
+    def >=(other: Availability): Boolean = availability.toInt >= other.toInt
+    def <=(other: Availability): Boolean = availability.toInt <= other.toInt
   }
 
   def requiredAvailability(entityType: Entity.Type): Availability =

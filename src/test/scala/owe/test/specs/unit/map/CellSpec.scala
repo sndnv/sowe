@@ -131,6 +131,88 @@ class CellSpec extends AkkaUnitSpec("CellSpec") {
     Cell.requiredAvailability(Entity.Type.Walker) should be(Availability.Passable)
   }
 
+  it should "allow availability comparisons" in { _ =>
+    (Availability.Buildable > Availability.Buildable) should be(false)
+    (Availability.Buildable > Availability.Passable) should be(true)
+    (Availability.Buildable > Availability.Occupied) should be(true)
+    (Availability.Buildable > Availability.OutOfBounds) should be(true)
+
+    (Availability.Passable > Availability.Buildable) should be(false)
+    (Availability.Passable > Availability.Passable) should be(false)
+    (Availability.Passable > Availability.Occupied) should be(true)
+    (Availability.Passable > Availability.OutOfBounds) should be(true)
+
+    (Availability.Occupied > Availability.Buildable) should be(false)
+    (Availability.Occupied > Availability.Passable) should be(false)
+    (Availability.Occupied > Availability.Occupied) should be(false)
+    (Availability.Occupied > Availability.OutOfBounds) should be(true)
+
+    (Availability.OutOfBounds > Availability.Buildable) should be(false)
+    (Availability.OutOfBounds > Availability.Passable) should be(false)
+    (Availability.OutOfBounds > Availability.Occupied) should be(false)
+    (Availability.OutOfBounds > Availability.OutOfBounds) should be(false)
+
+    (Availability.Buildable < Availability.Buildable) should be(false)
+    (Availability.Buildable < Availability.Passable) should be(false)
+    (Availability.Buildable < Availability.Occupied) should be(false)
+    (Availability.Buildable < Availability.OutOfBounds) should be(false)
+
+    (Availability.Passable < Availability.Buildable) should be(true)
+    (Availability.Passable < Availability.Passable) should be(false)
+    (Availability.Passable < Availability.Occupied) should be(false)
+    (Availability.Passable < Availability.OutOfBounds) should be(false)
+
+    (Availability.Occupied < Availability.Buildable) should be(true)
+    (Availability.Occupied < Availability.Passable) should be(true)
+    (Availability.Occupied < Availability.Occupied) should be(false)
+    (Availability.Occupied < Availability.OutOfBounds) should be(false)
+
+    (Availability.OutOfBounds < Availability.Buildable) should be(true)
+    (Availability.OutOfBounds < Availability.Passable) should be(true)
+    (Availability.OutOfBounds < Availability.Occupied) should be(true)
+    (Availability.OutOfBounds < Availability.OutOfBounds) should be(false)
+
+    (Availability.Buildable >= Availability.Buildable) should be(true)
+    (Availability.Buildable >= Availability.Passable) should be(true)
+    (Availability.Buildable >= Availability.Occupied) should be(true)
+    (Availability.Buildable >= Availability.OutOfBounds) should be(true)
+
+    (Availability.Passable >= Availability.Buildable) should be(false)
+    (Availability.Passable >= Availability.Passable) should be(true)
+    (Availability.Passable >= Availability.Occupied) should be(true)
+    (Availability.Passable >= Availability.OutOfBounds) should be(true)
+
+    (Availability.Occupied >= Availability.Buildable) should be(false)
+    (Availability.Occupied >= Availability.Passable) should be(false)
+    (Availability.Occupied >= Availability.Occupied) should be(true)
+    (Availability.Occupied >= Availability.OutOfBounds) should be(true)
+
+    (Availability.OutOfBounds >= Availability.Buildable) should be(false)
+    (Availability.OutOfBounds >= Availability.Passable) should be(false)
+    (Availability.OutOfBounds >= Availability.Occupied) should be(false)
+    (Availability.OutOfBounds >= Availability.OutOfBounds) should be(true)
+
+    (Availability.Buildable <= Availability.Buildable) should be(true)
+    (Availability.Buildable <= Availability.Passable) should be(false)
+    (Availability.Buildable <= Availability.Occupied) should be(false)
+    (Availability.Buildable <= Availability.OutOfBounds) should be(false)
+
+    (Availability.Passable <= Availability.Buildable) should be(true)
+    (Availability.Passable <= Availability.Passable) should be(true)
+    (Availability.Passable <= Availability.Occupied) should be(false)
+    (Availability.Passable <= Availability.OutOfBounds) should be(false)
+
+    (Availability.Occupied <= Availability.Buildable) should be(true)
+    (Availability.Occupied <= Availability.Passable) should be(true)
+    (Availability.Occupied <= Availability.Occupied) should be(true)
+    (Availability.Occupied <= Availability.OutOfBounds) should be(false)
+
+    (Availability.OutOfBounds <= Availability.Buildable) should be(true)
+    (Availability.OutOfBounds <= Availability.Passable) should be(true)
+    (Availability.OutOfBounds <= Availability.Occupied) should be(true)
+    (Availability.OutOfBounds <= Availability.OutOfBounds) should be(true)
+  }
+
   "Cell Desirability" should "support math ops" in { _ =>
     Desirability(1) + Desirability(5) should be(Desirability(6))
     Desirability(1) - Desirability(5) should be(Desirability(-4))
