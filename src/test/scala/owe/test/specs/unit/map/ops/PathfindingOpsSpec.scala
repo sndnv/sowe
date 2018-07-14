@@ -9,11 +9,11 @@ import owe.entities.Entity
 import owe.entities.Entity.Desirability
 import owe.entities.active.Structure.StructureRef
 import owe.entities.active.attributes.Distance
-import owe.map.{Cell, MapEntity}
 import owe.map.Cell.{AddEntity, CellActorRef}
 import owe.map.grid.{Grid, Point}
 import owe.map.ops.{AvailabilityOps, PathfindingOps}
 import owe.map.pathfinding.{DepthFirstSearch, Search}
+import owe.map.{Cell, MapEntity}
 import owe.test.specs.unit.AsyncUnitSpec
 
 import scala.collection.immutable.Queue
@@ -70,9 +70,11 @@ class PathfindingOpsSpec extends AsyncUnitSpec {
     fixture.grid.getUnsafe((1, 2)) ! AddEntity(existingStructureMapEntity)
 
     for {
-      path <- fixture.ops.generateAdvancePath(fixture.grid, (0, 1), (2, 2))
+      invalidPath <- fixture.ops.generateAdvancePath(fixture.grid, (0, 1), (13, 5))
+      validPath <- fixture.ops.generateAdvancePath(fixture.grid, (0, 1), (2, 2))
     } yield {
-      path should be(Queue[Point]((0, 1), (1, 0), (2, 1), (2, 2)))
+      invalidPath should be(Queue.empty[Point])
+      validPath should be(Queue[Point]((0, 1), (1, 0), (2, 1), (2, 2)))
     }
   }
 

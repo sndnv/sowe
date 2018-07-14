@@ -56,40 +56,49 @@ trait QueryOps { _: PathfindingOps =>
               .window(point, radius.value)
               .toSeq
               .map { mapCell =>
-                (mapCell ? GetCellData()).mapTo[CellData].flatMap { cellData =>
-                  Future
-                    .sequence(
-                      cellData.entities.toSeq.collect {
-                        case (id, MapEntity(entity: ActiveEntityRef, _, _, _)) =>
-                          (entity ? GetData()).mapTo[Data].map(data => (id, data))
-                      }
-                    )
+                (mapCell ? GetCellData()).mapTo[CellData].map { cellData =>
+                  cellData.entities.values.collect {
+                    case MapEntity(entityRef: ActiveEntityRef, _, _, _) =>
+                      entityRef
+                  }
                 }
               }
           )
-          .map(_.flatten)
+          .map { refs =>
+            Future.sequence(
+              refs.flatten.distinct.map { ref =>
+                (ref ? GetData()).mapTo[Data].map(data => (ref, data))
+              }
+            )
+          }
+          .flatten
       }
       .getOrElse(Future.successful(Seq.empty))
 
   def getEntities(
     grid: Grid[CellActorRef],
-    entities: Map[EntityRef, Point],
     point: Point
   ): Future[Seq[(MapEntity, Option[Data])]] =
     grid
       .get(point)
       .map { mapCell =>
-        (mapCell ? GetCellData()).mapTo[CellData].flatMap { cellData =>
-          Future.sequence(
-            cellData.entities.values.toSeq.map {
-              case mapEntity @ MapEntity(entity: ActiveEntityRef, _, _, _) =>
-                (entity ? GetData()).mapTo[Data].map(data => (mapEntity, Some(data)))
-
-              case entity =>
-                Future.successful(entity, None)
+        (mapCell ? GetCellData())
+          .mapTo[CellData]
+          .map { cellData =>
+            cellData.entities.values.collect {
+              case mapEntity @ MapEntity(entityRef: ActiveEntityRef, _, _, _) =>
+                (mapEntity, entityRef)
             }
-          )
-        }
+          }
+          .map { refs =>
+            Future.sequence(
+              refs.toSeq.distinct.map {
+                case (mapEntity, ref) =>
+                  (ref ? GetData()).mapTo[Data].map(data => (mapEntity, Some(data)))
+              }
+            )
+          }
+          .flatten
       }
       .getOrElse(Future.successful(Seq.empty))
 
@@ -103,9 +112,9 @@ trait QueryOps { _: PathfindingOps =>
       .flatMap(grid.get)
       .map { cell =>
         (cell ? GetEntity(entityID))
-          .mapTo[MapEntity]
+          .mapTo[Option[MapEntity]]
           .collect {
-            case MapEntity(entity: ActiveEntityRef, _, _, _) =>
+            case Some(MapEntity(entity: ActiveEntityRef, _, _, _)) =>
               (entity ? GetData()).mapTo[Data]
           }
           .flatten

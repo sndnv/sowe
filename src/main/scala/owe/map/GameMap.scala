@@ -70,7 +70,7 @@ trait GameMap extends Actor with ActorLogging with Stash with Timers with Ops {
 
     case GetEntities(point) =>
       log.debug("Retrieving entities in cell [{}]", point)
-      getEntities(grid, entities, point).pipeTo(sender)
+      getEntities(grid, point).pipeTo(sender)
 
     case GetEntity(entityID) =>
       log.debug("Retrieving data for entity [{}]", entityID)
