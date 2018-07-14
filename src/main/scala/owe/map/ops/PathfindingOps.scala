@@ -22,7 +22,7 @@ trait PathfindingOps { _: AvailabilityOps =>
           .neighbours(withCornerNeighbours = true)
           .map { point =>
             cellAvailability(grid, point).map { availability =>
-              if (availability == Availability.Passable) {
+              if (availability >= Availability.Passable) {
                 Some(point)
               } else {
                 None
@@ -54,9 +54,9 @@ trait PathfindingOps { _: AvailabilityOps =>
               extendPath(nextCell, currentPath :+ currentCell, examined :+ currentCell, backtracked)
 
             case None =>
-              val backtrackedTooFar = backtracked.lengthCompare(maxDistance.value / 2) >= 0
+              val backtrackedTooFar = backtracked.lengthCompare(currentPath.size / 2) >= 0
               if (backtrackedTooFar) {
-                Future.successful(currentPath ++ backtracked)
+                Future.successful((currentPath :+ currentCell) ++ backtracked.reverse)
               } else {
                 currentPath.lastOption match {
                   case Some(previousCell) =>
