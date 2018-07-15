@@ -1,5 +1,6 @@
 package owe.map.ops
 
+import akka.actor.{Actor, ActorRef}
 import akka.pattern.ask
 import akka.util.Timeout
 import owe.entities.Entity
@@ -24,14 +25,14 @@ trait EntityOps { _: AvailabilityOps =>
     entities: Map[EntityRef, Point],
     entity: MapEntity,
     cell: Point
-  ): Future[(Map[EntityRef, Point], Event)] =
+  )(implicit sender: ActorRef = Actor.noSender): Future[(Map[EntityRef, Point], Event)] =
     grid.get(cell) match {
       case Some(mapCell) =>
         val targetAvailability = requiredAvailability(entity.entityType)
         cellAvailability(mapCell).flatMap { availability =>
           if (availability >= targetAvailability) {
             Future
-              .sequence(Entity.cells(entity.`size`, cell).map(cellAvailability(grid, _)))
+              .sequence(Entity.cells(entity.`size`, cell).map(cellAvailabilityForPoint(grid, _)))
               .map { cellsAvailability =>
                 if (cellsAvailability.forall(_ >= targetAvailability)) {
                   val event = Event(Event.System.EntityCreated, Some(cell))
@@ -56,7 +57,7 @@ trait EntityOps { _: AvailabilityOps =>
     grid: Grid[CellActorRef],
     entities: Map[EntityRef, Point],
     entityID: EntityRef
-  ): Future[(Map[EntityRef, Point], Event)] =
+  )(implicit sender: ActorRef = Actor.noSender): Future[(Map[EntityRef, Point], Event)] =
     entities
       .get(entityID)
       .flatMap { point =>
@@ -90,7 +91,7 @@ trait EntityOps { _: AvailabilityOps =>
     entities: Map[EntityRef, Point],
     entityID: EntityRef,
     newCell: Point
-  ): Future[(Map[EntityRef, Point], Event)] = {
+  )(implicit sender: ActorRef = Actor.noSender): Future[(Map[EntityRef, Point], Event)] = {
 
     val result = for {
       currentCell <- entities
@@ -109,7 +110,7 @@ trait EntityOps { _: AvailabilityOps =>
           cellAvailability(newMapCell).flatMap { availability =>
             if (availability >= targetAvailability) {
               Future
-                .sequence(Entity.cells(currentMapEntity.size, newCell).map(cellAvailability(grid, _)))
+                .sequence(Entity.cells(currentMapEntity.size, newCell).map(cellAvailabilityForPoint(grid, _)))
                 .map { cellsAvailability =>
                   if (cellsAvailability.forall(_ >= targetAvailability)) {
                     val dissocEntities = dissociateMapEntity(
@@ -152,7 +153,7 @@ trait EntityOps { _: AvailabilityOps =>
     entities: Map[EntityRef, Point],
     mapEntity: MapEntity,
     cell: Point
-  ): Map[EntityRef, Point] = {
+  )(implicit sender: ActorRef = Actor.noSender): Map[EntityRef, Point] = {
     val cells = Entity.cells(mapEntity.size, mapEntity.parentCell)
     cells.flatMap(grid.get).foreach(_ ! AddEntity(mapEntity))
 
@@ -172,7 +173,7 @@ trait EntityOps { _: AvailabilityOps =>
     entities: Map[EntityRef, Point],
     mapEntity: MapEntity,
     cell: Point
-  ): Map[EntityRef, Point] = {
+  )(implicit sender: ActorRef = Actor.noSender): Map[EntityRef, Point] = {
     val cells = Entity.cells(mapEntity.size, mapEntity.parentCell)
     cells.flatMap(grid.get).foreach(_ ! RemoveEntity(mapEntity.entityRef))
 
@@ -191,14 +192,14 @@ trait EntityOps { _: AvailabilityOps =>
     grid: Grid[CellActorRef],
     desirability: Desirability,
     cells: Seq[Point]
-  ): Unit =
+  )(implicit sender: ActorRef = Actor.noSender): Unit =
     applyDesirability(grid, desirability, cells, modifier = 1)
 
   def removeDesirability(
     grid: Grid[CellActorRef],
     desirability: Desirability,
     cells: Seq[Point]
-  ): Unit =
+  )(implicit sender: ActorRef = Actor.noSender): Unit =
     applyDesirability(grid, desirability, cells, modifier = -1)
 
   private def applyDesirability(
@@ -206,7 +207,7 @@ trait EntityOps { _: AvailabilityOps =>
     desirability: Desirability,
     cells: Seq[Point],
     modifier: Int
-  ): Unit = {
+  )(implicit sender: ActorRef = Actor.noSender): Unit = {
     val _ = desirability.toMap.foldLeft(Seq.empty[Point]) {
       case (processedCells, (radius, currentDesirability)) =>
         val currentWindowCells =

@@ -69,8 +69,8 @@ class AvailabilityOpsSpec extends AsyncUnitSpec {
 
     for {
       cellResult <- fixture.ops.cellAvailability(cellRef)
-      gridResult <- fixture.ops.cellAvailability(fixture.grid, (0, 0))
-      gridResultOutOfBounds <- fixture.ops.cellAvailability(fixture.grid, (5, 5))
+      gridResult <- fixture.ops.cellAvailabilityForPoint(fixture.grid, (0, 0))
+      gridResultOutOfBounds <- fixture.ops.cellAvailabilityForPoint(fixture.grid, (5, 5))
       hasRoad <- fixture.ops.cellHasRoad(cellRef)
     } yield {
       cellResult should be(Cell.Availability.Buildable)

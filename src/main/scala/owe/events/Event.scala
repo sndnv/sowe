@@ -19,6 +19,7 @@ object Event {
     case object DestinationUnreachable extends System
     case object MessageForwarded extends System
     case object UnexpectedEntityFound extends System
+    case object TickProcessed extends System
   }
 
   //doc - to be extended per game

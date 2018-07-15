@@ -1,5 +1,6 @@
 package owe.map.ops
 
+import akka.actor.{Actor, ActorRef}
 import akka.pattern.ask
 import akka.util.Timeout
 import owe.entities.ActiveEntity.{ActiveEntityRef, Data}
@@ -24,7 +25,7 @@ trait QueryOps { _: PathfindingOps =>
     entities: Map[EntityRef, Point],
     entityID: WalkerRef,
     destination: Point
-  ): Future[Queue[Point]] =
+  )(implicit sender: ActorRef = Actor.noSender): Future[Queue[Point]] =
     entities
       .get(entityID)
       .map(start => generateAdvancePath(grid, start, destination))
@@ -35,7 +36,7 @@ trait QueryOps { _: PathfindingOps =>
     entities: Map[EntityRef, Point],
     entityID: WalkerRef,
     length: Distance
-  ): Future[Queue[Point]] =
+  )(implicit sender: ActorRef = Actor.noSender): Future[Queue[Point]] =
     entities
       .get(entityID)
       .map(start => generateRoamPath(grid, start, length))
@@ -46,7 +47,7 @@ trait QueryOps { _: PathfindingOps =>
     entities: Map[EntityRef, Point],
     entityID: EntityRef,
     radius: Distance
-  ): Future[Seq[(EntityRef, Data)]] =
+  )(implicit sender: ActorRef = Actor.noSender): Future[Seq[(EntityRef, Data)]] =
     entities
       .get(entityID)
       .map { point =>
@@ -78,7 +79,7 @@ trait QueryOps { _: PathfindingOps =>
   def getEntities(
     grid: Grid[CellActorRef],
     point: Point
-  ): Future[Seq[(MapEntity, Option[Data])]] =
+  )(implicit sender: ActorRef = Actor.noSender): Future[Seq[(MapEntity, Option[Data])]] =
     grid
       .get(point)
       .map { mapCell =>
@@ -106,7 +107,7 @@ trait QueryOps { _: PathfindingOps =>
     grid: Grid[CellActorRef],
     entities: Map[EntityRef, Point],
     entityID: EntityRef
-  ): Future[Data] =
+  )(implicit sender: ActorRef = Actor.noSender): Future[Data] =
     entities
       .get(entityID)
       .flatMap(grid.get)

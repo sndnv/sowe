@@ -1,6 +1,7 @@
 package owe.map.ops
 
 import akka.Done
+import akka.actor.{Actor, ActorRef}
 import akka.pattern.ask
 import akka.util.Timeout
 import owe.effects.Effect
@@ -19,7 +20,11 @@ trait TickOps {
   protected implicit val actionTimeout: Timeout
   protected implicit val ec: ExecutionContext
 
-  def processTick(grid: Grid[CellActorRef], start: Point, end: Point): Future[TickProcessed] =
+  def processTick(
+    grid: Grid[CellActorRef],
+    start: Point,
+    end: Point
+  )(implicit sender: ActorRef = Actor.noSender): Future[TickProcessed] =
     for {
       activeEffects <- gatherActiveEffects(grid)
       processedCells <- processCells(grid, activeEffects, start, end)
@@ -28,7 +33,9 @@ trait TickOps {
     }
 
   //doc -> a map of points -> effects to be applied to those points
-  def gatherActiveEffects(grid: Grid[CellActorRef]): Future[Map[Point, Seq[Effect]]] = {
+  def gatherActiveEffects(
+    grid: Grid[CellActorRef]
+  )(implicit sender: ActorRef = Actor.noSender): Future[Map[Point, Seq[Effect]]] = {
     val indexedGrid = grid.indexes()
     Future
       .traverse(
@@ -75,7 +82,7 @@ trait TickOps {
     activeEffects: Map[Point, Seq[Effect]],
     start: Point,
     end: Point
-  ): Future[Int] = {
+  )(implicit sender: ActorRef = Actor.noSender): Future[Int] = {
     def processCell(currentCell: Point, processedCells: Int): Future[Int] =
       grid
         .get(currentCell) match {

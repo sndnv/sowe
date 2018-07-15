@@ -1,5 +1,6 @@
 package owe.map.ops
 
+import akka.actor.{Actor, ActorRef}
 import owe.entities.active.attributes.Distance
 import owe.map.Cell.{Availability, CellActorRef}
 import owe.map.grid.{Grid, Point}
@@ -13,7 +14,10 @@ trait PathfindingOps { _: AvailabilityOps =>
   protected val search: Search
   protected implicit val ec: ExecutionContext
 
-  def passableNeighboursOf(grid: Grid[CellActorRef], cell: Point): Future[Seq[Point]] =
+  def passableNeighboursOf(
+    grid: Grid[CellActorRef],
+    cell: Point
+  )(implicit sender: ActorRef = Actor.noSender): Future[Seq[Point]] =
     //TODO - allow corner neighbours only for specific walkers that don't need roads
     //TODO - handle roadblocks for specific walkers
     Future
@@ -21,7 +25,7 @@ trait PathfindingOps { _: AvailabilityOps =>
         cell
           .neighbours(withCornerNeighbours = true)
           .map { point =>
-            cellAvailability(grid, point).map { availability =>
+            cellAvailabilityForPoint(grid, point).map { availability =>
               if (availability >= Availability.Passable) {
                 Some(point)
               } else {
@@ -33,11 +37,19 @@ trait PathfindingOps { _: AvailabilityOps =>
       .map(_.flatten)
 
   //TODO - check if path should follow roads
-  def generateAdvancePath(grid: Grid[CellActorRef], start: Point, end: Point): Future[Queue[Point]] =
+  def generateAdvancePath(
+    grid: Grid[CellActorRef],
+    start: Point,
+    end: Point
+  )(implicit sender: ActorRef = Actor.noSender): Future[Queue[Point]] =
     search.calculate(start, end, passableNeighboursOf(grid, _))
 
   //TODO - check if path should follow roads
-  def generateRoamPath(grid: Grid[CellActorRef], start: Point, maxDistance: Distance): Future[Queue[Point]] = {
+  def generateRoamPath(
+    grid: Grid[CellActorRef],
+    start: Point,
+    maxDistance: Distance
+  )(implicit sender: ActorRef = Actor.noSender): Future[Queue[Point]] = {
     def extendPath(
       currentCell: Point,
       currentPath: Seq[Point],

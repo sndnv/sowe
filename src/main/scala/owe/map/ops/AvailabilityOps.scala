@@ -1,5 +1,6 @@
 package owe.map.ops
 
+import akka.actor.{Actor, ActorRef}
 import akka.pattern.ask
 import akka.util.Timeout
 import owe.entities.Entity
@@ -15,23 +16,30 @@ trait AvailabilityOps {
   protected implicit val actionTimeout: Timeout
   protected implicit val ec: ExecutionContext
 
-  def cellAvailability(cell: CellActorRef): Future[Availability] =
+  def cellAvailability(
+    cell: CellActorRef
+  )(implicit sender: ActorRef = Actor.noSender): Future[Availability] =
     (cell ? GetCellAvailability()).mapTo[Availability]
 
-  def cellAvailability(grid: Grid[CellActorRef], cell: Point): Future[Availability] =
+  def cellAvailabilityForPoint(
+    grid: Grid[CellActorRef],
+    cell: Point
+  )(implicit sender: ActorRef = Actor.noSender): Future[Availability] =
     grid
       .get(cell)
       .map(cellAvailability)
       .getOrElse(Future.successful(Availability.OutOfBounds))
 
-  def cellHasRoad(cell: CellActorRef): Future[Boolean] =
+  def cellHasRoad(
+    cell: CellActorRef
+  )(implicit sender: ActorRef = Actor.noSender): Future[Boolean] =
     (cell ? HasRoad()).mapTo[Boolean]
 
   def findFirstAdjacentRoad(
     grid: Grid[CellActorRef],
     entities: Map[EntityRef, Point],
     entityID: EntityRef
-  ): Future[Option[Point]] =
+  )(implicit sender: ActorRef = Actor.noSender): Future[Option[Point]] =
     (for {
       parentPoint <- entities.get(entityID)
       parentCell <- grid.get(parentPoint)

@@ -1,5 +1,6 @@
 package owe.map.ops
 
+import akka.actor.{Actor, ActorRef}
 import akka.pattern.ask
 import akka.util.Timeout
 import owe.entities.ActiveEntity.ActiveEntityRef
@@ -24,7 +25,7 @@ trait ForwardingOps {
     entities: Map[EntityRef, Point],
     entityID: EntityRef,
     message: Entity.Message
-  ): Future[Event] = {
+  )(implicit sender: ActorRef = Actor.noSender): Future[Event] = {
     val result = for {
       parentCell <- entities
         .get(entityID)

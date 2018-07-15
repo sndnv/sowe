@@ -11,6 +11,7 @@ import owe.entities.Entity._
 import owe.entities.active.Structure.StructureRef
 import owe.entities.active.Walker.WalkerRef
 import owe.entities.active.attributes.{AttackDamage, Distance}
+import owe.events.Event
 import owe.map.Cell.{ActorRefTag, CellActorRef}
 import owe.map.grid.{Grid, Point}
 import owe.map.ops.Ops
@@ -51,18 +52,18 @@ trait GameMap extends Actor with ActorLogging with Stash with Timers with Ops {
       )
     }
 
-  private def active: Receive = {
+  protected def active: Receive = {
     case ProcessTick(start, end) =>
       log.debug("Started processing tick from [{}] to [{}].", start, end)
       processTick(grid, start, end).pipeTo(self)
 
     case GetAdvancePath(entityID, destination) =>
       log.debug("Generating advance path for entity [{}] to [{}].", entityID, destination)
-      sender ! getAdvancePath(grid, entities, entityID, destination)
+      getAdvancePath(grid, entities, entityID, destination).pipeTo(sender)
 
     case GetRoamingPath(entityID, length) =>
       log.debug("Generating roaming path for entity [{}].", entityID)
-      sender ! getRoamingPath(grid, entities, entityID, length)
+      getRoamingPath(grid, entities, entityID, length).pipeTo(sender)
 
     case GetNeighbours(entityID, radius) =>
       log.debug("Retrieving neighbours for entity [{}] in radius [{}].", entityID, radius)
@@ -80,12 +81,13 @@ trait GameMap extends Actor with ActorLogging with Stash with Timers with Ops {
       log.debug("[{}] cells processed by tick.", processedCells)
       scheduleNextTick()
       unstashAll()
+      tracker ! Event(Event.System.TickProcessed, cell = None)
       context.become(idle)
 
     case _ => stash()
   }
 
-  private def idle: Receive = {
+  protected def idle: Receive = {
     case UpdateEntities(updatedEntities) =>
       entities = updatedEntities
 
@@ -100,10 +102,13 @@ trait GameMap extends Actor with ActorLogging with Stash with Timers with Ops {
         entity.`type`
       )
 
+      val senderRef = sender
+
       createEntity(grid, entities, mapEntity, cell)
         .map {
           case (updatedEntities, event) =>
             tracker ! event
+            senderRef ! mapEntity.entityRef
             UpdateEntities(updatedEntities)
         }
         .pipeTo(self)
