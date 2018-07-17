@@ -6,7 +6,7 @@ homepage in ThisBuild := Some(url("https://github.com/sndnv/sowe"))
 
 scalaVersion in ThisBuild := "2.12.6"
 
-lazy val akkaVersion = "2.5.13"
+lazy val akkaVersion = "2.5.14"
 
 lazy val owe = (project in file("."))
   .settings(
