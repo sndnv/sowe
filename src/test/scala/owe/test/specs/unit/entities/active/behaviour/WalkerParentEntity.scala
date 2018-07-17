@@ -3,7 +3,7 @@ package owe.test.specs.unit.entities.active.behaviour
 import akka.actor.{Actor, ActorRef, Props}
 import akka.testkit.TestProbe
 import owe.entities.ActiveEntity._
-import owe.entities.ActiveEntityActor.{ForwardMessage, ProcessEntityTick}
+import owe.entities.ActiveEntityActor.{ForwardMessage, ProcessBehaviourTick}
 import owe.entities.Entity
 import owe.entities.Entity.Desirability
 import owe.entities.active.attributes.Distance
@@ -23,7 +23,7 @@ class WalkerParentEntity(ref: ActorRef, childProps: Props) extends Actor {
   import context.system
 
   override def receive: Receive = {
-    case tick: ProcessEntityTick => child ! tick
+    case tick: ProcessBehaviourTick => child ! tick
 
     case ForwardMessage(GetEntity(entityID)) =>
       val result: Data = entityID match {
@@ -117,33 +117,29 @@ class WalkerParentEntity(ref: ActorRef, childProps: Props) extends Actor {
       sender ! result
 
     case ForwardMessage(GetAdvancePath(_, destination)) =>
-      val result: Option[Queue[Point]] = if (destination != Point(0, 0)) {
-        Some(
-          Queue(
-            (1, 0),
-            (2, 0),
-            (2, 1),
-            (1, 1),
-            destination
-          )
+      val result: Queue[Point] = if (destination != Point(0, 0)) {
+        Queue(
+          (1, 0),
+          (2, 0),
+          (2, 1),
+          (1, 1),
+          destination
         )
       } else {
-        None
+        Queue.empty
       }
 
       sender ! result
 
     case ForwardMessage(GetRoamingPath(_, length)) =>
-      val result: Option[Queue[Point]] = if (length >= Distance(3)) {
-        Some(
-          Queue(
-            (0, 1),
-            (0, 2),
-            (1, 2)
-          )
+      val result: Queue[Point] = if (length >= Distance(3)) {
+        Queue(
+          (0, 1),
+          (0, 2),
+          (1, 2)
         )
       } else {
-        None
+        Queue.empty
       }
 
       sender ! result

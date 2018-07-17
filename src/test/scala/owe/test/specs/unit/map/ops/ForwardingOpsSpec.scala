@@ -92,7 +92,7 @@ class ForwardingOpsSpec extends AsyncUnitSpec {
       unexpectedEntityResult <- fixture.ops.forwardEntityMessage(fixture.grid, entities, roadEntityID, message)
       successfulResult <- fixture.ops.forwardEntityMessage(fixture.grid, entities, walkerEntityID, message)
     } yield {
-      entityNotFoundResult should be(Event(Event.System.CellsUnavailable, cell = None))
+      entityNotFoundResult should be(Event(Event.System.EntityMissing, cell = None))
       cellMissingResult should be(Event(Event.System.CellOutOfBounds, Some(outOfBoundsCell)))
       mapEntityMissingResult should be(Event(Event.System.EntityMissing, Some(missingMapEntityCell)))
       unexpectedEntityResult should be(Event(Event.System.UnexpectedEntityFound, Some(roadCell)))

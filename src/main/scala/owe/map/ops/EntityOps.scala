@@ -22,10 +22,9 @@ trait EntityOps { _: AvailabilityOps =>
 
   def createEntity(
     grid: Grid[CellActorRef],
-    entities: Map[EntityRef, Point],
     entity: MapEntity,
     cell: Point
-  )(implicit sender: ActorRef = Actor.noSender): Future[(Map[EntityRef, Point], Event)] =
+  )(implicit sender: ActorRef = Actor.noSender): Future[Either[Event, Event]] =
     grid.get(cell) match {
       case Some(mapCell) =>
         val targetAvailability = requiredAvailability(entity.entityType)
@@ -35,29 +34,25 @@ trait EntityOps { _: AvailabilityOps =>
               .sequence(Entity.cells(entity.`size`, cell).map(cellAvailabilityForPoint(grid, _)))
               .map { cellsAvailability =>
                 if (cellsAvailability.forall(_ >= targetAvailability)) {
-                  val event = Event(Event.System.EntityCreated, Some(cell))
-                  (associateMapEntity(grid, entities, entity, cell), event)
+                  Right(Event(Event.System.EntityCreated, Some(cell)))
                 } else {
-                  val event = Event(Event.System.CellsUnavailable, Some(cell))
-                  (entities, event)
+                  Left(Event(Event.System.CellsUnavailable, Some(cell)))
                 }
               }
           } else {
-            val event = Event(Event.System.CellsUnavailable, Some(cell))
-            Future.successful((entities, event))
+            Future.successful(Left(Event(Event.System.CellsUnavailable, Some(cell))))
           }
         }
 
       case None =>
-        val event = Event(Event.System.CellOutOfBounds, Some(cell))
-        Future.successful((entities, event))
+        Future.successful(Left(Event(Event.System.CellOutOfBounds, Some(cell))))
     }
 
   def destroyEntity(
     grid: Grid[CellActorRef],
     entities: Map[EntityRef, Point],
     entityID: EntityRef
-  )(implicit sender: ActorRef = Actor.noSender): Future[(Map[EntityRef, Point], Event)] =
+  )(implicit sender: ActorRef = Actor.noSender): Future[Either[Event, (Event, MapEntity, Point)]] =
     entities
       .get(entityID)
       .flatMap { point =>
@@ -68,22 +63,24 @@ trait EntityOps { _: AvailabilityOps =>
           case Availability.Occupied | Availability.Passable =>
             (mapCell ? GetEntity(entityID)).mapTo[Option[MapEntity]].map {
               case Some(mapEntity) =>
-                val event = Event(Event.System.EntityDestroyed, Some(cell))
-                (dissociateMapEntity(grid, entities, mapEntity, cell), event)
+                Right(
+                  (
+                    Event(Event.System.EntityDestroyed, Some(cell)),
+                    mapEntity,
+                    cell
+                  )
+                )
 
               case None =>
-                val event = Event(Event.System.EntityMissing, Some(cell))
-                (entities, event)
+                Left(Event(Event.System.EntityMissing, Some(cell)))
             }
 
           case _ =>
-            val event = Event(Event.System.EntityMissing, Some(cell))
-            Future.successful((entities, event))
+            Future.successful(Left(Event(Event.System.EntityMissing, Some(cell))))
         }
 
       case None =>
-        val event = Event(Event.System.CellOutOfBounds, cell = None)
-        Future.successful((entities, event))
+        Future.successful(Left(Event(Event.System.CellOutOfBounds, cell = None)))
     }
 
   def moveEntity(
@@ -91,8 +88,7 @@ trait EntityOps { _: AvailabilityOps =>
     entities: Map[EntityRef, Point],
     entityID: EntityRef,
     newCell: Point
-  )(implicit sender: ActorRef = Actor.noSender): Future[(Map[EntityRef, Point], Event)] = {
-
+  )(implicit sender: ActorRef = Actor.noSender): Future[Either[Event, (Event, MapEntity, Point)]] = {
     val result = for {
       currentCell <- entities
         .get(entityID)
@@ -113,39 +109,31 @@ trait EntityOps { _: AvailabilityOps =>
                 .sequence(Entity.cells(currentMapEntity.size, newCell).map(cellAvailabilityForPoint(grid, _)))
                 .map { cellsAvailability =>
                   if (cellsAvailability.forall(_ >= targetAvailability)) {
-                    val dissocEntities = dissociateMapEntity(
-                      grid,
-                      entities,
-                      currentMapEntity,
-                      currentCell
+                    Right(
+                      (
+                        Event(Event.System.EntityMoved, Some(newCell)),
+                        currentMapEntity,
+                        currentCell
+                      )
                     )
-
-                    val assocEntities = associateMapEntity(
-                      grid,
-                      dissocEntities,
-                      currentMapEntity.copy(parentCell = newCell),
-                      newCell
-                    )
-
-                    (assocEntities, Event(Event.System.EntityMoved, Some(newCell)))
                   } else {
-                    (entities, Event(Event.System.CellsUnavailable, Some(newCell)))
+                    Left(Event(Event.System.CellsUnavailable, Some(newCell)))
                   }
                 }
             } else {
-              Future.successful((entities, Event(Event.System.CellsUnavailable, Some(newCell))))
+              Future.successful(Left(Event(Event.System.CellsUnavailable, Some(newCell))))
             }
           }
 
         case None =>
-          Future.successful((entities, Event(Event.System.CellsUnavailable, Some(newCell))))
+          Future.successful(Left(Event(Event.System.CellsUnavailable, Some(newCell))))
       }
     }
 
-    result match {
-      case Left(event) => Future.successful((entities, event))
-      case Right(data) => data
-    }
+    result.left
+      .map(Future.successful)
+      .fold(_.map(Left(_)), _.map(Right(_)))
+      .map(_.joinRight)
   }
 
   def associateMapEntity(

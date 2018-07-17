@@ -1,7 +1,7 @@
 package owe.entities.active.behaviour.structure.farming
 
 import owe.entities.ActiveEntity.StructureData
-import owe.entities.ActiveEntityActor.ProcessEntityTick
+import owe.entities.ActiveEntityActor.ProcessBehaviourTick
 import owe.entities.active.Structure.CommoditiesState
 import owe.entities.active.behaviour.UpdateExchange
 import owe.entities.active.behaviour.structure.BaseStructure.Become
@@ -26,7 +26,7 @@ trait FarmingStructure
   override protected def behaviour: Behaviour = farming()
 
   final protected def farming(): Behaviour = {
-    case ProcessEntityTick(map, structure: StructureData, messages) =>
+    case ProcessBehaviourTick(tick, map, structure: StructureData, messages) =>
       withUpdates(
         structure,
         Seq(
@@ -47,7 +47,7 @@ trait FarmingStructure
           case _ => //do nothing
         }
 
-        self ! Become(() => farming(), updatedData)
+        self ! Become(() => farming(), tick, updatedData)
       }
   }
 }

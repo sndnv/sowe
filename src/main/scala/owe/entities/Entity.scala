@@ -9,6 +9,7 @@ import owe.map.Cell
 import owe.map.grid.Point
 import owe.production.Commodity
 
+import scala.collection.immutable.Queue
 import scala.concurrent.Future
 
 trait Entity {

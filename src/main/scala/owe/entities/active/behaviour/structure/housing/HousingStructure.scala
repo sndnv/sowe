@@ -1,7 +1,7 @@
 package owe.entities.active.behaviour.structure.housing
 
 import owe.entities.ActiveEntity.StructureData
-import owe.entities.ActiveEntityActor.ProcessEntityTick
+import owe.entities.ActiveEntityActor.ProcessBehaviourTick
 import owe.entities.active.behaviour.UpdateExchange
 import owe.entities.active.behaviour.structure.BaseStructure.Become
 import owe.entities.active.behaviour.structure.transformations._
@@ -23,7 +23,7 @@ trait HousingStructure
   override protected def behaviour: Behaviour = housing()
 
   final protected def housing(): Behaviour = {
-    case ProcessEntityTick(map, structure: StructureData, messages) =>
+    case ProcessBehaviourTick(tick, map, structure: StructureData, messages) =>
       withUpdates(
         structure,
         Seq(
@@ -44,7 +44,7 @@ trait HousingStructure
           .requiredCommodities(updatedData)
           .foreach(UpdateExchange.Stats.requiredCommodities(structure.id, _))
 
-        self ! Become(() => housing(), updatedData)
+        self ! Become(() => housing(), tick, updatedData)
       }
   }
 }

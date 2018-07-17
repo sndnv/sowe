@@ -4,7 +4,7 @@ import akka.actor.{ActorRef, Props}
 import akka.util.Timeout
 import org.scalatest.Outcome
 import owe.entities.ActiveEntity.StructureData
-import owe.entities.ActiveEntityActor.{ForwardMessage, ProcessEntityTick}
+import owe.entities.ActiveEntityActor.{BehaviourTickProcessed, ForwardMessage, ProcessBehaviourTick}
 import owe.entities.Entity.ProcessAttack
 import owe.entities.active.Structure._
 import owe.entities.active.attributes.{AttackDamage, Life}
@@ -70,7 +70,8 @@ class ProducingStructureSpec extends AkkaUnitSpec("ProducingStructureSpec") {
   }
 
   "A Producing structure" should "generate walkers" in { fixture =>
-    fixture.parentEntity ! ProcessEntityTick(
+    fixture.parentEntity ! ProcessBehaviourTick(
+      tick = 0,
       map = Fixtures.defaultMapData,
       entity = fixture.structure,
       messages = Seq(
@@ -139,16 +140,19 @@ class ProducingStructureSpec extends AkkaUnitSpec("ProducingStructureSpec") {
     )
 
     expectMsg(
-      fixture.structure.state.copy(
-        currentLife = Life(0),
-        commodities = CommoditiesState(
-          available = Map(
-            Commodity("TestCommodity#1") -> Commodity.Amount(25),
-            Commodity("TestCommodity#2") -> Commodity.Amount(55)
-          ),
-          limits = Map(
-            Commodity("TestCommodity#1") -> Commodity.Amount(50),
-            Commodity("TestCommodity#2") -> Commodity.Amount(100)
+      BehaviourTickProcessed(
+        tick = 0,
+        fixture.structure.state.copy(
+          currentLife = Life(0),
+          commodities = CommoditiesState(
+            available = Map(
+              Commodity("TestCommodity#1") -> Commodity.Amount(25),
+              Commodity("TestCommodity#2") -> Commodity.Amount(55)
+            ),
+            limits = Map(
+              Commodity("TestCommodity#1") -> Commodity.Amount(50),
+              Commodity("TestCommodity#2") -> Commodity.Amount(100)
+            )
           )
         )
       )

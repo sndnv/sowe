@@ -59,7 +59,7 @@ trait QueryOps { _: PathfindingOps =>
               .map { mapCell =>
                 (mapCell ? GetCellData()).mapTo[CellData].map { cellData =>
                   cellData.entities.values.collect {
-                    case MapEntity(entityRef: ActiveEntityRef, _, _, _) =>
+                    case MapEntity(entityRef: ActiveEntityRef, _, _, _) if entityID != entityRef =>
                       entityRef
                   }
                 }
@@ -124,7 +124,7 @@ trait QueryOps { _: PathfindingOps =>
         result
 
       case None =>
-        val message = s"Failed to find entity with ID [$entityID] while retrieving its data."
+        val message = s"Failed to find entity with ID [$entityID] while retrieving its data"
         Future.failed(new IllegalStateException(message))
     }
 }

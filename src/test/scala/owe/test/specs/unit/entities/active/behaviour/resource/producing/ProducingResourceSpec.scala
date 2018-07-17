@@ -4,7 +4,7 @@ import akka.actor.{ActorRef, Props}
 import akka.util.Timeout
 import org.scalatest.Outcome
 import owe.entities.ActiveEntity.ResourceData
-import owe.entities.ActiveEntityActor.{ForwardMessage, ProcessEntityTick}
+import owe.entities.ActiveEntityActor.{BehaviourTickProcessed, ForwardMessage, ProcessBehaviourTick}
 import owe.entities.Entity.ProcessCommodities
 import owe.entities.active.behaviour.resource.producing.ProducingResource
 import owe.map.GameMap.ForwardExchangeMessage
@@ -30,7 +30,8 @@ class ProducingResourceSpec extends AkkaUnitSpec("ProducingResourceSpec") {
     )
 
   "A ProducingResource" should "produce commodities" in { fixture =>
-    fixture.parentEntity ! ProcessEntityTick(
+    fixture.parentEntity ! ProcessBehaviourTick(
+      tick = 0,
       map = Fixtures.defaultMapData,
       entity = ResourceData(
         Fixtures.Resource.properties,
@@ -66,13 +67,17 @@ class ProducingResourceSpec extends AkkaUnitSpec("ProducingResourceSpec") {
     )
 
     expectMsg(
-      Fixtures.Resource.state
-        .copy(currentAmount = Fixtures.Resource.state.currentAmount + Fixtures.Resource.state.replenishAmount)
+      BehaviourTickProcessed(
+        tick = 0,
+        Fixtures.Resource.state
+          .copy(currentAmount = Fixtures.Resource.state.currentAmount + Fixtures.Resource.state.replenishAmount)
+      )
     )
   }
 
   it should "allow commodities to be retrieved by walkers" in { fixture =>
-    fixture.parentEntity ! ProcessEntityTick(
+    fixture.parentEntity ! ProcessBehaviourTick(
+      tick = 0,
       map = Fixtures.defaultMapData,
       entity = ResourceData(
         Fixtures.Resource.properties,
@@ -117,7 +122,10 @@ class ProducingResourceSpec extends AkkaUnitSpec("ProducingResourceSpec") {
     )
 
     expectMsg(
-      Fixtures.Resource.state.copy(expectedFinalAmount)
+      BehaviourTickProcessed(
+        tick = 0,
+        Fixtures.Resource.state.copy(expectedFinalAmount)
+      )
     )
   }
 }

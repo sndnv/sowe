@@ -60,14 +60,14 @@ class TrackerSpec extends AkkaUnitSpec("TrackerSpec") {
     expectMsg(Vector(event2, event3))
   }
 
-  it should "allow event clearing" in { fixture =>
+  it should "allow event clearing" in { _ =>
     tracker ! ClearGameEventsLog()
 
     tracker ! GetGameEventsLog()
     expectMsg(Vector.empty[Event])
   }
 
-  it should "detach observers" in { fixture =>
+  it should "detach observers" in { _ =>
     val events = Seq(
       Event.System.CellsUnavailable,
       Event.System.CellOutOfBounds,

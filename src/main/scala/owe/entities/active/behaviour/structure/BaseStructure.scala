@@ -3,6 +3,7 @@ package owe.entities.active.behaviour.structure
 import akka.actor.Actor.Receive
 import owe.entities.ActiveEntity
 import owe.entities.ActiveEntity.StructureData
+import owe.entities.ActiveEntityActor.BehaviourTickProcessed
 import owe.entities.Entity.{State => _}
 import owe.entities.active.Structure._
 import owe.entities.active.behaviour.structure.BaseStructure.Become
@@ -15,8 +16,8 @@ trait BaseStructure extends BaseBehaviour {
     StructureRef(context.parent)
 
   override protected def base: Behaviour = {
-    case Become(behaviour, structure) =>
-      parentEntity ! structure.state
+    case Become(behaviour, tick, structure) =>
+      parentEntity ! BehaviourTickProcessed(tick, structure.state)
       become(behaviour, structure)
   }
 
@@ -34,7 +35,7 @@ trait BaseStructure extends BaseBehaviour {
 }
 
 object BaseStructure {
-  private[behaviour] case class Become(behaviour: () => Receive, structure: StructureData)
+  private[behaviour] case class Become(behaviour: () => Receive, tick: Int, structure: StructureData)
 
   sealed trait StructureTransition
   object StructureTransition {

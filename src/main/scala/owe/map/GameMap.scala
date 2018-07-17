@@ -1,6 +1,7 @@
 package owe.map
 
-import akka.Done
+import java.util.UUID
+
 import akka.actor.{Actor, ActorLogging, ActorRef, Stash, Timers}
 import akka.pattern.pipe
 import akka.util.Timeout
@@ -26,47 +27,40 @@ trait GameMap extends Actor with ActorLogging with Stash with Timers with Ops {
   import GameMap._
 
   private case object TickTimer
+  private case object CollectionTimer
 
   protected implicit val actionTimeout: Timeout
   protected implicit val ec: ExecutionContext = context.dispatcher
 
   protected val height: Int
   protected val width: Int
+  protected val collectionTimeout: FiniteDuration
   protected val tickInterval: FiniteDuration
   protected val defaultTickStart: Point = Point(0, 0)
-  protected val defaultTickEnd: Point = defaultTickStart
+  protected val defaultTickEnd: Point = Point(width - 1, height - 1)
 
   protected val exchange: ActorRef
   protected val tracker: ActorRef
   protected val search: Search
 
   private val grid = Grid[CellActorRef](height, width, context.actorOf(Cell.props()).tag[ActorRefTag])
-  private var entities: Map[EntityRef, Point] = Map.empty
 
-  private def scheduleNextTick(): Unit =
-    if (tickInterval.toMillis > 0L) {
-      timers.startSingleTimer(
-        TickTimer,
-        ProcessTick(defaultTickStart, defaultTickEnd),
-        tickInterval
-      )
-    }
-
-  protected def active: Receive = {
+  protected def active(entities: Map[EntityRef, Point], currentTick: Int, pendingEntityResponses: Int): Receive = {
     case ProcessTick(start, end) =>
-      log.debug("Started processing tick from [{}] to [{}].", start, end)
-      processTick(grid, start, end).pipeTo(self)
+      log.debug("Started processing tick [{}] from [{}] to [{}]", currentTick, start, end)
+      timers.startSingleTimer(CollectionTimer, TickExpired(), collectionTimeout)
+      processTick(grid, currentTick, start, end).pipeTo(self)
 
     case GetAdvancePath(entityID, destination) =>
-      log.debug("Generating advance path for entity [{}] to [{}].", entityID, destination)
+      log.debug("Generating advance path for entity [{}] to [{}]", entityID, destination)
       getAdvancePath(grid, entities, entityID, destination).pipeTo(sender)
 
     case GetRoamingPath(entityID, length) =>
-      log.debug("Generating roaming path for entity [{}].", entityID)
+      log.debug("Generating roaming path for entity [{}]", entityID)
       getRoamingPath(grid, entities, entityID, length).pipeTo(sender)
 
     case GetNeighbours(entityID, radius) =>
-      log.debug("Retrieving neighbours for entity [{}] in radius [{}].", entityID, radius)
+      log.debug("Retrieving neighbours for entity [{}] in radius [{}]", entityID, radius)
       getNeighbours(grid, entities, entityID, radius).pipeTo(sender)
 
     case GetEntities(point) =>
@@ -77,25 +71,81 @@ trait GameMap extends Actor with ActorLogging with Stash with Timers with Ops {
       log.debug("Retrieving data for entity [{}]", entityID)
       getEntity(grid, entities, entityID).pipeTo(sender)
 
-    case TickProcessed(processedCells) =>
-      log.debug("[{}] cells processed by tick.", processedCells)
+    case TickProcessed(processedEntities) =>
+      log.debug("Entities processed by tick: [{}]", processedEntities)
+      if (processedEntities == 0) { self ! EntityTickProcessed(currentTick) }
+      context.become(active(entities, currentTick, pendingEntityResponses = processedEntities))
+
+    case TickExpired() =>
+      log.error("Tick [{}] expired with [{}] pending entity responses", currentTick, pendingEntityResponses)
       scheduleNextTick()
       unstashAll()
-      tracker ! Event(Event.System.TickProcessed, cell = None)
-      context.become(idle)
+      tracker ! Event(Event.System.TickExpired, cell = None)
+      context.become(idle(entities, currentTick + 1))
 
-    case _ => stash()
+    case EntityTickProcessed(tick) =>
+      if (tick == currentTick) {
+        if (pendingEntityResponses > 1) {
+          log.debug(
+            "Entity response for tick [{}] received; [{}] responses remaining",
+            currentTick,
+            pendingEntityResponses - 1
+          )
+          context.become(active(entities, currentTick, pendingEntityResponses - 1))
+        } else {
+          log.debug("Processing of tick [{}] complete", currentTick)
+          scheduleNextTick()
+          unstashAll()
+          tracker ! Event(Event.System.TickProcessed, cell = None)
+          context.become(idle(entities, currentTick + 1))
+        }
+      } else {
+        log.error(
+          "Entity response received from sender [{}] for tick [{}] while on tick [{}]",
+          sender,
+          tick,
+          currentTick
+        )
+        tracker ! Event(Event.System.UnexpectedEntityResponseReceived, cell = None)
+      }
+
+    case message =>
+      log.debug("Stashing message [{}] from sender [{}]", message, sender)
+      stash()
   }
 
-  protected def idle: Receive = {
-    case UpdateEntities(updatedEntities) =>
-      entities = updatedEntities
+  protected def idle(entities: Map[EntityRef, Point], currentTick: Int): Receive = {
+    case update: EntityUpdate =>
+      log.debug("Updating entities: [{}]", update)
+
+      val updatedEntities = update match {
+        case EntityUpdate.Add(mapEntity, cell) =>
+          associateMapEntity(grid, entities, mapEntity, cell)
+
+        case EntityUpdate.Remove(mapEntity, cell) =>
+          dissociateMapEntity(grid, entities, mapEntity, cell)
+
+        case EntityUpdate.Move(mapEntity, from, to) =>
+          associateMapEntity(
+            grid,
+            dissociateMapEntity(
+              grid,
+              entities,
+              mapEntity,
+              from
+            ),
+            mapEntity.copy(parentCell = to),
+            to
+          )
+      }
+
+      context.become(idle(updatedEntities, currentTick))
 
     case CreateEntity(entity, cell) =>
-      log.debug("Creating entity of type [{}] with size [{}].", entity.`type`, entity.`size`)
+      log.debug("Creating entity of type [{}] with size [{}]", entity.`type`, entity.`size`)
 
       val mapEntity = MapEntity(
-        context.actorOf(entity.props()),
+        context.actorOf(entity.props(), name = s"${entity.`type`}-${UUID.randomUUID()}"),
         cell,
         entity.`size`,
         entity.`desirability`,
@@ -104,83 +154,114 @@ trait GameMap extends Actor with ActorLogging with Stash with Timers with Ops {
 
       val senderRef = sender
 
-      createEntity(grid, entities, mapEntity, cell)
+      createEntity(grid, mapEntity, cell)
         .map {
-          case (updatedEntities, event) =>
+          case Left(event) =>
+            tracker ! event
+
+          case Right(event) =>
             tracker ! event
             senderRef ! mapEntity.entityRef
-            UpdateEntities(updatedEntities)
+            self ! EntityUpdate.Add(mapEntity, cell)
         }
-        .pipeTo(self)
 
     case DestroyEntity(entityID) =>
-      log.debug("Destroying entity with ID [{}.", entityID)
+      log.debug("Destroying entity with ID [{}", entityID)
 
       destroyEntity(grid, entities, entityID)
         .map {
-          case (updatedEntities, event) =>
+          case Left(event) =>
             tracker ! event
-            UpdateEntities(updatedEntities)
+
+          case Right((event, mapEntity, cell)) =>
+            tracker ! event
+            self ! EntityUpdate.Remove(mapEntity, cell)
         }
-        .pipeTo(self)
 
     case MoveEntity(entityID, cell) =>
-      log.debug("Moving entity with ID [{}] to [{}].", entityID, cell)
+      log.debug("Moving entity with ID [{}] to [{}]", entityID, cell)
 
       moveEntity(grid, entities, entityID, cell)
         .map {
-          case (updatedEntities, event) =>
+          case Left(event) =>
             tracker ! event
-            UpdateEntities(updatedEntities)
+
+          case Right((event, mapEntity, from)) =>
+            tracker ! event
+            self ! EntityUpdate.Move(mapEntity, from, to = cell)
         }
-        .pipeTo(self)
 
     case message @ DistributeCommodities(entityID, commodities) =>
       log.debug("Forwarding entity message [{}]", message)
-      forwardEntityMessage(grid, entities, entityID, ProcessCommodities(commodities)).map(e => tracker ! e)
-      sender ! Done
+      forwardEntityMessage(grid, entities, entityID, ProcessCommodities(commodities))
+        .foreach(event => tracker ! event)
 
     case message @ AttackEntity(entityID, damage) =>
       log.debug("Forwarding entity message [{}]", message)
-      forwardEntityMessage(grid, entities, entityID, ProcessAttack(damage)).map(e => tracker ! e)
-      sender ! Done
+      forwardEntityMessage(grid, entities, entityID, ProcessAttack(damage))
+        .foreach(event => tracker ! event)
 
     case message @ LabourFound(entityID) =>
       log.debug("Forwarding entity message [{}]", message)
-      forwardEntityMessage(grid, entities, entityID, ProcessLabourFound()).map(e => tracker ! e)
-      sender ! Done
+      forwardEntityMessage(grid, entities, entityID, ProcessLabourFound())
+        .foreach(event => tracker ! event)
 
     case message @ OccupantsUpdate(entityID, occupants) =>
       log.debug("Forwarding entity message [{}]", message)
-      forwardEntityMessage(grid, entities, entityID, ProcessOccupantsUpdate(occupants)).map(e => tracker ! e)
-      sender ! Done
+      forwardEntityMessage(grid, entities, entityID, ProcessOccupantsUpdate(occupants))
+        .foreach(event => tracker ! event)
 
     case message @ LabourUpdate(entityID, employees) =>
       log.debug("Forwarding entity message [{}]", message)
-      forwardEntityMessage(grid, entities, entityID, ProcessLabourUpdate(employees)).map(e => tracker ! e)
-      sender ! Done
+      forwardEntityMessage(grid, entities, entityID, ProcessLabourUpdate(employees))
+        .foreach(event => tracker ! event)
 
     case ForwardExchangeMessage(message) =>
-      log.debug("Forwarding message [{}] to commodity exchange.", message)
+      log.debug("Forwarding message [{}] to commodity exchange", message)
       exchange ! message
 
     case message: ProcessTick =>
+      log.debug("Changing state to active to begin tick processing")
       self ! message
-      context.become(active)
+      context.become(active(entities, currentTick, pendingEntityResponses = 0))
+
+    case EntityTickProcessed(tick) =>
+      log.error("Entity response received from sender [{}] for tick [{}] while idle", sender, tick)
+      tracker ! Event(Event.System.UnexpectedEntityResponseReceived, cell = None)
   }
 
-  override def receive: Receive = idle
+  override def receive: Receive = idle(entities = Map.empty, currentTick = 0)
+
+  private def scheduleNextTick(): Unit =
+    if (tickInterval.toMillis > 0L) {
+      log.debug("Next game tick scheduled to run in [{} ms]", tickInterval.toMillis)
+      timers.startSingleTimer(
+        TickTimer,
+        ProcessTick(defaultTickStart, defaultTickEnd),
+        tickInterval
+      )
+    } else {
+      log.debug("Game ticks disabled by interval set to [{} ms]", tickInterval.toMillis)
+    }
 
   scheduleNextTick()
 }
 
 object GameMap {
+
   sealed trait Message extends owe.Message
 
-  private case class UpdateEntities(updatedEntities: Map[EntityRef, Point]) extends Message
+  sealed trait EntityUpdate extends Message
+  object EntityUpdate {
+    case class Add(mapEntity: MapEntity, cell: Point) extends EntityUpdate
+    case class Remove(mapEntity: MapEntity, cell: Point) extends EntityUpdate
+    case class Move(mapEntity: MapEntity, from: Point, to: Point) extends EntityUpdate
+  }
 
   private[map] case class ProcessTick(start: Point, end: Point) extends Message
-  private[map] case class TickProcessed(processedCells: Int) extends Message
+  private[map] case class TickProcessed(processedEntities: Int) extends Message
+  private[map] case class TickExpired() extends Message
+  case class EntityTickProcessed(tick: Int) extends Message
 
   case class GetAdvancePath(entityID: WalkerRef, destination: Point) extends Message
   case class GetRoamingPath(entityID: WalkerRef, length: Distance) extends Message

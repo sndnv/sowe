@@ -12,7 +12,6 @@ import owe.entities.Entity.Desirability
 import owe.entities.active.Structure.StructureRef
 import owe.entities.passive.Road.RoadRef
 import owe.map.Cell.{AddEntity, CellActorRef}
-import owe.map.GameMap.TickProcessed
 import owe.map.grid.{Grid, Point}
 import owe.map.ops.TickOps
 import owe.map.{Cell, MapEntity}
@@ -106,19 +105,19 @@ class TickOpsSpec extends AsyncUnitSpec {
 
     for {
       missingCellResult <- fixture.ops
-        .processCells(fixture.grid, activeEffects, (13, 5), (2, 2))
+        .processCells(fixture.grid, tick = 0, activeEffects, (13, 5), (2, 2))
         .map(data => Right(data))
         .recover { case e => Left(e) }
-      successfulResult1 <- fixture.ops.processCells(fixture.grid, activeEffects, (0, 0), (2, 2))
-      successfulResult2 <- fixture.ops.processCells(fixture.grid, activeEffects, (2, 1), (2, 2))
+      successfulResult1 <- fixture.ops.processCells(fixture.grid, tick = 0, activeEffects, (0, 0), (2, 2))
+      successfulResult2 <- fixture.ops.processCells(fixture.grid, tick = 0, activeEffects, (2, 1), (2, 2))
     } yield {
       missingCellResult match {
         case Left(e)     => e shouldBe an[IllegalArgumentException]
         case Right(data) => fail(s"Expected a failure but received processed cells: [$data]")
       }
 
-      successfulResult1 should be(9)
-      successfulResult2 should be(4)
+      successfulResult1 should be(0)
+      successfulResult2 should be(0)
     }
   }
 
@@ -137,11 +136,11 @@ class TickOpsSpec extends AsyncUnitSpec {
     fixture.grid.getUnsafe((0, 1)) ! AddEntity(roadMapEntity)
 
     for {
-      successfulResult1 <- fixture.ops.processTick(fixture.grid, (0, 0), (2, 2)).map(_.processedCells)
-      successfulResult2 <- fixture.ops.processTick(fixture.grid, (2, 1), (2, 2)).map(_.processedCells)
+      successfulResult1 <- fixture.ops.processTick(fixture.grid, tick = 0, (0, 0), (2, 2)).map(_.processedEntities)
+      successfulResult2 <- fixture.ops.processTick(fixture.grid, tick = 0, (2, 1), (2, 2)).map(_.processedEntities)
     } yield {
-      successfulResult1 should be(9)
-      successfulResult2 should be(4)
+      successfulResult1 should be(2)
+      successfulResult2 should be(0)
     }
   }
 }

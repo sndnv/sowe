@@ -1,7 +1,7 @@
 package owe.entities.active.behaviour.resource.producing
 
 import owe.entities.ActiveEntity.ResourceData
-import owe.entities.ActiveEntityActor.ProcessEntityTick
+import owe.entities.ActiveEntityActor.ProcessBehaviourTick
 import owe.entities.active.behaviour.UpdateExchange
 import owe.entities.active.behaviour.resource.BaseResource.Become
 import owe.entities.active.behaviour.resource.transformations.{ProcessedUpdateMessages, ReplenishedResources}
@@ -15,7 +15,7 @@ trait ProducingResource extends BaseResource with ProcessedUpdateMessages with R
   override protected def behaviour: Behaviour = producing()
 
   final protected def producing(): Behaviour = {
-    case ProcessEntityTick(_, resource: ResourceData, messages) =>
+    case ProcessBehaviourTick(tick, _, resource: ResourceData, messages) =>
       val amountProduced = CommodityCalculations.amountProduced(resource)
 
       withUpdates(
@@ -37,7 +37,7 @@ trait ProducingResource extends BaseResource with ProcessedUpdateMessages with R
           )
         }
 
-        self ! Become(() => producing(), updatedData)
+        self ! Become(() => producing(), tick, updatedData)
       }
   }
 }

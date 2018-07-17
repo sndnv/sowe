@@ -4,7 +4,7 @@ import akka.actor.{ActorRef, Props}
 import akka.util.Timeout
 import org.scalatest.Outcome
 import owe.entities.ActiveEntity.StructureData
-import owe.entities.ActiveEntityActor.{ForwardMessage, ProcessEntityTick}
+import owe.entities.ActiveEntityActor.{BehaviourTickProcessed, ForwardMessage, ProcessBehaviourTick}
 import owe.entities.active.Structure._
 import owe.entities.active._
 import owe.entities.active.attributes.RiskAmount
@@ -32,7 +32,8 @@ class HousingStructureSpec extends AkkaUnitSpec("HousingStructureSpec") {
     )
 
   "A Housing structure" should "consume and require commodities" in { fixture =>
-    fixture.parentEntity ! ProcessEntityTick(
+    fixture.parentEntity ! ProcessBehaviourTick(
+      tick = 0,
       map = Fixtures.defaultMapData,
       entity = StructureData(
         Fixtures.Structure.Housing.properties,
@@ -136,32 +137,35 @@ class HousingStructureSpec extends AkkaUnitSpec("HousingStructureSpec") {
     val commoditiesState = Fixtures.Structure.Housing.state.commodities.asInstanceOf[CommoditiesState]
 
     expectMsg(
-      Fixtures.Structure.Housing.state.copy(
-        risk = RiskState(fire = RiskAmount(3), damage = RiskAmount(5)),
-        commodities = commoditiesState.copy(
-          available = Map(
-            Commodity("TestCommodity#1") -> Commodity.Amount(20),
-            Commodity("TestCommodity#2") -> Commodity.Amount(4),
-            Commodity("TestCommodity#3") -> Commodity.Amount(20)
-          )
-        ),
-        housing = HousingState(
-          occupants = 1,
-          commodityShortage = 1,
-          education = Map(
-            EducationEntry("Entry#1") -> EducationLevel(current = 9, minimal = 0, required = 100)
+      BehaviourTickProcessed(
+        tick = 0,
+        Fixtures.Structure.Housing.state.copy(
+          risk = RiskState(fire = RiskAmount(3), damage = RiskAmount(5)),
+          commodities = commoditiesState.copy(
+            available = Map(
+              Commodity("TestCommodity#1") -> Commodity.Amount(20),
+              Commodity("TestCommodity#2") -> Commodity.Amount(4),
+              Commodity("TestCommodity#3") -> Commodity.Amount(20)
+            )
           ),
-          entertainment = Map(
-            EntertainmentEntry("Entry#2") -> EntertainmentLevel(current = 19, minimal = 0, required = 100)
-          ),
-          religion = Map(
-            ReligionEntry("Entry#3") -> ReligionLevel(current = 29, minimal = 0, required = 100)
-          ),
-          healthcare = Map(
-            HealthcareEntry("Entry#4") -> HealthcareLevel(current = 39, minimal = 0, required = 100)
-          ),
-          civilService = Map(
-            CivilServiceEntry("Entry#5") -> CivilServiceLevel(current = 49, minimal = 0, required = 100)
+          housing = HousingState(
+            occupants = 1,
+            commodityShortage = 1,
+            education = Map(
+              EducationEntry("Entry#1") -> EducationLevel(current = 9, minimal = 0, required = 100)
+            ),
+            entertainment = Map(
+              EntertainmentEntry("Entry#2") -> EntertainmentLevel(current = 19, minimal = 0, required = 100)
+            ),
+            religion = Map(
+              ReligionEntry("Entry#3") -> ReligionLevel(current = 29, minimal = 0, required = 100)
+            ),
+            healthcare = Map(
+              HealthcareEntry("Entry#4") -> HealthcareLevel(current = 39, minimal = 0, required = 100)
+            ),
+            civilService = Map(
+              CivilServiceEntry("Entry#5") -> CivilServiceLevel(current = 49, minimal = 0, required = 100)
+            )
           )
         )
       )

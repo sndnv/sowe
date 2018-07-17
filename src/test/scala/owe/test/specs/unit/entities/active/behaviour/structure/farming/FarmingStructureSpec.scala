@@ -4,7 +4,7 @@ import akka.actor.{ActorRef, Props}
 import akka.util.Timeout
 import org.scalatest.Outcome
 import owe.entities.ActiveEntity.StructureData
-import owe.entities.ActiveEntityActor.{ForwardMessage, ProcessEntityTick}
+import owe.entities.ActiveEntityActor.{BehaviourTickProcessed, ForwardMessage, ProcessBehaviourTick}
 import owe.entities.active.attributes.RiskAmount
 import owe.entities.active.Structure.{CommoditiesState, RiskState}
 import owe.entities.active.behaviour.structure.farming.FarmingStructure
@@ -31,7 +31,8 @@ class FarmingStructureSpec extends AkkaUnitSpec("FarmingStructureSpec") {
     )
 
   "A Farming structure" should "produce commodities" in { fixture =>
-    fixture.parentEntity ! ProcessEntityTick(
+    fixture.parentEntity ! ProcessBehaviourTick(
+      tick = 0,
       map = Fixtures.defaultMapData,
       entity = StructureData(
         Fixtures.Structure.Producing.properties,
@@ -69,13 +70,16 @@ class FarmingStructureSpec extends AkkaUnitSpec("FarmingStructureSpec") {
     val commoditiesState = Fixtures.Structure.Producing.state.commodities.asInstanceOf[CommoditiesState]
 
     expectMsg(
-      Fixtures.Structure.Producing.state
-        .copy(
-          risk = RiskState(fire = RiskAmount(3), damage = RiskAmount(5)),
-          commodities = commoditiesState.copy(
-            available = Map(Commodity("TestCommodity") -> Commodity.Amount(25))
+      BehaviourTickProcessed(
+        tick = 0,
+        Fixtures.Structure.Producing.state
+          .copy(
+            risk = RiskState(fire = RiskAmount(3), damage = RiskAmount(5)),
+            commodities = commoditiesState.copy(
+              available = Map(Commodity("TestCommodity") -> Commodity.Amount(25))
+            )
           )
-        )
+      )
     )
   }
 }

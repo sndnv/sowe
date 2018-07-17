@@ -172,15 +172,6 @@ class QueryOpsSpec extends AsyncUnitSpec {
     fixture.grid.getUnsafe((1, 1)) ! AddEntity(existingStructureMapEntity.copy(entityRef = structureRef))
     fixture.grid.getUnsafe((1, 2)) ! AddEntity(existingStructureMapEntity.copy(entityRef = structureRef))
 
-    val missingEntityID = WalkerRef(TestProbe().ref)
-
-    val walkerCell = Point(0, 1)
-    val walkerEntityID = WalkerRef(TestProbe().ref)
-
-    val entities = Map[EntityRef, Point](
-      walkerEntityID -> walkerCell
-    )
-
     for {
       missingCellResult <- fixture.ops.getEntities(fixture.grid, (13, 5))
       successfulResult <- fixture.ops.getEntities(fixture.grid, (1, 1))
@@ -198,9 +189,6 @@ class QueryOpsSpec extends AsyncUnitSpec {
     fixture.grid.getUnsafe((1, 2)) ! AddEntity(existingStructureMapEntity.copy(entityRef = structureRef))
 
     val missingEntityID = WalkerRef(TestProbe().ref)
-
-    val walkerCell = Point(0, 1)
-    val walkerEntityID = WalkerRef(TestProbe().ref)
 
     val entities = Map[EntityRef, Point](
       structureRef -> (1, 1)

@@ -29,7 +29,7 @@ trait ForwardingOps {
     val result = for {
       parentCell <- entities
         .get(entityID)
-        .toRight(Event(Event.System.CellsUnavailable, cell = None)): Either[Event, Point]
+        .toRight(Event(Event.System.EntityMissing, cell = None)): Either[Event, Point]
       mapCell <- grid
         .get(parentCell)
         .toRight(Event(Event.System.CellOutOfBounds, Some(parentCell))): Either[Event, CellActorRef]

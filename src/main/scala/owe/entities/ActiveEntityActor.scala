@@ -6,6 +6,7 @@ import akka.util.Timeout
 import owe.effects.Effect
 import owe.entities.ActiveEntity.{ActiveEntityRef, Data, MapData}
 import owe.map.GameMap
+import owe.map.GameMap.EntityTickProcessed
 
 import scala.reflect.ClassTag
 
@@ -33,29 +34,35 @@ class ActiveEntityActor[
   private val behaviourHandler: ActorRef = {
     context.actorOf(
       behaviourProps(),
-      s"behaviour-${self.path.name}"
+      s"Behaviour"
     )
   }
 
   private val parentMap: ActorRef = context.parent
 
   def active(processingData: ProcessingData): Receive = {
-    case updatedState: S =>
+    case BehaviourTickProcessed(tick, updatedState) =>
+      log.debug("State updated to [{}]; tick [{}] complete", tick, updatedState)
       unstashAll()
+      parentMap ! EntityTickProcessed(tick)
       context.become(idle(ProcessingData(initialEntityData.withState(updatedState), Seq.empty)))
 
     case ForwardMessage(message) =>
+      log.debug("Forwarding message [{}] to parent map while active", message)
       (parentMap ? message).pipeTo(sender)
 
     case GetData() =>
+      log.debug("Responding to [{}] with entity data while active", sender)
       sender ! processingData.entityData
 
-    case _ =>
+    case message =>
+      log.debug("Stashing message [{}] from sender [{}]", message, sender)
       stash()
   }
 
   def idle(processingData: ProcessingData): Receive = {
     case ApplyEffects(externalEffects) =>
+      log.debug("Applying [{}] effects: [{}]", externalEffects.size, externalEffects)
       val tickModifiers: Entity.StateModifiers = externalEffects.foldLeft(processingData.entityData.modifiers) {
         case (currentModifiers, effect) =>
           effect match {
@@ -91,23 +98,28 @@ class ActiveEntityActor[
         )
       )
 
-    case ProcessGameTick(map) =>
-      behaviourHandler ! ProcessEntityTick(map, processingData.entityData, processingData.messages)
+    case ProcessEntityTick(tick, map) =>
+      log.debug("Starting tick [{}] processing with map data: [{}]", tick, map)
+      behaviourHandler ! ProcessBehaviourTick(tick, map, processingData.entityData, processingData.messages)
       context.become(active(processingData))
 
     case GetActiveEffects() =>
+      log.debug("Responding to sender [{}] with active effects", sender)
       val activeEffects = effects.collect {
         case (p, effect) if p(processingData.entityData) => effect
       }
       sender ! activeEffects
 
     case GetData() =>
+      log.debug("Responding to [{}] with entity data while idle", sender)
       sender ! processingData.entityData
 
     case ForwardMessage(message) =>
+      log.debug("Forwarding message [{}] to parent map while idle", message)
       (parentMap ? message).pipeTo(sender)
 
     case AddEntityMessage(message) =>
+      log.debug("Received entity message [{}]", message)
       context.become(idle(processingData.copy(messages = processingData.messages :+ message)))
   }
 
@@ -124,6 +136,12 @@ object ActiveEntityActor {
   case class GetActiveEffects() extends ProcessingMessage
   case class GetData() extends ProcessingMessage
   case class ApplyEffects(externalEffects: Seq[owe.effects.Effect]) extends ProcessingMessage
-  case class ProcessGameTick(map: MapData) extends ProcessingMessage
-  case class ProcessEntityTick(map: MapData, entity: Data, messages: Seq[Entity.Message]) extends ProcessingMessage
+  case class ProcessEntityTick(tick: Int, map: MapData) extends ProcessingMessage
+  case class ProcessBehaviourTick(
+    tick: Int,
+    map: MapData,
+    entity: Data,
+    messages: Seq[Entity.Message]
+  ) extends ProcessingMessage
+  case class BehaviourTickProcessed[S <: Entity.State: ClassTag](tick: Int, state: S)
 }
