@@ -1,7 +1,7 @@
 package owe.entities.active.behaviour.structure.producing
 
 import owe.entities.ActiveEntity.StructureData
-import owe.entities.ActiveEntityActor.ProcessBehaviourTick
+import owe.entities.ActiveEntityActor.{ApplyMessages, MessagesApplied, ProcessBehaviourTick}
 import owe.entities.active.Structure.CommoditiesState
 import owe.entities.active.behaviour.UpdateExchange
 import owe.entities.active.behaviour.structure.BaseStructure.Become
@@ -23,11 +23,24 @@ trait ProducingStructure
   override protected def behaviour: Behaviour = producing()
 
   final protected def producing(): Behaviour = {
-    case ProcessBehaviourTick(tick, map, structure: StructureData, messages) =>
+    case ApplyMessages(structure: StructureData, messages) =>
+      log.debug("Applying [{}] messages: [{}]", messages.size, messages)
+
       withUpdates(
         structure,
         Seq(
-          withProcessedUpdateMessages(_: StructureData, messages),
+          withProcessedUpdateMessages(_: StructureData, messages)
+        )
+      ).foreach { updatedData =>
+        parentEntity ! MessagesApplied(updatedData.state)
+      }
+
+    case ProcessBehaviourTick(map, structure: StructureData) =>
+      log.debug("Processing behaviour tick as [producing] with data [{}]", structure)
+
+      withUpdates(
+        structure,
+        Seq(
           withProducedResources(_: StructureData),
           withConsumedResources(_: StructureData),
           withProcessedRisk(_: StructureData),
@@ -54,7 +67,7 @@ trait ProducingStructure
           case _ => //do nothing
         }
 
-        self ! Become(() => producing(), tick, updatedData)
+        self ! Become(() => producing(), updatedData)
       }
   }
 }

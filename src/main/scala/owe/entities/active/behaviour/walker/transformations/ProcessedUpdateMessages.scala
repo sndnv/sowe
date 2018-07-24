@@ -20,17 +20,12 @@ trait ProcessedUpdateMessages {
             case ProcessCommodities(commodities) =>
               currentState.commodities match {
                 case CommoditiesState(available, limits) =>
-                  val updatedCommodities = available ++ commodities.map {
-                    case (commodity, amount) =>
-                      val limitAmount = limits.getOrElse(commodity, Commodity.Amount(0))
-                      val updatedCommodityAmount =
-                        (available.getOrElse(commodity, Commodity.Amount(0)) + amount)
-                          .min(limitAmount)
-                          .max(Commodity.Amount(0))
-
-                      (commodity, updatedCommodityAmount)
-                  }
-                  currentState.copy(commodities = CommoditiesState(updatedCommodities, limits))
+                  currentState.copy(
+                    commodities = CommoditiesState(
+                      available.mergeWithLimits(commodities.toMap, limits),
+                      limits
+                    )
+                  )
 
                 case NoCommodities =>
                   currentState

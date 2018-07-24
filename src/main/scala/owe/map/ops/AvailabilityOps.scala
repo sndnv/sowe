@@ -63,4 +63,40 @@ trait AvailabilityOps {
         case None => Future.successful(None)
       }
     }).getOrElse(Future.successful(None))
+
+  def findFirstAdjacentPoint(
+    grid: Grid[CellActorRef],
+    entities: Map[EntityRef, Point],
+    entityID: EntityRef,
+    minimumAvailability: Availability
+  )(implicit sender: ActorRef = Actor.noSender): Future[Option[Point]] =
+    (for {
+      parentPoint <- entities.get(entityID)
+      parentCell <- grid.get(parentPoint)
+    } yield {
+      (parentCell ? GetEntity(entityID)).mapTo[Option[MapEntity]].flatMap {
+        case Some(mapEntity) =>
+          val cells = Entity.cells(mapEntity.size, parentPoint)
+          Future
+            .sequence(
+              cells
+                .flatMap(point => grid.indexes().window(point, radius = 1).toSeq)
+                .distinct
+                .flatMap(point => grid.get(point).map(cell => (point, cell)))
+                .collect {
+                  case (point, cell) if !cells.contains(point) =>
+                    cellAvailability(cell).map { avalability =>
+                      if (avalability >= minimumAvailability) {
+                        Some(point)
+                      } else {
+                        None
+                      }
+                    }
+                }
+            )
+            .map(_.flatten.sorted.headOption)
+
+        case None => Future.successful(None)
+      }
+    }).getOrElse(Future.successful(None))
 }

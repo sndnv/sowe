@@ -4,8 +4,9 @@ import akka.actor.{ActorRef, Props}
 import akka.util.Timeout
 import org.scalatest.Outcome
 import owe.entities.ActiveEntity.ResourceData
-import owe.entities.ActiveEntityActor.{BehaviourTickProcessed, ForwardMessage, ProcessBehaviourTick}
+import owe.entities.ActiveEntityActor._
 import owe.entities.Entity.ProcessCommodities
+import owe.entities.active.Resource
 import owe.entities.active.behaviour.resource.producing.ProducingResource
 import owe.map.GameMap.ForwardExchangeMessage
 import owe.production.Commodity
@@ -31,15 +32,13 @@ class ProducingResourceSpec extends AkkaUnitSpec("ProducingResourceSpec") {
 
   "A ProducingResource" should "produce commodities" in { fixture =>
     fixture.parentEntity ! ProcessBehaviourTick(
-      tick = 0,
       map = Fixtures.defaultMapData,
       entity = ResourceData(
         Fixtures.Resource.properties,
         Fixtures.Resource.state,
         Fixtures.Resource.modifiers,
         Fixtures.MockRefs.resource
-      ),
-      messages = Seq.empty
+      )
     )
 
     expectMsg(
@@ -68,7 +67,6 @@ class ProducingResourceSpec extends AkkaUnitSpec("ProducingResourceSpec") {
 
     expectMsg(
       BehaviourTickProcessed(
-        tick = 0,
         Fixtures.Resource.state
           .copy(currentAmount = Fixtures.Resource.state.currentAmount + Fixtures.Resource.state.replenishAmount)
       )
@@ -76,10 +74,8 @@ class ProducingResourceSpec extends AkkaUnitSpec("ProducingResourceSpec") {
   }
 
   it should "allow commodities to be retrieved by walkers" in { fixture =>
-    fixture.parentEntity ! ProcessBehaviourTick(
-      tick = 0,
-      map = Fixtures.defaultMapData,
-      entity = ResourceData(
+    fixture.parentEntity ! ApplyMessages(
+      ResourceData(
         Fixtures.Resource.properties,
         Fixtures.Resource.state,
         Fixtures.Resource.modifiers,
@@ -88,6 +84,18 @@ class ProducingResourceSpec extends AkkaUnitSpec("ProducingResourceSpec") {
       messages = Seq(
         ProcessCommodities(Seq((Fixtures.Resource.properties.commodity, Commodity.Amount(-42)))),
         ProcessCommodities(Seq((Fixtures.Resource.properties.commodity, Commodity.Amount(-1))))
+      )
+    )
+
+    val updatedState = receiveOne(timeout.duration).asInstanceOf[MessagesApplied[Resource.State]].state
+
+    fixture.parentEntity ! ProcessBehaviourTick(
+      map = Fixtures.defaultMapData,
+      entity = ResourceData(
+        Fixtures.Resource.properties,
+        updatedState,
+        Fixtures.Resource.modifiers,
+        Fixtures.MockRefs.resource
       )
     )
 
@@ -123,7 +131,6 @@ class ProducingResourceSpec extends AkkaUnitSpec("ProducingResourceSpec") {
 
     expectMsg(
       BehaviourTickProcessed(
-        tick = 0,
         Fixtures.Resource.state.copy(expectedFinalAmount)
       )
     )

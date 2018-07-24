@@ -204,7 +204,8 @@ object Fixtures {
         damage = AttackDamage(50),
         distance = Distance(25),
         target = _ => true
-      )
+      ),
+      traversalMode = TraversalMode.OnLand
     )
 
     val state: State = State(

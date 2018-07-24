@@ -33,7 +33,6 @@ class HousingStructureSpec extends AkkaUnitSpec("HousingStructureSpec") {
 
   "A Housing structure" should "consume and require commodities" in { fixture =>
     fixture.parentEntity ! ProcessBehaviourTick(
-      tick = 0,
       map = Fixtures.defaultMapData,
       entity = StructureData(
         Fixtures.Structure.Housing.properties,
@@ -58,8 +57,7 @@ class HousingStructureSpec extends AkkaUnitSpec("HousingStructureSpec") {
         ),
         Fixtures.Structure.Housing.modifiers,
         Fixtures.MockRefs.structure
-      ),
-      messages = Seq.empty
+      )
     )
 
     expectMsg(
@@ -138,7 +136,6 @@ class HousingStructureSpec extends AkkaUnitSpec("HousingStructureSpec") {
 
     expectMsg(
       BehaviourTickProcessed(
-        tick = 0,
         Fixtures.Structure.Housing.state.copy(
           risk = RiskState(fire = RiskAmount(3), damage = RiskAmount(5)),
           commodities = commoditiesState.copy(

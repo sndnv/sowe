@@ -14,8 +14,8 @@ trait BaseResource extends BaseBehaviour {
     ResourceRef(context.parent)
 
   override protected def base: Behaviour = {
-    case Become(behaviour, tick, resource) =>
-      parentEntity ! BehaviourTickProcessed(tick, resource.state)
+    case Become(behaviour, resource) =>
+      parentEntity ! BehaviourTickProcessed(resource.state)
       become(behaviour, resource)
   }
 
@@ -24,5 +24,5 @@ trait BaseResource extends BaseBehaviour {
 }
 
 object BaseResource {
-  private[behaviour] case class Become(behaviour: () => Receive, tick: Int, resource: ResourceData)
+  private[behaviour] case class Become(behaviour: () => Receive, resource: ResourceData)
 }

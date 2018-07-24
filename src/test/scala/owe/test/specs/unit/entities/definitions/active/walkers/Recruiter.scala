@@ -12,6 +12,8 @@ import owe.map.grid.Point
 import scala.collection.immutable.Queue
 
 class Recruiter extends Walker {
+  override def spawnLocation: SpawnLocation = SpawnLocation.AtPoint
+
   override protected def createBehaviour(): BaseWalker = new walker.roaming.Recruiter {
     override protected def recruitmentRadius: Distance = Distance(3)
   }
@@ -26,7 +28,8 @@ class Recruiter extends Walker {
           maxLife = Life(100),
           movementSpeed = Speed(100),
           maxRoamingDistance = Distance(50),
-          attack = NoAttack
+          attack = NoAttack,
+          traversalMode = TraversalMode.OnLand
         ),
         state = State(
           currentLife = Life(100),

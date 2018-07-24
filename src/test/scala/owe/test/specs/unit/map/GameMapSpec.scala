@@ -87,8 +87,8 @@ class GameMapSpec extends AkkaUnitSpec("GameMapSpec") {
     expectMsg(Event(Event.System.TickExpired, cell = None))
   }
 
-  it should "respond with advance paths when active" in { _ =>
-    val map = system.actorOf(Props(new TestGameMap(testActor, StartBehaviour.Active)))
+  it should "respond with advance paths when waiting" in { _ =>
+    val map = system.actorOf(Props(new TestGameMap(testActor, StartBehaviour.Waiting)))
 
     val entityRef = WalkerRef(TestProbe().ref)
 
@@ -96,8 +96,8 @@ class GameMapSpec extends AkkaUnitSpec("GameMapSpec") {
     expectMsg(Queue.empty)
   }
 
-  it should "respond with roaming paths when active" in { _ =>
-    val map = system.actorOf(Props(new TestGameMap(testActor, StartBehaviour.Active)))
+  it should "respond with roaming paths when waiting" in { _ =>
+    val map = system.actorOf(Props(new TestGameMap(testActor, StartBehaviour.Waiting)))
 
     val entityRef = WalkerRef(TestProbe().ref)
 
@@ -105,8 +105,8 @@ class GameMapSpec extends AkkaUnitSpec("GameMapSpec") {
     expectMsg(Queue.empty)
   }
 
-  it should "respond with neighbours when active" in { _ =>
-    val map = system.actorOf(Props(new TestGameMap(testActor, StartBehaviour.Active)))
+  it should "respond with neighbours when waiting" in { _ =>
+    val map = system.actorOf(Props(new TestGameMap(testActor, StartBehaviour.Waiting)))
 
     val entityRef = WalkerRef(TestProbe().ref)
 
@@ -114,15 +114,15 @@ class GameMapSpec extends AkkaUnitSpec("GameMapSpec") {
     expectMsg(Seq.empty)
   }
 
-  it should "respond with multiple entities when active" in { _ =>
-    val map = system.actorOf(Props(new TestGameMap(testActor, StartBehaviour.Active)))
+  it should "respond with multiple entities when waiting" in { _ =>
+    val map = system.actorOf(Props(new TestGameMap(testActor, StartBehaviour.Waiting)))
 
     map ! GetEntities((0, 1))
     expectMsg(Seq.empty)
   }
 
-  it should "respond with single entities when active" in { _ =>
-    val map = system.actorOf(Props(new TestGameMap(testActor, StartBehaviour.Active)))
+  it should "respond with single entities when waiting" in { _ =>
+    val map = system.actorOf(Props(new TestGameMap(testActor, StartBehaviour.Waiting)))
 
     val entityRef = WalkerRef(TestProbe().ref)
 
@@ -130,8 +130,8 @@ class GameMapSpec extends AkkaUnitSpec("GameMapSpec") {
     expectMsgType[Status.Failure]
   }
 
-  it should "log unexpected entity tick responses when active" in { _ =>
-    val map = system.actorOf(Props(new TestGameMap(testActor, StartBehaviour.Active)))
+  it should "log unexpected entity tick responses when waiting" in { _ =>
+    val map = system.actorOf(Props(new TestGameMap(testActor, StartBehaviour.Waiting)))
     map ! EntityTickProcessed(tick = 42)
     expectMsg(Event(Event.System.UnexpectedEntityResponseReceived, cell = None))
   }

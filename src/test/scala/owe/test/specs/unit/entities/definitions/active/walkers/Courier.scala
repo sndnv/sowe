@@ -14,6 +14,8 @@ import owe.test.specs.unit.entities.definitions.active.walkers.Courier.Parameter
 import scala.collection.immutable.Queue
 
 class Courier(parameters: Parameters) extends Walker {
+  override def spawnLocation: SpawnLocation = SpawnLocation.AtPoint
+
   override protected def createActiveEntityData(): ActiveEntityRef => Data = {
     case id: WalkerRef =>
       WalkerData(
@@ -24,7 +26,8 @@ class Courier(parameters: Parameters) extends Walker {
           maxLife = Life(100),
           movementSpeed = Speed(5),
           maxRoamingDistance = Distance(50),
-          attack = NoAttack
+          attack = NoAttack,
+          traversalMode = TraversalMode.OnLand
         ),
         state = State(
           currentLife = Life(100),

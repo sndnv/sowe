@@ -1,16 +1,19 @@
 package owe.test.specs.unit.map.ops
 
-import scala.concurrent.duration._
-import scala.concurrent.{ExecutionContext, Future}
 import akka.actor.ActorSystem
 import akka.testkit.TestProbe
 import akka.util.Timeout
 import org.scalatest.FutureOutcome
 import owe.Tagging._
-import owe.entities.Entity
+import owe.effects
+import owe.entities.{ActiveEntity, Entity}
 import owe.entities.Entity.{Desirability, EntityRef}
+import owe.entities.active.{Structure, Walker}
 import owe.entities.active.Structure.StructureRef
-import owe.entities.active.Walker.WalkerRef
+import owe.entities.active.Walker.{SpawnLocation, WalkerRef}
+import owe.entities.active.behaviour.structure.BaseStructure
+import owe.entities.active.behaviour.walker.BaseWalker
+import owe.entities.passive.Road
 import owe.entities.passive.Road.RoadRef
 import owe.events.Event
 import owe.map.Cell._
@@ -18,6 +21,9 @@ import owe.map.grid.{Grid, Point}
 import owe.map.ops.{AvailabilityOps, EntityOps}
 import owe.map.{Cell, MapEntity}
 import owe.test.specs.unit.AsyncUnitSpec
+
+import scala.concurrent.duration._
+import scala.concurrent.{ExecutionContext, Future}
 
 class EntityOpsSpec extends AsyncUnitSpec {
   private implicit val timeout: Timeout = 3.seconds
@@ -57,48 +63,84 @@ class EntityOpsSpec extends AsyncUnitSpec {
     )
 
     val unavailableEntityCell = Point(1, 0)
-    val newStructureEntityID = StructureRef(TestProbe().ref)
-    val newStructureMapEntity = MapEntity(
-      entityRef = newStructureEntityID,
-      parentCell = unavailableMainCell,
-      size = Entity.Size(2, 2),
-      desirability = Desirability.Min
-    )
+    val newStructure = new Structure {
+      override protected def createActiveEntityData(): ActiveEntity.ActiveEntityRef => ActiveEntity.Data = ???
+      override protected def createEffects(): Seq[(ActiveEntity.Data => Boolean, effects.Effect)] = ???
+      override protected def createBehaviour(): BaseStructure = ???
+      override def `size`: Entity.Size = Entity.Size(2, 2)
+      override def `desirability`: Desirability = Desirability.Min
+    }
 
     val roadCell = Point(0, 1)
-    val roadEntityID = RoadRef(TestProbe().ref)
-    val roadMapEntity = MapEntity(
-      entityRef = roadEntityID,
-      parentCell = roadCell,
-      size = Entity.Size(1, 1),
-      desirability = Desirability.Min
-    )
+    val roadEntity = new Road()
+
+    val walkerCell = Point(2, 2)
+    trait TestWalker extends Walker {
+      override protected def createActiveEntityData(): ActiveEntity.ActiveEntityRef => ActiveEntity.Data = ???
+      override protected def createEffects(): Seq[(ActiveEntity.Data => Boolean, effects.Effect)] = ???
+      override protected def createBehaviour(): BaseWalker = ???
+    }
 
     fixture.grid.getUnsafe(unavailableMainCell) ! AddEntity(existingStructureMapEntity)
 
     for {
       outOfBoundsCellResult <- fixture.ops.createEntity(
         fixture.grid,
-        roadMapEntity,
+        Map.empty,
+        roadEntity,
+        TestProbe().ref,
         outOfBoundsCell
       )
       unavailableMainCellResult <- fixture.ops.createEntity(
         fixture.grid,
-        newStructureMapEntity,
+        Map.empty,
+        newStructure,
+        TestProbe().ref,
         unavailableMainCell
       )
       unavailableEntityCellsResult <- fixture.ops.createEntity(
         fixture.grid,
-        newStructureMapEntity,
+        Map.empty,
+        newStructure,
+        TestProbe().ref,
         unavailableEntityCell
       )
-      successfulResult <- fixture.ops.createEntity(fixture.grid, roadMapEntity, roadCell)
+      adjacentSpawnPointUnavailableResult <- fixture.ops.createEntity(
+        fixture.grid,
+        Map.empty,
+        new TestWalker {
+          override def spawnLocation: SpawnLocation = SpawnLocation.AdjacentPoint(StructureRef(TestProbe().ref))
+        },
+        TestProbe().ref,
+        walkerCell
+      )
+      adjacentRoadUnavailableResult <- fixture.ops.createEntity(
+        fixture.grid,
+        Map.empty,
+        new TestWalker {
+          override def spawnLocation: SpawnLocation = SpawnLocation.AdjacentRoad(StructureRef(TestProbe().ref))
+        },
+        TestProbe().ref,
+        walkerCell
+      )
+      successfulResult <- fixture.ops.createEntity(
+        fixture.grid,
+        Map.empty,
+        roadEntity,
+        TestProbe().ref,
+        roadCell
+      )
     } yield {
       outOfBoundsCellResult should be(Left(Event(Event.System.CellOutOfBounds, Some(outOfBoundsCell))))
       unavailableMainCellResult should be(Left(Event(Event.System.CellsUnavailable, Some(unavailableMainCell))))
       unavailableEntityCellsResult should be(Left(Event(Event.System.CellsUnavailable, Some(unavailableEntityCell))))
+      adjacentSpawnPointUnavailableResult should be(Left(Event(Event.System.SpawnPointUnavailable, None)))
+      adjacentRoadUnavailableResult should be(Left(Event(Event.System.SpawnPointUnavailable, None)))
 
-      successfulResult should be(Right(Event(Event.System.EntityCreated, Some(roadCell))))
+      successfulResult match {
+        case Left(event)       => fail(s"Expected successful result but event [$event] encountered")
+        case Right((_, event)) => event should be(Event(Event.System.EntityCreated, Some(roadCell)))
+      }
     }
   }
 

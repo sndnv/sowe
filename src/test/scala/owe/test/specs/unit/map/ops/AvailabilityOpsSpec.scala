@@ -115,4 +115,61 @@ class AvailabilityOpsSpec extends AsyncUnitSpec {
       existingEntityResult should be(Some(Point(0, 0))) // because TestActor always returns 'true' for 'HasRoad'
     }
   }
+
+  they should "find adjacent points" in { fixture =>
+    val missingEntityID = StructureRef(TestProbe().ref)
+    val missingCellEntityID = StructureRef(TestProbe().ref)
+    val missingMapEntityID = WalkerRef(TestProbe().ref)
+    val entityID = RoadRef(TestProbe().ref)
+
+    val entities = Map[EntityRef, Point](
+      entityID -> Point(0, 1),
+      missingCellEntityID -> Point(5, 5),
+      missingMapEntityID -> Point(0, 0)
+    )
+
+    fixture.grid.get((0, 1)).foreach { ref =>
+      ref ! AddEntity(
+        MapEntity(
+          entityRef = entityID,
+          parentCell = Point(0, 1),
+          size = Entity.Size(1, 1),
+          desirability = Desirability.Min
+        )
+      )
+    }
+
+    for {
+      missingEntityResult <- fixture.ops.findFirstAdjacentPoint(
+        fixture.grid,
+        entities,
+        missingEntityID,
+        Availability.Passable
+      )
+      missingCellResult <- fixture.ops.findFirstAdjacentPoint(
+        fixture.grid,
+        entities,
+        missingCellEntityID,
+        Availability.Passable
+      )
+      missingMapEntityResult <- fixture.ops.findFirstAdjacentPoint(
+        fixture.grid,
+        entities,
+        missingMapEntityID,
+        Availability.Passable
+      )
+      existingEntityResult <- fixture.ops.findFirstAdjacentPoint(
+        fixture.grid,
+        entities,
+        entityID,
+        Availability.Passable
+      )
+    } yield {
+      missingEntityResult should be(None)
+      missingCellResult should be(None)
+      missingMapEntityResult should be(None)
+      // because TestActor always returns cell availability as buildable
+      existingEntityResult should be(Some(Point(0, 0)))
+    }
+  }
 }

@@ -1,19 +1,17 @@
 package owe.entities.active.behaviour.walker.roaming
 
 import owe.entities.ActiveEntity.{StructureData, WalkerData}
-import owe.entities.active.Structure.StructureRef
+import owe.entities.active.Walker
 import owe.entities.active.Walker.CommoditiesState
+import owe.entities.active.attributes.Distance
 import owe.entities.active.behaviour.walker.BaseWalker._
 import owe.entities.active.behaviour.walker.DistributionCalculations.DistributionResult
 import owe.entities.active.behaviour.walker.{BaseWalker, DistributionCalculations}
-import owe.entities.active.Walker
-import owe.entities.active.attributes.Distance
 import owe.production.Commodity
 
 import scala.concurrent.Future
 
 trait Distributor extends BaseWalker {
-  protected def target: StructureRef
   protected def distributionRadius: Distance
 
   import context.dispatcher
@@ -31,10 +29,13 @@ trait Distributor extends BaseWalker {
             ) match {
               case Some(DistributionResult(structureCommodities, walkerCommodities)) =>
                 distributeCommodities(structure.id, structureCommodities.toSeq)
-                walker.state.commodities match {
+                currentState.commodities match {
                   case CommoditiesState(available, limits) =>
-                    walker.state.copy(
-                      commodities = CommoditiesState(available = available ++ walkerCommodities, limits)
+                    currentState.copy(
+                      commodities = CommoditiesState(
+                        available = available.mergeWithLimits(walkerCommodities, limits),
+                        limits
+                      )
                     )
 
                   case _ => walker.state //data missing

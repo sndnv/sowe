@@ -8,6 +8,7 @@ import owe.entities.ActiveEntity.{ActiveEntityRef, StructureData}
 import owe.entities.ActiveEntityActor.ForwardMessage
 import owe.entities.active.Structure.{StructureRef, WalkerState, WalkersProperties, WalkersState}
 import owe.entities.active.Walker
+import owe.entities.active.Walker.SpawnLocation
 import owe.entities.active.behaviour.structure.transformations.GeneratedWalkers
 import owe.entities.active.behaviour.walker.BaseWalker
 import owe.map.GameMap.CreateEntity
@@ -37,6 +38,7 @@ class GeneratedWalkersSpec extends AkkaUnitSpec("GeneratedWalkersSpec") {
   }
 
   private case class DummyWalker() extends Walker {
+    override def spawnLocation: SpawnLocation = SpawnLocation.AtPoint
     override protected def createActiveEntityData(): ActiveEntityRef => ActiveEntity.Data = ???
     override protected def createEffects(): Seq[(ActiveEntity.Data => Boolean, Effect)] = ???
     override protected def createBehaviour(): BaseWalker = ???

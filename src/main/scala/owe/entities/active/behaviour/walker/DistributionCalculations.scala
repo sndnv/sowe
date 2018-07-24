@@ -86,7 +86,10 @@ object DistributionCalculations {
           }
       }
 
-    (DistributionResult.apply _).tupled(result)
+    DistributionResult(
+      structureCommodities = result._1.filter(_._2 != Commodity.Amount(0)),
+      walkerCommodities = result._2.filter(_._2 != Commodity.Amount(0))
+    )
   }
 
   private def structureToWalkerTransfer(

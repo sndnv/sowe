@@ -4,7 +4,7 @@ import owe.effects.Effect
 import owe.entities.ActiveEntity.{ActiveEntityRef, Data, StructureData}
 import owe.entities.Entity
 import owe.entities.Entity.Desirability
-import owe.entities.active.Structure
+import owe.entities.active.{Structure, Walker}
 import owe.entities.active.Structure._
 import owe.entities.active.behaviour.structure.BaseStructure
 import owe.entities.active.behaviour.structure.producing.Industry
@@ -13,7 +13,7 @@ import owe.map.Cell
 import owe.map.grid.Point
 import owe.production.Commodity
 
-class StorageBuilding extends Structure {
+class StorageBuilding(walkerGenerators: Map[String, StructureData => Option[Walker]]) extends Structure {
 
   override def `desirability`: Desirability = Desirability.fromInt(-5, -5, -3, -3, -1, -1)
 
@@ -24,7 +24,7 @@ class StorageBuilding extends Structure {
           homePosition = Point(0, 0),
           name = "StorageBuilding",
           walkers = WalkersProperties(
-            generators = Map.empty
+            generators = walkerGenerators
           ),
           stages = SingleStage(
             stage = StageProperties(
@@ -38,16 +38,18 @@ class StorageBuilding extends Structure {
         state = State(
           risk = RiskState(fire = RiskAmount(0), damage = RiskAmount(0)),
           commodities = CommoditiesState(
-            available = Map(
-              Commodity("Wood") -> Commodity.Amount(25)
-            ),
+            available = Map.empty,
             limits = Map(
               Commodity("Wood") -> Commodity.Amount(100),
               Commodity("Copper") -> Commodity.Amount(4)
             )
           ),
           housing = NoHousing,
-          production = NoProduction,
+          production = ProductionState(
+            employees = 0,
+            labour = LabourState.None,
+            rates = Map.empty
+          ),
           currentStage = DefaultStage,
           currentLife = Life(100),
           walkers = WalkersState(

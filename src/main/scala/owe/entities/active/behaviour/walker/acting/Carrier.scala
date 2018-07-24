@@ -7,6 +7,7 @@ import owe.entities.active.behaviour.UpdateExchange
 import owe.entities.active.behaviour.walker.BaseWalker._
 import owe.entities.active.behaviour.walker.DistributionCalculations.DistributionResult
 import owe.entities.active.behaviour.walker.{BaseWalker, DistributionCalculations}
+import owe.production.Commodity
 
 import scala.concurrent.Future
 
@@ -34,7 +35,10 @@ trait Carrier extends BaseWalker {
             walker.state.commodities match {
               case CommoditiesState(available, limits) =>
                 walker.state.copy(
-                  commodities = CommoditiesState(available = available ++ walkerCommodities, limits)
+                  commodities = CommoditiesState(
+                    available = available.mergeWithLimits(walkerCommodities, limits),
+                    limits
+                  )
                 )
 
               case _ => walker.state //data missing
@@ -62,7 +66,10 @@ trait Carrier extends BaseWalker {
             walker.state.commodities match {
               case CommoditiesState(available, limits) =>
                 walker.state.copy(
-                  commodities = CommoditiesState(available = available ++ walkerCommodities, limits)
+                  commodities = CommoditiesState(
+                    available = available.mergeWithLimits(walkerCommodities, limits),
+                    limits
+                  )
                 )
 
               case _ => walker.state //data missing

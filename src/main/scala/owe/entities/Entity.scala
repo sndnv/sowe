@@ -1,6 +1,6 @@
 package owe.entities
 
-import akka.actor.{ActorRef, Props}
+import akka.actor.{Actor, ActorRef, Props}
 import akka.pattern.ask
 import akka.util.Timeout
 import owe.entities.Entity.Desirability
@@ -9,7 +9,6 @@ import owe.map.Cell
 import owe.map.grid.Point
 import owe.production.Commodity
 
-import scala.collection.immutable.Queue
 import scala.concurrent.Future
 
 trait Entity {
@@ -23,8 +22,8 @@ trait Entity {
 object Entity {
   trait EntityRef {
     def ref: ActorRef
-    def !(message: Any): Unit = ref ! message
-    def ?(message: Any)(implicit timeout: Timeout): Future[Any] = ref ? message
+    def !(message: Any)(implicit sender: ActorRef = Actor.noSender): Unit = ref ! message
+    def ?(message: Any)(implicit timeout: Timeout, sender: ActorRef): Future[Any] = ref ? message
   }
 
   trait Properties {

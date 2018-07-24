@@ -1,7 +1,7 @@
 package owe.entities.active.behaviour.structure.farming
 
 import owe.entities.ActiveEntity.StructureData
-import owe.entities.ActiveEntityActor.ProcessBehaviourTick
+import owe.entities.ActiveEntityActor.{ApplyMessages, MessagesApplied, ProcessBehaviourTick}
 import owe.entities.active.Structure.CommoditiesState
 import owe.entities.active.behaviour.UpdateExchange
 import owe.entities.active.behaviour.structure.BaseStructure.Become
@@ -26,11 +26,24 @@ trait FarmingStructure
   override protected def behaviour: Behaviour = farming()
 
   final protected def farming(): Behaviour = {
-    case ProcessBehaviourTick(tick, map, structure: StructureData, messages) =>
+    case ApplyMessages(structure: StructureData, messages) =>
+      log.debug("Applying [{}] messages: [{}]", messages.size, messages)
+
       withUpdates(
         structure,
         Seq(
-          withProcessedUpdateMessages(_: StructureData, messages),
+          withProcessedUpdateMessages(_: StructureData, messages)
+        )
+      ).foreach { updatedData =>
+        parentEntity ! MessagesApplied(updatedData.state)
+      }
+
+    case ProcessBehaviourTick(map, structure: StructureData) =>
+      log.debug("Processing behaviour tick as [farming] with data [{}]", structure)
+
+      withUpdates(
+        structure,
+        Seq(
           withProcessedFarming(map, _: StructureData),
           withProcessedRisk(_: StructureData),
           withGeneratedWalkers(_: StructureData)
@@ -47,7 +60,7 @@ trait FarmingStructure
           case _ => //do nothing
         }
 
-        self ! Become(() => farming(), tick, updatedData)
+        self ! Become(() => farming(), updatedData)
       }
   }
 }

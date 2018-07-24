@@ -2,7 +2,7 @@ package owe.map
 
 import java.util.UUID
 
-import akka.actor.{Actor, ActorLogging, ActorRef, Stash, Timers}
+import akka.actor.{Actor, ActorLogging, ActorRef, PoisonPill, Stash, Timers}
 import akka.pattern.pipe
 import akka.util.Timeout
 import owe.Tagging._
@@ -45,12 +45,7 @@ trait GameMap extends Actor with ActorLogging with Stash with Timers with Ops {
 
   private val grid = Grid[CellActorRef](height, width, context.actorOf(Cell.props()).tag[ActorRefTag])
 
-  protected def active(entities: Map[EntityRef, Point], currentTick: Int, pendingEntityResponses: Int): Receive = {
-    case ProcessTick(start, end) =>
-      log.debug("Started processing tick [{}] from [{}] to [{}]", currentTick, start, end)
-      timers.startSingleTimer(CollectionTimer, TickExpired(), collectionTimeout)
-      processTick(grid, currentTick, start, end).pipeTo(self)
-
+  protected def waiting(entities: Map[EntityRef, Point], currentTick: Int, pendingEntityResponses: Int): Receive = {
     case GetAdvancePath(entityID, destination) =>
       log.debug("Generating advance path for entity [{}] to [{}]", entityID, destination)
       getAdvancePath(grid, entities, entityID, destination).pipeTo(sender)
@@ -71,13 +66,13 @@ trait GameMap extends Actor with ActorLogging with Stash with Timers with Ops {
       log.debug("Retrieving data for entity [{}]", entityID)
       getEntity(grid, entities, entityID).pipeTo(sender)
 
-    case TickProcessed(processedEntities) =>
-      log.debug("Entities processed by tick: [{}]", processedEntities)
-      if (processedEntities == 0) { self ! EntityTickProcessed(currentTick) }
-      context.become(active(entities, currentTick, pendingEntityResponses = processedEntities))
-
-    case TickExpired() =>
-      log.error("Tick [{}] expired with [{}] pending entity responses", currentTick, pendingEntityResponses)
+    case TickExpired(tick) =>
+      log.error(
+        "Tick [{}] expired while waiting for tick [{}] completion with [{}] pending entity responses",
+        tick,
+        currentTick,
+        pendingEntityResponses
+      )
       scheduleNextTick()
       unstashAll()
       tracker ! Event(Event.System.TickExpired, cell = None)
@@ -91,9 +86,10 @@ trait GameMap extends Actor with ActorLogging with Stash with Timers with Ops {
             currentTick,
             pendingEntityResponses - 1
           )
-          context.become(active(entities, currentTick, pendingEntityResponses - 1))
+          context.become(waiting(entities, currentTick, pendingEntityResponses - 1))
         } else {
           log.debug("Processing of tick [{}] complete", currentTick)
+          timers.cancel(CollectionTimer)
           scheduleNextTick()
           unstashAll()
           tracker ! Event(Event.System.TickProcessed, cell = None)
@@ -101,7 +97,7 @@ trait GameMap extends Actor with ActorLogging with Stash with Timers with Ops {
         }
       } else {
         log.error(
-          "Entity response received from sender [{}] for tick [{}] while on tick [{}]",
+          "Entity response received from sender [{}] for tick [{}] while waiting on tick [{}]",
           sender,
           tick,
           currentTick
@@ -110,7 +106,24 @@ trait GameMap extends Actor with ActorLogging with Stash with Timers with Ops {
       }
 
     case message =>
-      log.debug("Stashing message [{}] from sender [{}]", message, sender)
+      log.debug("Stashing message [{}] from sender [{}] while waiting", message, sender)
+      stash()
+  }
+
+  protected def active(entities: Map[EntityRef, Point], currentTick: Int): Receive = {
+    case ProcessTick(start, end) =>
+      log.debug("Started processing tick [{}] from [{}] to [{}]", currentTick, start, end)
+      timers.startSingleTimer(CollectionTimer, TickExpired(currentTick), collectionTimeout)
+      processTick(grid, currentTick, start, end).pipeTo(self)
+
+    case TickProcessed(processedEntities) =>
+      log.debug("Entities processed by tick: [{}]", processedEntities)
+      if (processedEntities == 0) { self ! EntityTickProcessed(currentTick) }
+      unstashAll()
+      context.become(waiting(entities, currentTick, pendingEntityResponses = processedEntities))
+
+    case message =>
+      log.debug("Stashing message [{}] from sender [{}] while active", message, sender)
       stash()
   }
 
@@ -144,24 +157,19 @@ trait GameMap extends Actor with ActorLogging with Stash with Timers with Ops {
     case CreateEntity(entity, cell) =>
       log.debug("Creating entity of type [{}] with size [{}]", entity.`type`, entity.`size`)
 
-      val mapEntity = MapEntity(
-        context.actorOf(entity.props(), name = s"${entity.`type`}-${UUID.randomUUID()}"),
-        cell,
-        entity.`size`,
-        entity.`desirability`,
-        entity.`type`
-      )
-
       val senderRef = sender
 
-      createEntity(grid, mapEntity, cell)
-        .map {
+      val actorRef = context.actorOf(entity.props(), name = s"${entity.`type`}-${UUID.randomUUID()}")
+
+      createEntity(grid, entities, entity, actorRef, cell)
+        .foreach {
           case Left(event) =>
             tracker ! event
+            actorRef ! PoisonPill
 
-          case Right(event) =>
+          case Right((mapEntity, event)) =>
             tracker ! event
-            senderRef ! mapEntity.entityRef
+            if (senderRef != context.system.deadLetters) { senderRef ! mapEntity.entityRef }
             self ! EntityUpdate.Add(mapEntity, cell)
         }
 
@@ -169,7 +177,7 @@ trait GameMap extends Actor with ActorLogging with Stash with Timers with Ops {
       log.debug("Destroying entity with ID [{}", entityID)
 
       destroyEntity(grid, entities, entityID)
-        .map {
+        .foreach {
           case Left(event) =>
             tracker ! event
 
@@ -182,7 +190,7 @@ trait GameMap extends Actor with ActorLogging with Stash with Timers with Ops {
       log.debug("Moving entity with ID [{}] to [{}]", entityID, cell)
 
       moveEntity(grid, entities, entityID, cell)
-        .map {
+        .foreach {
           case Left(event) =>
             tracker ! event
 
@@ -223,7 +231,7 @@ trait GameMap extends Actor with ActorLogging with Stash with Timers with Ops {
     case message: ProcessTick =>
       log.debug("Changing state to active to begin tick processing")
       self ! message
-      context.become(active(entities, currentTick, pendingEntityResponses = 0))
+      context.become(active(entities, currentTick))
 
     case EntityTickProcessed(tick) =>
       log.error("Entity response received from sender [{}] for tick [{}] while idle", sender, tick)
@@ -260,7 +268,7 @@ object GameMap {
 
   private[map] case class ProcessTick(start: Point, end: Point) extends Message
   private[map] case class TickProcessed(processedEntities: Int) extends Message
-  private[map] case class TickExpired() extends Message
+  private[map] case class TickExpired(tick: Int) extends Message
   case class EntityTickProcessed(tick: Int) extends Message
 
   case class GetAdvancePath(entityID: WalkerRef, destination: Point) extends Message

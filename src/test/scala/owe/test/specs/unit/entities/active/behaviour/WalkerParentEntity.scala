@@ -3,7 +3,7 @@ package owe.test.specs.unit.entities.active.behaviour
 import akka.actor.{Actor, ActorRef, Props}
 import akka.testkit.TestProbe
 import owe.entities.ActiveEntity._
-import owe.entities.ActiveEntityActor.{ForwardMessage, ProcessBehaviourTick}
+import owe.entities.ActiveEntityActor.{ApplyMessages, ForwardMessage, ProcessBehaviourTick}
 import owe.entities.Entity
 import owe.entities.Entity.Desirability
 import owe.entities.active.attributes.Distance
@@ -23,6 +23,8 @@ class WalkerParentEntity(ref: ActorRef, childProps: Props) extends Actor {
   import context.system
 
   override def receive: Receive = {
+    case apply: ApplyMessages => child ! apply
+
     case tick: ProcessBehaviourTick => child ! tick
 
     case ForwardMessage(GetEntity(entityID)) =>

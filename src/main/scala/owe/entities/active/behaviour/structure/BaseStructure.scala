@@ -16,8 +16,8 @@ trait BaseStructure extends BaseBehaviour {
     StructureRef(context.parent)
 
   override protected def base: Behaviour = {
-    case Become(behaviour, tick, structure) =>
-      parentEntity ! BehaviourTickProcessed(tick, structure.state)
+    case Become(behaviour, structure) =>
+      parentEntity ! BehaviourTickProcessed(structure.state)
       become(behaviour, structure)
   }
 
@@ -35,7 +35,7 @@ trait BaseStructure extends BaseBehaviour {
 }
 
 object BaseStructure {
-  private[behaviour] case class Become(behaviour: () => Receive, tick: Int, structure: StructureData)
+  private[behaviour] case class Become(behaviour: () => Receive, structure: StructureData)
 
   sealed trait StructureTransition
   object StructureTransition {

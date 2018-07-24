@@ -15,6 +15,7 @@ object Event {
     case object EntityMoved extends System
     case object EntityMissing extends System
     case object CellsUnavailable extends System
+    case object SpawnPointUnavailable extends System
     case object CellOutOfBounds extends System
     case object DestinationUnreachable extends System
     case object MessageForwarded extends System

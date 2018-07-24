@@ -36,4 +36,21 @@ object Commodity {
     case object Used extends State
     case object Lost extends State
   }
+
+  implicit class CommodityMap(map: Map[Commodity, Amount]) {
+    def mergeWithLimits(
+      otherMap: Map[Commodity, Amount],
+      limits: Map[Commodity, Amount]
+    ): Map[Commodity, Amount] =
+      map ++ otherMap.map {
+        case (commodity, amount) =>
+          val limitAmount = limits.getOrElse(commodity, Commodity.Amount(0))
+          val updatedCommodityAmount =
+            (map.getOrElse(commodity, Commodity.Amount(0)) + amount)
+              .min(limitAmount)
+              .max(Commodity.Amount(0))
+
+          (commodity, updatedCommodityAmount)
+      }
+  }
 }

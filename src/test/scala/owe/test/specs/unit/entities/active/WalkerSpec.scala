@@ -7,7 +7,7 @@ import owe.entities.ActiveEntity.{ActiveEntityRef, Data}
 import owe.entities.Entity
 import owe.entities.Entity.Desirability
 import owe.entities.active.Walker
-import owe.entities.active.Walker.WalkerRef
+import owe.entities.active.Walker.{SpawnLocation, WalkerRef}
 import owe.entities.active.behaviour.walker.BaseWalker
 import owe.test.specs.unit.UnitSpec
 
@@ -18,6 +18,7 @@ class WalkerSpec extends UnitSpec {
     withFixture(test.toNoArgTest(FixtureParam()))
 
   private class UndefinedWalker extends Walker {
+    override def spawnLocation: SpawnLocation = ???
     override protected def createActiveEntityData(): ActiveEntityRef => Data = ???
     override protected def createEffects(): Seq[(Data => Boolean, Effect)] = ???
     override protected def createBehaviour(): BaseWalker = ???

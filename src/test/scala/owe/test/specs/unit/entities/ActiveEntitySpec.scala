@@ -1,8 +1,5 @@
 package owe.test.specs.unit.entities
 
-import scala.collection.immutable.Queue
-import scala.concurrent.Await
-import scala.concurrent.duration._
 import akka.actor.{ActorRef, Props}
 import akka.pattern.ask
 import akka.testkit.TestProbe
@@ -13,12 +10,12 @@ import owe.entities.ActiveEntity
 import owe.entities.ActiveEntity.{MapData, ResourceData, StructureData, WalkerData}
 import owe.entities.ActiveEntityActor._
 import owe.entities.Entity.{ProcessAttack, ProcessLabourFound, ProcessLabourUpdate}
-import owe.entities.active.{Resource, Structure, Walker}
 import owe.entities.active.Resource.{Properties, ResourceRef, State, StateModifiers}
 import owe.entities.active.Structure._
-import owe.entities.active.Walker.{MovementMode, NoAttack, WalkerRef}
+import owe.entities.active.Walker.{MovementMode, NoAttack, TraversalMode, WalkerRef}
 import owe.entities.active.attributes._
 import owe.entities.active.behaviour.resource.BaseResource
+import owe.entities.active.{Resource, Structure, Walker}
 import owe.map.Cell
 import owe.map.GameMap.{EntityTickProcessed, LabourFound}
 import owe.map.grid.Point
@@ -26,6 +23,10 @@ import owe.production.Commodity
 import owe.test.specs.unit.AkkaUnitSpec
 import owe.test.specs.unit.effects.definitions.{DecreaseFireRisk, IncreaseMovementSpeed, StopProduction}
 import owe.test.specs.unit.entities.TestParentMap.ParentMapMessage
+
+import scala.collection.immutable.Queue
+import scala.concurrent.Await
+import scala.concurrent.duration._
 
 class ActiveEntitySpec extends AkkaUnitSpec("ActiveEntitySpec") {
   private implicit val timeout: Timeout = 3.seconds
@@ -86,13 +87,16 @@ class ActiveEntitySpec extends AkkaUnitSpec("ActiveEntitySpec") {
 
   "An Active Entity" should "update entity state when active" in { fixture =>
     fixture.entityActor.tell(ProcessEntityTick(tick = 0, mapData), fixture.testProbe.ref)
+    fixture.testProbe.expectMsgType[ApplyMessages]
+
+    fixture.entityActor.tell(MessagesApplied(entityState), fixture.testProbe.ref)
     fixture.testProbe.expectMsgType[ProcessBehaviourTick]
 
     fixture.entityActor.tell(GetData(), fixture.testProbe.ref)
     fixture.testProbe.receiveOne(timeout.duration).asInstanceOf[ResourceData].state should be(entityState)
 
     val updatedState = entityState.copy(currentAmount = Commodity.Amount(42))
-    fixture.entityActor.tell(BehaviourTickProcessed(tick = 0, updatedState), fixture.testProbe.ref)
+    fixture.entityActor.tell(BehaviourTickProcessed(updatedState), fixture.testProbe.ref)
     fixture.testProbe.expectMsg(ParentMapMessage(EntityTickProcessed(tick = 0)))
     fixture.entityActor.tell(GetData(), fixture.testProbe.ref)
     fixture.testProbe.receiveOne(timeout.duration).asInstanceOf[ResourceData].state should be(updatedState)
@@ -100,6 +104,9 @@ class ActiveEntitySpec extends AkkaUnitSpec("ActiveEntitySpec") {
 
   it should "forward messages to parent when active" in { fixture =>
     fixture.entityActor.tell(ProcessEntityTick(tick = 0, mapData), fixture.testProbe.ref)
+    fixture.testProbe.expectMsgType[ApplyMessages]
+
+    fixture.entityActor.tell(MessagesApplied(entityState), fixture.testProbe.ref)
     fixture.testProbe.expectMsgType[ProcessBehaviourTick]
 
     val parentMapMessage = LabourFound(StructureRef(TestProbe().ref))
@@ -109,6 +116,9 @@ class ActiveEntitySpec extends AkkaUnitSpec("ActiveEntitySpec") {
 
   it should "respond with entity data when active" in { fixture =>
     fixture.entityActor.tell(ProcessEntityTick(tick = 0, mapData), fixture.testProbe.ref)
+    fixture.testProbe.expectMsgType[ApplyMessages]
+
+    fixture.entityActor.tell(MessagesApplied(entityState), fixture.testProbe.ref)
     fixture.testProbe.expectMsgType[ProcessBehaviourTick]
 
     fixture.entityActor.tell(GetData(), fixture.testProbe.ref)
@@ -117,16 +127,40 @@ class ActiveEntitySpec extends AkkaUnitSpec("ActiveEntitySpec") {
 
   it should "stash unsupported messages when active" in { fixture =>
     fixture.entityActor.tell(ProcessEntityTick(tick = 0, mapData), fixture.testProbe.ref)
+    fixture.testProbe.expectMsgType[ApplyMessages]
+
+    fixture.entityActor.tell(MessagesApplied(entityState), fixture.testProbe.ref)
     fixture.testProbe.expectMsgType[ProcessBehaviourTick]
 
     fixture.entityActor.tell(ProcessEntityTick(tick = 0, mapData), fixture.testProbe.ref)
     fixture.testProbe.expectNoMessage()
 
     // entity becomes idle after a state update and should process next game tick request
-    fixture.entityActor.tell(BehaviourTickProcessed(tick = 0, entityState), fixture.testProbe.ref)
+    fixture.entityActor.tell(BehaviourTickProcessed(entityState), fixture.testProbe.ref)
     val result = fixture.testProbe.receiveWhile(timeout.duration) {
       case ParentMapMessage(EntityTickProcessed(tick)) => tick
-      case ProcessBehaviourTick(tick, _, _, _)         => tick
+      case ApplyMessages(_, _)                         => 0
+    }
+
+    result should be(Seq(0, 0))
+  }
+
+  it should "stash unsupported messages when processing messages" in { fixture =>
+    fixture.entityActor.tell(ProcessEntityTick(tick = 0, mapData), fixture.testProbe.ref)
+    fixture.testProbe.expectMsgType[ApplyMessages]
+
+    fixture.entityActor.tell(ProcessEntityTick(tick = 0, mapData), fixture.testProbe.ref)
+    fixture.testProbe.expectNoMessage()
+
+    fixture.entityActor.tell(MessagesApplied(entityState), fixture.testProbe.ref)
+    fixture.testProbe.expectMsgType[ProcessBehaviourTick]
+    fixture.testProbe.expectNoMessage()
+
+    // entity becomes idle after a state update and should process next game tick request
+    fixture.entityActor.tell(BehaviourTickProcessed(entityState), fixture.testProbe.ref)
+    val result = fixture.testProbe.receiveWhile(timeout.duration) {
+      case ParentMapMessage(EntityTickProcessed(tick)) => tick
+      case ApplyMessages(_, _)                         => 0
     }
 
     result should be(Seq(0, 0))
@@ -185,7 +219,7 @@ class ActiveEntitySpec extends AkkaUnitSpec("ActiveEntitySpec") {
 
   it should "become active to process game ticks when idle" in { fixture =>
     fixture.entityActor.tell(ProcessEntityTick(tick = 0, mapData), fixture.testProbe.ref)
-    fixture.testProbe.expectMsgType[ProcessBehaviourTick]
+    fixture.testProbe.expectMsgType[ApplyMessages]
   }
 
   it should "respond with active entity effects when idle" in { fixture =>
@@ -216,7 +250,7 @@ class ActiveEntitySpec extends AkkaUnitSpec("ActiveEntitySpec") {
 
     messages.foreach(message => fixture.entityActor.tell(AddEntityMessage(message), fixture.testProbe.ref))
     fixture.entityActor.tell(ProcessEntityTick(tick = 0, mapData), fixture.testProbe.ref)
-    fixture.testProbe.receiveOne(timeout.duration).asInstanceOf[ProcessBehaviourTick].messages should be(messages)
+    fixture.testProbe.receiveOne(timeout.duration).asInstanceOf[ApplyMessages].messages should be(messages)
   }
 
   "Active Entity Resource Data" should "update its state and modifiers" in { _ =>
@@ -294,7 +328,8 @@ class ActiveEntitySpec extends AkkaUnitSpec("ActiveEntitySpec") {
       maxLife = Life(500),
       movementSpeed = Speed(150),
       maxRoamingDistance = Distance(50),
-      attack = NoAttack
+      attack = NoAttack,
+      traversalMode = TraversalMode.OnLand
     )
 
     val walkerState = Walker.State(

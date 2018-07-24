@@ -4,9 +4,9 @@ import akka.actor.Props
 import akka.testkit.TestProbe
 import org.scalatest.Outcome
 import owe.entities.ActiveEntity.WalkerData
-import owe.entities.ActiveEntityActor.{BehaviourTickProcessed, ForwardMessage, ProcessBehaviourTick}
+import owe.entities.ActiveEntityActor._
+import owe.entities.Entity.ProcessCommodities
 import owe.entities.active.Structure.StructureRef
-import owe.entities.active.Walker
 import owe.entities.active.Walker._
 import owe.entities.active.attributes._
 import owe.entities.active.behaviour.walker.BaseWalker
@@ -40,17 +40,39 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
       )
     )
 
-    // is in attacking state; should process attack
-    parentEntity ! ProcessBehaviourTick(
-      tick = 0,
-      map = Fixtures.defaultMapData,
+    // should process messages
+    parentEntity ! ApplyMessages(
       entity = WalkerData(
         Fixtures.Walker.properties,
         Fixtures.Walker.state,
         Fixtures.Walker.modifiers,
         Fixtures.MockRefs.walker
       ),
-      messages = Seq.empty
+      messages = Seq(
+        ProcessCommodities(Seq((Commodity("TestCommodity"), Commodity.Amount(10))))
+      )
+    )
+
+    expectMsg(
+      MessagesApplied(
+        Fixtures.Walker.state.copy(
+          commodities = CommoditiesState(
+            available = Map(Commodity("TestCommodity") -> Commodity.Amount(10)),
+            limits = Map(Commodity("TestCommodity") -> Commodity.Amount(100))
+          )
+        )
+      )
+    )
+
+    // is in attacking state; should process attack
+    parentEntity ! ProcessBehaviourTick(
+      map = Fixtures.defaultMapData,
+      entity = WalkerData(
+        Fixtures.Walker.properties,
+        Fixtures.Walker.state,
+        Fixtures.Walker.modifiers,
+        Fixtures.MockRefs.walker
+      )
     )
 
     val damage = receiveOne(max = 3.seconds).asInstanceOf[ForwardMessage] match {
@@ -62,14 +84,12 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
 
     expectMsg(
       BehaviourTickProcessed(
-        tick = 0,
         Fixtures.Walker.state
       )
     )
 
     // is in attacking state; without target, should not attack and should switch to idling
     parentEntity ! ProcessBehaviourTick(
-      tick = 0,
       map = Fixtures.defaultMapData,
       entity = WalkerData(
         Fixtures.Walker.properties.copy(
@@ -83,33 +103,28 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
         Fixtures.Walker.state,
         Fixtures.Walker.modifiers,
         Fixtures.MockRefs.walker
-      ),
-      messages = Seq.empty
+      )
     )
 
     expectMsg(
       BehaviourTickProcessed(
-        tick = 0,
         Fixtures.Walker.state
       )
     )
 
     // is in idling state; should not attack
     parentEntity ! ProcessBehaviourTick(
-      tick = 0,
       map = Fixtures.defaultMapData,
       entity = WalkerData(
         Fixtures.Walker.properties.copy(attack = NoAttack),
         Fixtures.Walker.state,
         Fixtures.Walker.modifiers,
         Fixtures.MockRefs.walker
-      ),
-      messages = Seq.empty
+      )
     )
 
     expectMsg(
       BehaviourTickProcessed(
-        tick = 0,
         Fixtures.Walker.state.copy(
           mode = MovementMode.Idling
         )
@@ -129,9 +144,32 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
       )
     )
 
+    // should process messages
+    parentEntity ! ApplyMessages(
+      entity = WalkerData(
+        Fixtures.Walker.properties,
+        Fixtures.Walker.state,
+        Fixtures.Walker.modifiers,
+        Fixtures.MockRefs.walker
+      ),
+      messages = Seq(
+        ProcessCommodities(Seq((Commodity("TestCommodity"), Commodity.Amount(10))))
+      )
+    )
+
+    expectMsg(
+      MessagesApplied(
+        Fixtures.Walker.state.copy(
+          commodities = CommoditiesState(
+            available = Map(Commodity("TestCommodity") -> Commodity.Amount(10)),
+            limits = Map(Commodity("TestCommodity") -> Commodity.Amount(100))
+          )
+        )
+      )
+    )
+
     // is in idling state; cannot attack and should remain idling
     parentEntity ! ProcessBehaviourTick(
-      tick = 0,
       map = Fixtures.defaultMapData,
       entity = WalkerData(
         Fixtures.Walker.properties.copy(attack = NoAttack),
@@ -140,13 +178,11 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
         ),
         Fixtures.Walker.modifiers,
         Fixtures.MockRefs.walker
-      ),
-      messages = Seq.empty
+      )
     )
 
     expectMsg(
       BehaviourTickProcessed(
-        tick = 0,
         Fixtures.Walker.state.copy(
           mode = MovementMode.Idling
         )
@@ -155,7 +191,6 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
 
     // is in idling state; can attack and should switch to attacking state
     parentEntity ! ProcessBehaviourTick(
-      tick = 0,
       map = Fixtures.defaultMapData,
       entity = WalkerData(
         Fixtures.Walker.properties,
@@ -164,13 +199,11 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
         ),
         Fixtures.Walker.modifiers,
         Fixtures.MockRefs.walker
-      ),
-      messages = Seq.empty
+      )
     )
 
     expectMsg(
       BehaviourTickProcessed(
-        tick = 0,
         Fixtures.Walker.state.copy(
           mode = MovementMode.Idling
         )
@@ -179,7 +212,6 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
 
     // is in attacking state and should process attack
     parentEntity ! ProcessBehaviourTick(
-      tick = 0,
       map = Fixtures.defaultMapData,
       entity = WalkerData(
         Fixtures.Walker.properties,
@@ -188,8 +220,7 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
         ),
         Fixtures.Walker.modifiers,
         Fixtures.MockRefs.walker
-      ),
-      messages = Seq.empty
+      )
     )
 
     val damage = receiveOne(max = 3.seconds).asInstanceOf[ForwardMessage] match {
@@ -201,7 +232,6 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
 
     expectMsg(
       BehaviourTickProcessed(
-        tick = 0,
         Fixtures.Walker.state.copy(
           mode = MovementMode.Idling
         )
@@ -221,6 +251,30 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
       )
     )
 
+    // should process messages
+    parentEntity ! ApplyMessages(
+      entity = WalkerData(
+        Fixtures.Walker.properties,
+        Fixtures.Walker.state,
+        Fixtures.Walker.modifiers,
+        Fixtures.MockRefs.walker
+      ),
+      messages = Seq(
+        ProcessCommodities(Seq((Commodity("TestCommodity"), Commodity.Amount(10))))
+      )
+    )
+
+    expectMsg(
+      MessagesApplied(
+        Fixtures.Walker.state.copy(
+          commodities = CommoditiesState(
+            available = Map(Commodity("TestCommodity") -> Commodity.Amount(10)),
+            limits = Map(Commodity("TestCommodity") -> Commodity.Amount(100))
+          )
+        )
+      )
+    )
+
     val roamingWalkerData = WalkerData(
       properties = Properties(
         parent = None,
@@ -229,7 +283,8 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
         maxLife = Life(500),
         movementSpeed = Speed(1),
         maxRoamingDistance = Distance(50),
-        attack = NoAttack
+        attack = NoAttack,
+        traversalMode = TraversalMode.OnLand
       ),
       state = State(
         currentLife = Life(100),
@@ -248,10 +303,8 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
 
     // is in roaming state; cannot attack, should remain roaming and move to next position
     parentEntity ! ProcessBehaviourTick(
-      tick = 0,
       map = Fixtures.defaultMapData,
-      entity = roamingWalkerData,
-      messages = Seq.empty
+      entity = roamingWalkerData
     )
 
     expectMsg(
@@ -270,17 +323,14 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
 
     expectMsg(
       BehaviourTickProcessed(
-        tick = 0,
         updatedStateWithMovement
       )
     )
 
     // is in roaming state; cannot attack, should remain roaming and move to next position
     parentEntity ! ProcessBehaviourTick(
-      tick = 0,
       map = Fixtures.defaultMapData,
-      entity = roamingWalkerData.copy(state = updatedStateWithMovement),
-      messages = Seq.empty
+      entity = roamingWalkerData.copy(state = updatedStateWithMovement)
     )
 
     expectMsg(
@@ -299,17 +349,14 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
 
     expectMsg(
       BehaviourTickProcessed(
-        tick = 0,
         updatedStateWithPathComplete
       )
     )
 
     // is in roaming state; cannot attack; current roaming path complete; generate new roaming path
     parentEntity ! ProcessBehaviourTick(
-      tick = 0,
       map = Fixtures.defaultMapData,
-      entity = roamingWalkerData.copy(state = updatedStateWithPathComplete),
-      messages = Seq.empty
+      entity = roamingWalkerData.copy(state = updatedStateWithPathComplete)
     )
 
     val updatedStateWithNewRoamingPath = roamingWalkerData.state.copy(
@@ -319,17 +366,14 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
 
     expectMsg(
       BehaviourTickProcessed(
-        tick = 0,
         updatedStateWithNewRoamingPath
       )
     )
 
     // is in roaming state; cannot attack; current roaming path complete; generate new roaming path
     parentEntity ! ProcessBehaviourTick(
-      tick = 0,
       map = Fixtures.defaultMapData,
-      entity = roamingWalkerData.copy(state = updatedStateWithNewRoamingPath),
-      messages = Seq.empty
+      entity = roamingWalkerData.copy(state = updatedStateWithNewRoamingPath)
     )
 
     expectMsg(
@@ -348,14 +392,12 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
 
     expectMsg(
       BehaviourTickProcessed(
-        tick = 0,
         updatedStateWithUsingNewRoamingPath
       )
     )
 
     // is in roaming state; should not move to next position (no free path)
     parentEntity ! ProcessBehaviourTick(
-      tick = 0,
       map = Fixtures.defaultMapData,
       entity = roamingWalkerData.copy(
         properties = roamingWalkerData.properties.copy(
@@ -365,13 +407,11 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
           distanceCovered = Distance(1),
           path = Queue.empty
         )
-      ),
-      messages = Seq.empty
+      )
     )
 
     expectMsg(
       BehaviourTickProcessed(
-        tick = 0,
         roamingWalkerData.state.copy(
           distanceCovered = Distance(1),
           path = Queue.empty,
@@ -382,7 +422,6 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
 
     // is in roaming state; can attack and should switch to attacking state
     parentEntity ! ProcessBehaviourTick(
-      tick = 0,
       map = Fixtures.defaultMapData,
       entity = WalkerData(
         Fixtures.Walker.properties,
@@ -391,20 +430,17 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
         ),
         Fixtures.Walker.modifiers,
         Fixtures.MockRefs.walker
-      ),
-      messages = Seq.empty
+      )
     )
 
     expectMsg(
       BehaviourTickProcessed(
-        tick = 0,
         Fixtures.Walker.state.copy(mode = MovementMode.Roaming)
       )
     )
 
     // is in attacking state and should process attack
     parentEntity ! ProcessBehaviourTick(
-      tick = 0,
       map = Fixtures.defaultMapData,
       entity = WalkerData(
         Fixtures.Walker.properties,
@@ -413,8 +449,7 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
         ),
         Fixtures.Walker.modifiers,
         Fixtures.MockRefs.walker
-      ),
-      messages = Seq.empty
+      )
     )
 
     val damage = receiveOne(max = 3.seconds).asInstanceOf[ForwardMessage] match {
@@ -426,7 +461,6 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
 
     expectMsg(
       BehaviourTickProcessed(
-        tick = 0,
         Fixtures.Walker.state.copy(mode = MovementMode.Idling)
       )
     )
@@ -443,29 +477,23 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
     )
 
     parentEntity ! ProcessBehaviourTick(
-      tick = 0,
       map = Fixtures.defaultMapData,
-      entity = returningEntityData,
-      messages = Seq.empty
+      entity = returningEntityData
     )
 
     expectMsg(
       BehaviourTickProcessed(
-        tick = 0,
         returningEntityData.state
       )
     )
 
     parentEntity ! ProcessBehaviourTick(
-      tick = 0,
       map = Fixtures.defaultMapData,
-      entity = returningEntityData,
-      messages = Seq.empty
+      entity = returningEntityData
     )
 
     expectMsg(
       BehaviourTickProcessed(
-        tick = 0,
         returningEntityData.state
       )
     )
@@ -488,6 +516,30 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
       )
     )
 
+    // should process messages
+    parentEntity ! ApplyMessages(
+      entity = WalkerData(
+        Fixtures.Walker.properties,
+        Fixtures.Walker.state,
+        Fixtures.Walker.modifiers,
+        Fixtures.MockRefs.walker
+      ),
+      messages = Seq(
+        ProcessCommodities(Seq((Commodity("TestCommodity"), Commodity.Amount(10))))
+      )
+    )
+
+    expectMsg(
+      MessagesApplied(
+        Fixtures.Walker.state.copy(
+          commodities = CommoditiesState(
+            available = Map(Commodity("TestCommodity") -> Commodity.Amount(10)),
+            limits = Map(Commodity("TestCommodity") -> Commodity.Amount(100))
+          )
+        )
+      )
+    )
+
     val advancingWalkerData = WalkerData(
       properties = Properties(
         parent = None,
@@ -496,7 +548,8 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
         maxLife = Life(500),
         movementSpeed = Speed(1),
         maxRoamingDistance = Distance(50),
-        attack = NoAttack
+        attack = NoAttack,
+        traversalMode = TraversalMode.OnLand
       ),
       state = State(
         currentLife = Life(100),
@@ -515,10 +568,8 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
 
     // is in advancing state; is not at destination, should move
     parentEntity ! ProcessBehaviourTick(
-      tick = 0,
       map = Fixtures.defaultMapData.copy(position = Point(1, 2)),
-      entity = advancingWalkerData,
-      messages = Seq.empty
+      entity = advancingWalkerData
     )
 
     expectMsg(
@@ -537,47 +588,38 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
 
     expectMsg(
       BehaviourTickProcessed(
-        tick = 0,
         updatedStateWithMovement
       )
     )
 
     // is in advancing state; is at destination, should switch to acting
     parentEntity ! ProcessBehaviourTick(
-      tick = 0,
       map = Fixtures.defaultMapData.copy(position = Point(2, 2)),
-      entity = advancingWalkerData.copy(state = updatedStateWithMovement),
-      messages = Seq.empty
+      entity = advancingWalkerData.copy(state = updatedStateWithMovement)
     )
 
     expectMsg(
       BehaviourTickProcessed(
-        tick = 0,
         updatedStateWithMovement
       )
     )
 
     // is in acting state; is at destination, should switch to advancing (going home)
     parentEntity ! ProcessBehaviourTick(
-      tick = 0,
       map = Fixtures.defaultMapData.copy(position = Point(2, 2)),
-      entity = advancingWalkerData.copy(state = updatedStateWithMovement),
-      messages = Seq.empty
+      entity = advancingWalkerData.copy(state = updatedStateWithMovement)
     )
 
     expectMsg(
       BehaviourTickProcessed(
-        tick = 0,
         updatedStateWithMovement
       )
     )
 
     // is in advancing state; is at destination, should be going home
     parentEntity ! ProcessBehaviourTick(
-      tick = 0,
       map = Fixtures.defaultMapData.copy(position = Point(2, 2)),
-      entity = advancingWalkerData.copy(state = updatedStateWithMovement),
-      messages = Seq.empty
+      entity = advancingWalkerData.copy(state = updatedStateWithMovement)
     )
 
     val updatedStateGoingHome = updatedStateWithMovement.copy(
@@ -587,7 +629,6 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
 
     expectMsg(
       BehaviourTickProcessed(
-        tick = 0,
         updatedStateGoingHome
       )
     )
@@ -609,6 +650,30 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
       )
     )
 
+    // should process messages
+    parentEntity ! ApplyMessages(
+      entity = WalkerData(
+        Fixtures.Walker.properties,
+        Fixtures.Walker.state,
+        Fixtures.Walker.modifiers,
+        Fixtures.MockRefs.walker
+      ),
+      messages = Seq(
+        ProcessCommodities(Seq((Commodity("TestCommodity"), Commodity.Amount(10))))
+      )
+    )
+
+    expectMsg(
+      MessagesApplied(
+        Fixtures.Walker.state.copy(
+          commodities = CommoditiesState(
+            available = Map(Commodity("TestCommodity") -> Commodity.Amount(10)),
+            limits = Map(Commodity("TestCommodity") -> Commodity.Amount(100))
+          )
+        )
+      )
+    )
+
     val advancingWalkerData = WalkerData(
       properties = Properties(
         parent = None,
@@ -617,7 +682,8 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
         maxLife = Life(500),
         movementSpeed = Speed(1),
         maxRoamingDistance = Distance(50),
-        attack = NoAttack
+        attack = NoAttack,
+        traversalMode = TraversalMode.OnLand
       ),
       state = State(
         currentLife = Life(100),
@@ -636,10 +702,8 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
 
     // is in advancing state; is at home and should get path to destination entity
     parentEntity ! ProcessBehaviourTick(
-      tick = 0,
       map = Fixtures.defaultMapData.copy(position = Point(1, 1)),
-      entity = advancingWalkerData,
-      messages = Seq.empty
+      entity = advancingWalkerData
     )
 
     val updatedStateGoingToEntity = advancingWalkerData.state.copy(
@@ -649,22 +713,18 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
 
     expectMsg(
       BehaviourTickProcessed(
-        tick = 0,
         updatedStateGoingToEntity
       )
     )
 
     // is in advancing state; cannot proceed on path
     parentEntity ! ProcessBehaviourTick(
-      tick = 0,
       map = Fixtures.defaultMapData.copy(position = Point(1, 1)),
-      entity = advancingWalkerData.copy(state = advancingWalkerData.state.copy(path = Queue(Point(0, 0)))),
-      messages = Seq.empty
+      entity = advancingWalkerData.copy(state = advancingWalkerData.state.copy(path = Queue(Point(0, 0))))
     )
 
     expectMsg(
       BehaviourTickProcessed(
-        tick = 0,
         updatedStateGoingToEntity
       )
     )
@@ -686,6 +746,30 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
       )
     )
 
+    // should process messages
+    parentEntity ! ApplyMessages(
+      entity = WalkerData(
+        Fixtures.Walker.properties,
+        Fixtures.Walker.state,
+        Fixtures.Walker.modifiers,
+        Fixtures.MockRefs.walker
+      ),
+      messages = Seq(
+        ProcessCommodities(Seq((Commodity("TestCommodity"), Commodity.Amount(10))))
+      )
+    )
+
+    expectMsg(
+      MessagesApplied(
+        Fixtures.Walker.state.copy(
+          commodities = CommoditiesState(
+            available = Map(Commodity("TestCommodity") -> Commodity.Amount(10)),
+            limits = Map(Commodity("TestCommodity") -> Commodity.Amount(100))
+          )
+        )
+      )
+    )
+
     val advancingWalkerData = WalkerData(
       properties = Properties(
         parent = None,
@@ -694,7 +778,8 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
         maxLife = Life(500),
         movementSpeed = Speed(1),
         maxRoamingDistance = Distance(50),
-        attack = NoAttack
+        attack = NoAttack,
+        traversalMode = TraversalMode.OnLand
       ),
       state = State(
         currentLife = Life(100),
@@ -713,10 +798,8 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
 
     // is in advancing state; is at home and should fail get path to unreachable entity
     parentEntity ! ProcessBehaviourTick(
-      tick = 0,
       map = Fixtures.defaultMapData.copy(position = Point(1, 1)),
-      entity = advancingWalkerData,
-      messages = Seq.empty
+      entity = advancingWalkerData
     )
 
     val updatedStateWithNoPath = advancingWalkerData.state.copy(
@@ -726,7 +809,6 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
 
     expectMsg(
       BehaviourTickProcessed(
-        tick = 0,
         updatedStateWithNoPath
       )
     )
@@ -756,6 +838,30 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
       )
     )
 
+    // should process messages
+    parentEntity ! ApplyMessages(
+      entity = WalkerData(
+        Fixtures.Walker.properties,
+        Fixtures.Walker.state,
+        Fixtures.Walker.modifiers,
+        Fixtures.MockRefs.walker
+      ),
+      messages = Seq(
+        ProcessCommodities(Seq((Commodity("TestCommodity"), Commodity.Amount(10))))
+      )
+    )
+
+    expectMsg(
+      MessagesApplied(
+        Fixtures.Walker.state.copy(
+          commodities = CommoditiesState(
+            available = Map(Commodity("TestCommodity") -> Commodity.Amount(10)),
+            limits = Map(Commodity("TestCommodity") -> Commodity.Amount(100))
+          )
+        )
+      )
+    )
+
     val actingWalkerData = WalkerData(
       properties = Properties(
         parent = None,
@@ -764,7 +870,8 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
         maxLife = Life(500),
         movementSpeed = Speed(1),
         maxRoamingDistance = Distance(50),
-        attack = NoAttack
+        attack = NoAttack,
+        traversalMode = TraversalMode.OnLand
       ),
       state = State(
         currentLife = Life(100),
@@ -782,10 +889,8 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
     )
 
     parentEntity ! ProcessBehaviourTick(
-      tick = 0,
       map = Fixtures.defaultMapData,
-      entity = actingWalkerData,
-      messages = Seq.empty
+      entity = actingWalkerData
     )
 
     val updatedStateAfterDoOperation = actingWalkerData.state.copy(
@@ -794,16 +899,13 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
 
     expectMsg(
       BehaviourTickProcessed(
-        tick = 0,
         updatedStateAfterDoOperation
       )
     )
 
     parentEntity ! ProcessBehaviourTick(
-      tick = 0,
       map = Fixtures.defaultMapData,
-      entity = actingWalkerData.copy(state = updatedStateAfterDoOperation),
-      messages = Seq.empty
+      entity = actingWalkerData.copy(state = updatedStateAfterDoOperation)
     )
 
     val updatedStateAfterOneRepeatableOperation = actingWalkerData.state.copy(
@@ -812,16 +914,13 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
 
     expectMsg(
       BehaviourTickProcessed(
-        tick = 0,
         updatedStateAfterOneRepeatableOperation
       )
     )
 
     parentEntity ! ProcessBehaviourTick(
-      tick = 0,
       map = Fixtures.defaultMapData,
-      entity = actingWalkerData.copy(state = updatedStateAfterOneRepeatableOperation),
-      messages = Seq.empty
+      entity = actingWalkerData.copy(state = updatedStateAfterOneRepeatableOperation)
     )
 
     val updatedStateAfterTwoRepeatableOperations = actingWalkerData.state.copy(
@@ -830,48 +929,39 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
 
     expectMsg(
       BehaviourTickProcessed(
-        tick = 0,
         updatedStateAfterTwoRepeatableOperations
       )
     )
 
     parentEntity ! ProcessBehaviourTick(
-      tick = 0,
       map = Fixtures.defaultMapData,
-      entity = actingWalkerData.copy(state = updatedStateAfterTwoRepeatableOperations),
-      messages = Seq.empty
+      entity = actingWalkerData.copy(state = updatedStateAfterTwoRepeatableOperations)
     )
 
     // repeatable operation not applicable; no state update is expected
     expectMsg(
       BehaviourTickProcessed(
-        tick = 0,
         updatedStateAfterTwoRepeatableOperations
       )
     )
 
     parentEntity ! ProcessBehaviourTick(
-      tick = 0,
       map = Fixtures.defaultMapData,
-      entity = actingWalkerData.copy(state = updatedStateAfterTwoRepeatableOperations),
-      messages = Seq.empty
+      entity = actingWalkerData.copy(state = updatedStateAfterTwoRepeatableOperations)
     )
 
     // just transitioned to advancing; no state update is expected
     expectMsg(
       BehaviourTickProcessed(
-        tick = 0,
         updatedStateAfterTwoRepeatableOperations
       )
     )
 
     parentEntity ! ProcessBehaviourTick(
-      tick = 0,
       map = Fixtures.defaultMapData.copy(position = Point(1, 1)),
       entity = actingWalkerData.copy(
         state = updatedStateAfterTwoRepeatableOperations.copy(path = Queue.empty)
-      ),
-      messages = Seq.empty
+      )
     )
 
     val updatedStateAfterGoingToPoint = updatedStateAfterTwoRepeatableOperations.copy(
@@ -880,16 +970,13 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
 
     expectMsg(
       BehaviourTickProcessed(
-        tick = 0,
         updatedStateAfterGoingToPoint
       )
     )
 
     parentEntity ! ProcessBehaviourTick(
-      tick = 0,
       map = Fixtures.defaultMapData.copy(position = Point(1, 1)),
-      entity = actingWalkerData.copy(state = updatedStateAfterGoingToPoint.copy(path = Queue.empty)),
-      messages = Seq.empty
+      entity = actingWalkerData.copy(state = updatedStateAfterGoingToPoint.copy(path = Queue.empty))
     )
 
     val updatedStateAfterGoingToEntity = updatedStateAfterGoingToPoint.copy(
@@ -898,16 +985,13 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
 
     expectMsg(
       BehaviourTickProcessed(
-        tick = 0,
         updatedStateAfterGoingToEntity
       )
     )
 
     parentEntity ! ProcessBehaviourTick(
-      tick = 0,
       map = Fixtures.defaultMapData.copy(position = Point(0, 0)),
-      entity = actingWalkerData.copy(state = updatedStateAfterGoingToEntity),
-      messages = Seq.empty
+      entity = actingWalkerData.copy(state = updatedStateAfterGoingToEntity)
     )
 
     val updatedStateAfterGoingHome = updatedStateAfterGoingToEntity.copy(
@@ -916,16 +1000,13 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
 
     expectMsg(
       BehaviourTickProcessed(
-        tick = 0,
         updatedStateAfterGoingHome
       )
     )
 
     parentEntity ! ProcessBehaviourTick(
-      tick = 0,
       map = Fixtures.defaultMapData.copy(position = Point(1, 1)),
-      entity = actingWalkerData.copy(state = updatedStateAfterGoingHome.copy(path = Queue.empty)),
-      messages = Seq.empty
+      entity = actingWalkerData.copy(state = updatedStateAfterGoingHome.copy(path = Queue.empty))
     )
 
     val stateAfterProcessingMove = updatedStateAfterGoingHome.copy(
@@ -934,52 +1015,47 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
 
     expectMsg(
       BehaviourTickProcessed(
-        tick = 0,
         stateAfterProcessingMove
       )
     )
 
     parentEntity ! ProcessBehaviourTick(
-      tick = 0,
       map = Fixtures.defaultMapData.copy(position = Point(1, 1)),
-      entity = actingWalkerData.copy(state = stateAfterProcessingMove),
-      messages = Seq.empty
+      entity = actingWalkerData.copy(state = stateAfterProcessingMove)
     )
 
     // at destination; no state update expected; transitioning to acting
     expectMsg(
       BehaviourTickProcessed(
-        tick = 0,
         stateAfterProcessingMove
       )
     )
 
     parentEntity ! ProcessBehaviourTick(
-      tick = 0,
       map = Fixtures.defaultMapData.copy(position = Point(1, 1)),
-      entity = actingWalkerData.copy(state = stateAfterProcessingMove),
-      messages = Seq.empty
+      entity = actingWalkerData.copy(state = stateAfterProcessingMove)
     )
 
     // acting; NoAction is next on actions list; no state update expected
     expectMsg(
       BehaviourTickProcessed(
-        tick = 0,
         stateAfterProcessingMove
       )
     )
 
     parentEntity ! ProcessBehaviourTick(
-      tick = 0,
       map = Fixtures.defaultMapData.copy(position = Point(1, 1)),
-      entity = actingWalkerData.copy(state = stateAfterProcessingMove),
-      messages = Seq.empty
+      entity = actingWalkerData.copy(state = stateAfterProcessingMove)
     )
 
-    // acting on empty actions list; no state update expected
+    // no actions remaining; should destroy self
+    expectMsg(
+      ForwardMessage(DestroyEntity(Fixtures.MockRefs.walker))
+    )
+
+    // destroying; no state update expected
     expectMsg(
       BehaviourTickProcessed(
-        tick = 0,
         stateAfterProcessingMove
       )
     )
@@ -1011,16 +1087,13 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
     )
 
     parentEntity ! ProcessBehaviourTick(
-      tick = 0,
       map = Fixtures.defaultMapData,
-      entity = idlingWalkerData,
-      messages = Seq.empty
+      entity = idlingWalkerData
     )
 
     // no state update expected when destroying
     expectMsg(
       BehaviourTickProcessed(
-        tick = 0,
         idlingWalkerData.state
       )
     )
@@ -1041,17 +1114,33 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
       ForwardMessage(DestroyEntity(idlingWalkerData.id))
     )
 
+    // should ignore messages
+    parentEntity ! ApplyMessages(
+      entity = WalkerData(
+        Fixtures.Walker.properties,
+        Fixtures.Walker.state,
+        Fixtures.Walker.modifiers,
+        Fixtures.MockRefs.walker
+      ),
+      messages = Seq(
+        ProcessCommodities(Seq((Commodity("TestCommodity"), Commodity.Amount(10))))
+      )
+    )
+
+    expectMsg(
+      MessagesApplied(
+        Fixtures.Walker.state
+      )
+    )
+
     parentEntity ! ProcessBehaviourTick(
-      tick = 0,
       map = Fixtures.defaultMapData,
-      entity = idlingWalkerData,
-      messages = Seq.empty
+      entity = idlingWalkerData
     )
 
     // no state update expected when destroying
     expectMsg(
       BehaviourTickProcessed(
-        tick = 0,
         idlingWalkerData.state
       )
     )

@@ -2,10 +2,10 @@ package owe.entities.active
 
 import akka.actor.ActorRef
 import owe.entities.ActiveEntity.{ActiveEntityRef, Data}
-import owe.entities.Entity.Desirability
+import owe.entities.Entity.{Desirability, EntityRef}
 import owe.entities._
 import owe.entities.active.Structure.StructureRef
-import owe.entities.active.Walker.WalkerRef
+import owe.entities.active.Walker.{SpawnLocation, WalkerRef}
 import owe.entities.active.attributes._
 import owe.entities.active.behaviour.walker.BaseWalker
 import owe.map.grid.Point
@@ -20,6 +20,8 @@ trait Walker
       Walker.StateModifiers,
       BaseWalker
     ] {
+  def spawnLocation: SpawnLocation
+
   final override def `size`: Entity.Size = Entity.Size(height = 1, width = 1)
   final override def `type`: Entity.Type = Entity.Type.Walker
   final override def `desirability`: Desirability = Desirability.Neutral
@@ -68,6 +70,21 @@ object Walker {
     case object Idling extends MovementMode
   }
 
+  sealed trait TraversalMode
+  object TraversalMode {
+    case object RoadRequired extends TraversalMode
+    case object RoadPreferred extends TraversalMode
+    case object OnLand extends TraversalMode
+    case object OnWater extends TraversalMode
+  }
+
+  sealed trait SpawnLocation
+  object SpawnLocation {
+    case class AdjacentRoad(entityID: EntityRef) extends SpawnLocation
+    case class AdjacentPoint(entityID: EntityRef) extends SpawnLocation
+    case object AtPoint extends SpawnLocation
+  }
+
   case class Properties(
     parent: Option[StructureRef],
     homePosition: Point,
@@ -75,7 +92,8 @@ object Walker {
     maxLife: Life,
     movementSpeed: Speed,
     maxRoamingDistance: Distance,
-    attack: Attack with PropertiesOnly
+    attack: Attack with PropertiesOnly,
+    traversalMode: TraversalMode
   ) extends Entity.Properties
 
   case class State(

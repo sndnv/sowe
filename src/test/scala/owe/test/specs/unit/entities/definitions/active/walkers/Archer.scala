@@ -12,6 +12,8 @@ import owe.map.grid.Point
 import scala.collection.immutable.Queue
 
 class Archer extends Walker {
+  override def spawnLocation: SpawnLocation = SpawnLocation.AtPoint
+
   override protected def createBehaviour(): BaseWalker = new Military {}
 
   override protected def createActiveEntityData(): ActiveEntityRef => Data = {
@@ -29,7 +31,8 @@ class Archer extends Walker {
             damage = AttackDamage(50),
             distance = Distance(25),
             target = _ => true
-          )
+          ),
+          traversalMode = TraversalMode.OnLand
         ),
         state = State(
           currentLife = Life(100),

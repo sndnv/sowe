@@ -5,8 +5,8 @@ import akka.util.Timeout
 import org.scalatest.Outcome
 import owe.entities.ActiveEntity.StructureData
 import owe.entities.ActiveEntityActor.{BehaviourTickProcessed, ForwardMessage, ProcessBehaviourTick}
-import owe.entities.active.attributes.RiskAmount
 import owe.entities.active.Structure.{CommoditiesState, RiskState}
+import owe.entities.active.attributes.RiskAmount
 import owe.entities.active.behaviour.structure.farming.FarmingStructure
 import owe.map.GameMap.ForwardExchangeMessage
 import owe.production.Commodity
@@ -32,15 +32,13 @@ class FarmingStructureSpec extends AkkaUnitSpec("FarmingStructureSpec") {
 
   "A Farming structure" should "produce commodities" in { fixture =>
     fixture.parentEntity ! ProcessBehaviourTick(
-      tick = 0,
       map = Fixtures.defaultMapData,
       entity = StructureData(
         Fixtures.Structure.Producing.properties,
         Fixtures.Structure.Producing.state,
         Fixtures.Structure.Producing.modifiers,
         Fixtures.MockRefs.structure
-      ),
-      messages = Seq.empty
+      )
     )
 
     expectMsg(
@@ -71,7 +69,6 @@ class FarmingStructureSpec extends AkkaUnitSpec("FarmingStructureSpec") {
 
     expectMsg(
       BehaviourTickProcessed(
-        tick = 0,
         Fixtures.Structure.Producing.state
           .copy(
             risk = RiskState(fire = RiskAmount(3), damage = RiskAmount(5)),

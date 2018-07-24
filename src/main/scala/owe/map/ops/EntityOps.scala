@@ -6,6 +6,8 @@ import akka.util.Timeout
 import owe.entities.Entity
 import owe.entities.Entity.{Desirability, EntityRef}
 import owe.entities.active.Structure.StructureRef
+import owe.entities.active.Walker
+import owe.entities.active.Walker.SpawnLocation
 import owe.entities.passive.Doodad.DoodadRef
 import owe.entities.passive.Road.RoadRef
 import owe.events.Event
@@ -22,31 +24,66 @@ trait EntityOps { _: AvailabilityOps =>
 
   def createEntity(
     grid: Grid[CellActorRef],
-    entity: MapEntity,
-    cell: Point
-  )(implicit sender: ActorRef = Actor.noSender): Future[Either[Event, Event]] =
-    grid.get(cell) match {
-      case Some(mapCell) =>
-        val targetAvailability = requiredAvailability(entity.entityType)
-        cellAvailability(mapCell).flatMap { availability =>
-          if (availability >= targetAvailability) {
-            Future
-              .sequence(Entity.cells(entity.`size`, cell).map(cellAvailabilityForPoint(grid, _)))
-              .map { cellsAvailability =>
-                if (cellsAvailability.forall(_ >= targetAvailability)) {
-                  Right(Event(Event.System.EntityCreated, Some(cell)))
+    entities: Map[EntityRef, Point],
+    entity: Entity,
+    actorRef: ActorRef,
+    defaultCell: Point
+  )(implicit sender: ActorRef = Actor.noSender): Future[Either[Event, (MapEntity, Event)]] = {
+    val spawnPoint = entity match {
+      case walker: Walker =>
+        walker.spawnLocation match {
+          case SpawnLocation.AdjacentPoint(entityID) =>
+            findFirstAdjacentPoint(grid, entities, entityID, Cell.Availability.Passable)
+
+          case SpawnLocation.AdjacentRoad(entityID) =>
+            findFirstAdjacentRoad(grid, entities, entityID)
+
+          case SpawnLocation.AtPoint =>
+            Future.successful(Some(defaultCell))
+        }
+      case _ => Future.successful(Some(defaultCell))
+    }
+
+    spawnPoint
+      .flatMap {
+        case Some(point) =>
+          grid.get(point) match {
+            case Some(mapCell) =>
+              val mapEntity = MapEntity(
+                actorRef,
+                point,
+                entity.`size`,
+                entity.`desirability`,
+                entity.`type`
+              )
+
+              val targetAvailability = requiredAvailability(mapEntity.entityType)
+              cellAvailability(mapCell).flatMap { availability =>
+                if (availability >= targetAvailability) {
+                  Future
+                    .sequence(Entity.cells(mapEntity.`size`, point).map(cellAvailabilityForPoint(grid, _)))
+                    .map { cellsAvailability =>
+                      if (cellsAvailability.forall(_ >= targetAvailability)) {
+                        Right((mapEntity, Event(Event.System.EntityCreated, Some(point))))
+                      } else {
+                        Left(Event(Event.System.CellsUnavailable, Some(point)))
+                      }
+                    }
                 } else {
-                  Left(Event(Event.System.CellsUnavailable, Some(cell)))
+                  Future.successful(Left(Event(Event.System.CellsUnavailable, Some(point))))
                 }
               }
-          } else {
-            Future.successful(Left(Event(Event.System.CellsUnavailable, Some(cell))))
-          }
-        }
 
-      case None =>
-        Future.successful(Left(Event(Event.System.CellOutOfBounds, Some(cell))))
-    }
+            case None =>
+              Future.successful(Left(Event(Event.System.CellOutOfBounds, Some(point))))
+          }
+
+        case None =>
+          Future.successful(
+            Left(Event(Event.System.SpawnPointUnavailable, cell = None))
+          )
+      }
+  }
 
   def destroyEntity(
     grid: Grid[CellActorRef],
