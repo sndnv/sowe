@@ -76,8 +76,8 @@ class ResidentSpec extends AkkaUnitSpec("ResidentSpec") with WalkerBehaviour {
           )
         }
       },
-      firstDestination = Point(2, 2),
-      secondDestination = Point(0, 2)
+      destination = Point(2, 2),
+      action = GoToPoint(0, 2)
     )
   )
 }

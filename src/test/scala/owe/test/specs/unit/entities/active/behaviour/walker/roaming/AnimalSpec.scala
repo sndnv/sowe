@@ -9,7 +9,7 @@ import owe.entities.active.Walker
 import owe.entities.active.Walker._
 import owe.entities.active.attributes._
 import owe.entities.active.behaviour.walker.BaseWalker
-import owe.entities.active.behaviour.walker.BaseWalker.{DestinationEntity, DestinationPoint, NoAction}
+import owe.entities.active.behaviour.walker.BaseWalker.DestinationPoint
 import owe.entities.active.behaviour.walker.roaming.Animal
 import owe.map.grid.Point
 import owe.test.specs.unit.AkkaUnitSpec

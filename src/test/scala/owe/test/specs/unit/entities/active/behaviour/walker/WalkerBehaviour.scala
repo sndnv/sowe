@@ -16,7 +16,7 @@ import owe.test.specs.unit.map.TestGameMap.StartBehaviour
 import scala.concurrent.duration._
 
 import owe.entities.ActiveEntityActor.{AddEntityInstruction, ApplyInstructions}
-import owe.entities.active.behaviour.walker.BaseWalker.{Advance, DestinationEntity, DoTransition, GoToEntity}
+import owe.entities.active.behaviour.walker.BaseWalker._
 
 trait WalkerBehaviour { _: AkkaUnitSpec =>
   private implicit val timeout: Timeout = 5.seconds
@@ -186,7 +186,7 @@ trait WalkerBehaviour { _: AkkaUnitSpec =>
       (positions should contain).theSameElementsAs(expectedFollowingPath ++ expectedFollowedPath)
     }
 
-  def advancingWalker(walker: Walker, firstDestination: Point, secondDestination: Point): Unit =
+  def advancingWalker(walker: Walker, destination: Point, action: Action): Unit =
     it should "go to a destination and perform action" in { _ =>
       val testProbe = TestProbe()
       val map = system.actorOf(
@@ -201,10 +201,18 @@ trait WalkerBehaviour { _: AkkaUnitSpec =>
 
       val (ticks, moved) = testProbe
         .receiveWhile(timeout.duration) {
-          case Event(Event.System.TickProcessed, None)                    => (1, 0)
-          case Event(Event.System.EntityMoved, Some(`firstDestination`))  => (0, 1)
-          case Event(Event.System.EntityMoved, Some(`secondDestination`)) => (0, 1)
-          case _                                                          => (0, 0)
+          case Event(Event.System.TickProcessed, None)              => (1, 0)
+          case Event(Event.System.EntityMoved, Some(`destination`)) => (0, 1)
+          case event =>
+            action match {
+              case GoToPoint(secondDestination) =>
+                event match {
+                  case Event(Event.System.EntityMoved, Some(`secondDestination`)) => (0, 1)
+                  case _                                                          => (0, 0)
+                }
+
+              case _ => (0, 0)
+            }
         }
         .foldLeft((0, 0)) {
           case ((totalTicks, totalMoved), (currentTick, currentMoved)) =>
@@ -212,6 +220,17 @@ trait WalkerBehaviour { _: AkkaUnitSpec =>
         }
 
       ticks should be > 0
-      moved should be(2)
+
+      action match {
+        case GoToPoint(_) =>
+          moved should be(2)
+
+        case Idle() =>
+          moved should be(1)
+
+        case action =>
+          fail(s"Unexpected action specified: [$action]")
+      }
+
     }
 }
