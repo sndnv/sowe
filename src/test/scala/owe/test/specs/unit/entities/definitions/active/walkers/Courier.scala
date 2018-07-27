@@ -30,6 +30,7 @@ class Courier(parameters: Parameters) extends Walker {
           traversalMode = TraversalMode.OnLand
         ),
         state = State(
+          currentPosition = Point(0, 0),
           currentLife = Life(100),
           distanceCovered = Distance(0),
           commodities = CommoditiesState(

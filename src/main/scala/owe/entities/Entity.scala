@@ -49,6 +49,7 @@ object Entity {
   sealed trait Message extends owe.Message
   case class ProcessAttack(damage: AttackDamage) extends Message
   case class ProcessCommodities(commodities: Seq[(Commodity, Commodity.Amount)]) extends Message
+  case class ProcessMovement(updatedPosition: Point) extends Message
   case class ProcessLabourFound() extends Message
   case class ProcessOccupantsUpdate(occupants: Int) extends Message
   case class ProcessLabourUpdate(employees: Int) extends Message

@@ -42,6 +42,8 @@ abstract class ActiveEntity[
 }
 
 object ActiveEntity {
+  trait Instruction extends owe.Instruction
+
   trait ActiveEntityRef extends EntityRef
 
   trait Effect[

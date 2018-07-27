@@ -4,7 +4,7 @@ import akka.actor.{Actor, ActorLogging, ActorRef, Props, Stash}
 import akka.pattern.{ask, pipe}
 import akka.util.Timeout
 import owe.effects.Effect
-import owe.entities.ActiveEntity.{ActiveEntityRef, Data, MapData}
+import owe.entities.ActiveEntity.{ActiveEntityRef, Data, Instruction, MapData}
 import owe.map.GameMap
 import owe.map.GameMap.EntityTickProcessed
 
@@ -71,6 +71,9 @@ class ActiveEntityActor[
   }
 
   def processingMessages(tick: Int, map: MapData, processingData: ProcessingData): Receive = {
+    case InstructionsApplied() =>
+      log.debug("Instructions for tick [{}] applied", tick)
+
     case MessagesApplied(updatedState) =>
       log.debug("Messages for tick [{}] applied", tick)
       val updatedData = processingData.copy(entityData = processingData.entityData.withState(updatedState))
@@ -128,8 +131,12 @@ class ActiveEntityActor[
 
     case ProcessEntityTick(tick, map) =>
       log.debug("Starting tick [{}] processing with map data: [{}]", tick, map)
+      if (processingData.instructions.nonEmpty) {
+        behaviourHandler ! ApplyInstructions(processingData.entityData, processingData.instructions)
+      }
+
       behaviourHandler ! ApplyMessages(processingData.entityData, processingData.messages)
-      context.become(processingMessages(tick, map, processingData.copy(messages = Seq.empty)))
+      context.become(processingMessages(tick, map, processingData.copy(messages = Seq.empty, instructions = Seq.empty)))
 
     case GetActiveEffects() =>
       log.debug("Responding to sender [{}] with active effects", sender)
@@ -149,18 +156,29 @@ class ActiveEntityActor[
     case AddEntityMessage(message) =>
       log.debug("Received entity message [{}]", message)
       context.become(idle(processingData.copy(messages = processingData.messages :+ message)))
+
+    case AddEntityInstruction(instruction) =>
+      log.debug("Received entity instruction [{}]", instruction)
+      context.become(idle(processingData.copy(instructions = processingData.instructions :+ instruction)))
   }
 
-  override def receive: Receive = idle(ProcessingData(initialEntityData, Seq.empty))
+  override def receive: Receive = idle(ProcessingData(initialEntityData, Seq.empty, Seq.empty))
 }
 
 object ActiveEntityActor {
 
-  private case class ProcessingData(entityData: Data, messages: Seq[Entity.Message])
+  private case class ProcessingData(
+    entityData: Data,
+    messages: Seq[Entity.Message],
+    instructions: Seq[Instruction]
+  )
 
   sealed trait ProcessingMessage extends owe.Message
+  private[owe] case class ApplyInstructions(entity: Data, instructions: Seq[Instruction]) extends ProcessingMessage
+  private[owe] case class InstructionsApplied() extends ProcessingMessage
   private[owe] case class ApplyMessages(entity: Data, messages: Seq[Entity.Message]) extends ProcessingMessage
   private[owe] case class MessagesApplied[S <: Entity.State: ClassTag](state: S) extends ProcessingMessage
+  case class AddEntityInstruction(instruction: Instruction) extends ProcessingMessage
   case class AddEntityMessage(message: Entity.Message) extends ProcessingMessage
   case class ForwardMessage(message: GameMap.Message) extends ProcessingMessage
   case class GetActiveEffects() extends ProcessingMessage

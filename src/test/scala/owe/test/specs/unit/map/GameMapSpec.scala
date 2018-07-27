@@ -23,9 +23,10 @@ import owe.test.specs.unit.AkkaUnitSpec
 import owe.test.specs.unit.entities.definitions.active.resources.Tree
 import owe.test.specs.unit.entities.definitions.active.structures.CoalMine
 import owe.test.specs.unit.map.TestGameMap.StartBehaviour
-
 import scala.collection.immutable.Queue
 import scala.concurrent.duration._
+
+import owe.map.Cell.Availability
 
 class GameMapSpec extends AkkaUnitSpec("GameMapSpec") {
 
@@ -128,6 +129,24 @@ class GameMapSpec extends AkkaUnitSpec("GameMapSpec") {
 
     map ! GetEntity(entityRef)
     expectMsgType[Status.Failure]
+  }
+
+  it should "respond with adjacent entity roads when waiting" in { _ =>
+    val map = system.actorOf(Props(new TestGameMap(testActor, StartBehaviour.Waiting)))
+
+    val entityRef = WalkerRef(TestProbe().ref)
+
+    map ! GetAdjacentRoad(entityRef)
+    expectMsg(None)
+  }
+
+  it should "respond with adjacent entity points when waiting" in { _ =>
+    val map = system.actorOf(Props(new TestGameMap(testActor, StartBehaviour.Waiting)))
+
+    val entityRef = WalkerRef(TestProbe().ref)
+
+    map ! GetAdjacentPoint(entityRef, Availability.Buildable)
+    expectMsg(None)
   }
 
   it should "log unexpected entity tick responses when waiting" in { _ =>

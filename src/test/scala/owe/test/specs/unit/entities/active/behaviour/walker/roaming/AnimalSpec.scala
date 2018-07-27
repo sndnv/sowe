@@ -1,5 +1,7 @@
 package owe.test.specs.unit.entities.active.behaviour.walker.roaming
 
+import scala.collection.immutable.Queue
+
 import org.scalatest.Outcome
 import owe.effects.Effect
 import owe.entities.ActiveEntity.{ActiveEntityRef, Data, WalkerData}
@@ -7,6 +9,7 @@ import owe.entities.active.Walker
 import owe.entities.active.Walker._
 import owe.entities.active.attributes._
 import owe.entities.active.behaviour.walker.BaseWalker
+import owe.entities.active.behaviour.walker.BaseWalker.{DestinationEntity, DestinationPoint, NoAction}
 import owe.entities.active.behaviour.walker.roaming.Animal
 import owe.map.grid.Point
 import owe.test.specs.unit.AkkaUnitSpec
@@ -66,7 +69,32 @@ class AnimalSpec extends AkkaUnitSpec("AnimalSpec") with WalkerBehaviour {
 
   (it should behave).like(
     followingWalker(
-      new TestAnimal(properties, state, modifiers)
+      followingWalker = new TestAnimal(
+        properties.copy(attack = NoAttack),
+        state.copy(
+          currentPosition = (0, 0),
+          path = Queue.empty
+        ),
+        modifiers.copy(attack = NoAttack)
+      ),
+      followedWalker = new TestAnimal(
+        properties.copy(attack = NoAttack),
+        state.copy(
+          currentPosition = (1, 0),
+          path = Queue[Point]((2, 0), (2, 1), (2, 2)),
+          mode = MovementMode.Advancing
+        ),
+        modifiers.copy(attack = NoAttack)
+      ) {
+        override protected def createBehaviour(): BaseWalker = new BaseWalker {
+          override protected def behaviour: Behaviour = advancing(
+            mode = MovementMode.Advancing,
+            destination = DestinationPoint((2, 2)),
+            destinationActions = Seq.empty
+          )
+        }
+      },
+      expectedFollowedPath = Queue[Point]((2, 0), (2, 1), (2, 2))
     )
   )
 }

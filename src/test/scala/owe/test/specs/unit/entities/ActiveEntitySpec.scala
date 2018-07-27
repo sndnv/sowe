@@ -253,6 +253,22 @@ class ActiveEntitySpec extends AkkaUnitSpec("ActiveEntitySpec") {
     fixture.testProbe.receiveOne(timeout.duration).asInstanceOf[ApplyMessages].messages should be(messages)
   }
 
+  it should "add entity instructions when idle" in { fixture =>
+    val instructions = Seq(
+      new ActiveEntity.Instruction {},
+      new ActiveEntity.Instruction {},
+      new ActiveEntity.Instruction {}
+    )
+
+    instructions.foreach { instruction =>
+      fixture.entityActor.tell(AddEntityInstruction(instruction), fixture.testProbe.ref)
+    }
+
+    fixture.entityActor.tell(ProcessEntityTick(tick = 0, mapData), fixture.testProbe.ref)
+    fixture.testProbe.receiveOne(timeout.duration).asInstanceOf[ApplyInstructions].instructions should be(instructions)
+    fixture.testProbe.expectMsgType[ApplyMessages]
+  }
+
   "Active Entity Resource Data" should "update its state and modifiers" in { _ =>
     val data = ResourceData(
       properties = entityProperties,
@@ -333,6 +349,7 @@ class ActiveEntitySpec extends AkkaUnitSpec("ActiveEntitySpec") {
     )
 
     val walkerState = Walker.State(
+      currentPosition = Point(0, 1),
       currentLife = Life(100),
       distanceCovered = Distance(0),
       commodities = Walker.NoCommodities,

@@ -118,7 +118,7 @@ class QueryOpsSpec extends AsyncUnitSpec {
     } yield {
       missingEntityResult should be(Queue.empty[Point])
       invalidDestinationResult should be(Queue.empty[Point])
-      successfulResult should be(Queue[Point]((0, 1), (1, 0), (2, 1), (2, 2)))
+      successfulResult should be(Queue[Point]((1, 0), (2, 1), (2, 2)))
     }
   }
 

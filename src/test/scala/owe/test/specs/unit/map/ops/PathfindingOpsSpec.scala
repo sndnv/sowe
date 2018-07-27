@@ -74,7 +74,7 @@ class PathfindingOpsSpec extends AsyncUnitSpec {
       validPath <- fixture.ops.generateAdvancePath(fixture.grid, (0, 1), (2, 2))
     } yield {
       invalidPath should be(Queue.empty[Point])
-      validPath should be(Queue[Point]((0, 1), (1, 0), (2, 1), (2, 2)))
+      validPath should be(Queue[Point]((1, 0), (2, 1), (2, 2)))
     }
   }
 

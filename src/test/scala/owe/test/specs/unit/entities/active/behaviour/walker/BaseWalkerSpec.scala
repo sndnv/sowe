@@ -1,8 +1,13 @@
 package owe.test.specs.unit.entities.active.behaviour.walker
 
+import scala.collection.immutable.Queue
+import scala.concurrent.Future
+import scala.concurrent.duration._
+
 import akka.actor.Props
 import akka.testkit.TestProbe
 import org.scalatest.Outcome
+import owe.entities.ActiveEntity
 import owe.entities.ActiveEntity.WalkerData
 import owe.entities.ActiveEntityActor._
 import owe.entities.Entity.ProcessCommodities
@@ -11,16 +16,12 @@ import owe.entities.active.Walker._
 import owe.entities.active.attributes._
 import owe.entities.active.behaviour.walker.BaseWalker
 import owe.entities.active.behaviour.walker.BaseWalker._
-import owe.map.GameMap.{AttackEntity, DestroyEntity, ForwardExchangeMessage, MoveEntity}
+import owe.map.GameMap._
 import owe.map.grid.Point
 import owe.production.Commodity
 import owe.production.Exchange.UpdateCommodityState
 import owe.test.specs.unit.AkkaUnitSpec
 import owe.test.specs.unit.entities.active.behaviour.{Fixtures, WalkerParentEntity}
-
-import scala.collection.immutable.Queue
-import scala.concurrent.Future
-import scala.concurrent.duration._
 
 class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
   case class FixtureParam()
@@ -40,14 +41,20 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
       )
     )
 
+    val walkerData = WalkerData(
+      Fixtures.Walker.properties,
+      Fixtures.Walker.state,
+      Fixtures.Walker.modifiers,
+      Fixtures.MockRefs.walker
+    )
+
+    // should process instructions
+    parentEntity ! ApplyInstructions(walkerData, instructions = Seq(new ActiveEntity.Instruction {}))
+    expectMsg(InstructionsApplied())
+
     // should process messages
     parentEntity ! ApplyMessages(
-      entity = WalkerData(
-        Fixtures.Walker.properties,
-        Fixtures.Walker.state,
-        Fixtures.Walker.modifiers,
-        Fixtures.MockRefs.walker
-      ),
+      entity = walkerData,
       messages = Seq(
         ProcessCommodities(Seq((Commodity("TestCommodity"), Commodity.Amount(10))))
       )
@@ -75,7 +82,7 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
       )
     )
 
-    val damage = receiveOne(max = 3.seconds).asInstanceOf[ForwardMessage] match {
+    val damage = receiveOne(max = 3.seconds) match {
       case ForwardMessage(attack: AttackEntity) => attack.damage
       case message                              => fail(s"Unexpected message received: [$message]")
     }
@@ -144,14 +151,20 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
       )
     )
 
+    val walkerData = WalkerData(
+      Fixtures.Walker.properties,
+      Fixtures.Walker.state,
+      Fixtures.Walker.modifiers,
+      Fixtures.MockRefs.walker
+    )
+
+    // should process instructions
+    parentEntity ! ApplyInstructions(walkerData, instructions = Seq(new ActiveEntity.Instruction {}))
+    expectMsg(InstructionsApplied())
+
     // should process messages
     parentEntity ! ApplyMessages(
-      entity = WalkerData(
-        Fixtures.Walker.properties,
-        Fixtures.Walker.state,
-        Fixtures.Walker.modifiers,
-        Fixtures.MockRefs.walker
-      ),
+      entity = walkerData,
       messages = Seq(
         ProcessCommodities(Seq((Commodity("TestCommodity"), Commodity.Amount(10))))
       )
@@ -223,7 +236,7 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
       )
     )
 
-    val damage = receiveOne(max = 3.seconds).asInstanceOf[ForwardMessage] match {
+    val damage = receiveOne(max = 3.seconds) match {
       case ForwardMessage(attack: AttackEntity) => attack.damage
       case message                              => fail(s"Unexpected message received: [$message]")
     }
@@ -251,14 +264,20 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
       )
     )
 
+    val walkerData = WalkerData(
+      Fixtures.Walker.properties,
+      Fixtures.Walker.state,
+      Fixtures.Walker.modifiers,
+      Fixtures.MockRefs.walker
+    )
+
+    // should process instructions
+    parentEntity ! ApplyInstructions(walkerData, instructions = Seq(new ActiveEntity.Instruction {}))
+    expectMsg(InstructionsApplied())
+
     // should process messages
     parentEntity ! ApplyMessages(
-      entity = WalkerData(
-        Fixtures.Walker.properties,
-        Fixtures.Walker.state,
-        Fixtures.Walker.modifiers,
-        Fixtures.MockRefs.walker
-      ),
+      entity = walkerData,
       messages = Seq(
         ProcessCommodities(Seq((Commodity("TestCommodity"), Commodity.Amount(10))))
       )
@@ -287,6 +306,7 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
         traversalMode = TraversalMode.OnLand
       ),
       state = State(
+        currentPosition = Point(0, 0),
         currentLife = Life(100),
         distanceCovered = Distance(0),
         commodities = NoCommodities,
@@ -452,7 +472,7 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
       )
     )
 
-    val damage = receiveOne(max = 3.seconds).asInstanceOf[ForwardMessage] match {
+    val damage = receiveOne(max = 3.seconds) match {
       case ForwardMessage(attack: AttackEntity) => attack.damage
       case message                              => fail(s"Unexpected message received: [$message]")
     }
@@ -516,14 +536,20 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
       )
     )
 
+    val walkerData = WalkerData(
+      Fixtures.Walker.properties,
+      Fixtures.Walker.state,
+      Fixtures.Walker.modifiers,
+      Fixtures.MockRefs.walker
+    )
+
+    // should process instructions
+    parentEntity ! ApplyInstructions(walkerData, instructions = Seq(new ActiveEntity.Instruction {}))
+    expectMsg(InstructionsApplied())
+
     // should process messages
     parentEntity ! ApplyMessages(
-      entity = WalkerData(
-        Fixtures.Walker.properties,
-        Fixtures.Walker.state,
-        Fixtures.Walker.modifiers,
-        Fixtures.MockRefs.walker
-      ),
+      entity = walkerData,
       messages = Seq(
         ProcessCommodities(Seq((Commodity("TestCommodity"), Commodity.Amount(10))))
       )
@@ -552,6 +578,7 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
         traversalMode = TraversalMode.OnLand
       ),
       state = State(
+        currentPosition = Point(1, 1),
         currentLife = Life(100),
         distanceCovered = Distance(0),
         commodities = NoCommodities,
@@ -623,8 +650,18 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
     )
 
     val updatedStateGoingHome = updatedStateWithMovement.copy(
-      path = Queue(Point(1, 0), Point(2, 0), Point(2, 1), Point(1, 1), Point(1, 1)),
+      distanceCovered = Distance(2),
+      path = Queue(Point(2, 0), Point(2, 1), Point(1, 1)),
       mode = MovementMode.Returning
+    )
+
+    expectMsg(
+      ForwardMessage(
+        MoveEntity(
+          advancingWalkerData.id,
+          Point(1, 0)
+        )
+      )
     )
 
     expectMsg(
@@ -650,14 +687,20 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
       )
     )
 
+    val walkerData = WalkerData(
+      Fixtures.Walker.properties,
+      Fixtures.Walker.state,
+      Fixtures.Walker.modifiers,
+      Fixtures.MockRefs.walker
+    )
+
+    // should process instructions
+    parentEntity ! ApplyInstructions(walkerData, instructions = Seq(new ActiveEntity.Instruction {}))
+    expectMsg(InstructionsApplied())
+
     // should process messages
     parentEntity ! ApplyMessages(
-      entity = WalkerData(
-        Fixtures.Walker.properties,
-        Fixtures.Walker.state,
-        Fixtures.Walker.modifiers,
-        Fixtures.MockRefs.walker
-      ),
+      entity = walkerData,
       messages = Seq(
         ProcessCommodities(Seq((Commodity("TestCommodity"), Commodity.Amount(10))))
       )
@@ -686,6 +729,7 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
         traversalMode = TraversalMode.OnLand
       ),
       state = State(
+        currentPosition = Point(1, 1),
         currentLife = Life(100),
         distanceCovered = Distance(0),
         commodities = NoCommodities,
@@ -707,8 +751,18 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
     )
 
     val updatedStateGoingToEntity = advancingWalkerData.state.copy(
-      path = Queue(Point(1, 0), Point(2, 0), Point(2, 1), Point(1, 1), Point(0, 1)),
+      distanceCovered = Distance(1),
+      path = Queue(Point(2, 0), Point(2, 1), Point(1, 1), Point(0, 1)),
       mode = MovementMode.Advancing
+    )
+
+    expectMsg(
+      ForwardMessage(
+        MoveEntity(
+          advancingWalkerData.id,
+          Point(1, 0)
+        )
+      )
     )
 
     expectMsg(
@@ -717,10 +771,19 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
       )
     )
 
-    // is in advancing state; cannot proceed on path
+    // is in advancing state; cannot proceed on path; should generate new and proceed
     parentEntity ! ProcessBehaviourTick(
       map = Fixtures.defaultMapData.copy(position = Point(1, 1)),
       entity = advancingWalkerData.copy(state = advancingWalkerData.state.copy(path = Queue(Point(0, 0))))
+    )
+
+    expectMsg(
+      ForwardMessage(
+        MoveEntity(
+          advancingWalkerData.id,
+          Point(1, 0)
+        )
+      )
     )
 
     expectMsg(
@@ -746,14 +809,20 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
       )
     )
 
+    val walkerData = WalkerData(
+      Fixtures.Walker.properties,
+      Fixtures.Walker.state,
+      Fixtures.Walker.modifiers,
+      Fixtures.MockRefs.walker
+    )
+
+    // should process instructions
+    parentEntity ! ApplyInstructions(walkerData, instructions = Seq(new ActiveEntity.Instruction {}))
+    expectMsg(InstructionsApplied())
+
     // should process messages
     parentEntity ! ApplyMessages(
-      entity = WalkerData(
-        Fixtures.Walker.properties,
-        Fixtures.Walker.state,
-        Fixtures.Walker.modifiers,
-        Fixtures.MockRefs.walker
-      ),
+      entity = walkerData,
       messages = Seq(
         ProcessCommodities(Seq((Commodity("TestCommodity"), Commodity.Amount(10))))
       )
@@ -782,6 +851,7 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
         traversalMode = TraversalMode.OnLand
       ),
       state = State(
+        currentPosition = Point(1, 1),
         currentLife = Life(100),
         distanceCovered = Distance(0),
         commodities = NoCommodities,
@@ -838,14 +908,20 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
       )
     )
 
+    val walkerData = WalkerData(
+      Fixtures.Walker.properties,
+      Fixtures.Walker.state,
+      Fixtures.Walker.modifiers,
+      Fixtures.MockRefs.walker
+    )
+
+    // should process instructions
+    parentEntity ! ApplyInstructions(walkerData, instructions = Seq(new ActiveEntity.Instruction {}))
+    expectMsg(InstructionsApplied())
+
     // should process messages
     parentEntity ! ApplyMessages(
-      entity = WalkerData(
-        Fixtures.Walker.properties,
-        Fixtures.Walker.state,
-        Fixtures.Walker.modifiers,
-        Fixtures.MockRefs.walker
-      ),
+      entity = walkerData,
       messages = Seq(
         ProcessCommodities(Seq((Commodity("TestCommodity"), Commodity.Amount(10))))
       )
@@ -874,6 +950,7 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
         traversalMode = TraversalMode.OnLand
       ),
       state = State(
+        currentPosition = Point(1, 1),
         currentLife = Life(100),
         distanceCovered = Distance(0),
         commodities = NoCommodities,
@@ -1114,14 +1191,20 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
       ForwardMessage(DestroyEntity(idlingWalkerData.id))
     )
 
+    val walkerData = WalkerData(
+      Fixtures.Walker.properties,
+      Fixtures.Walker.state,
+      Fixtures.Walker.modifiers,
+      Fixtures.MockRefs.walker
+    )
+
+    // should ignore instructions
+    parentEntity ! ApplyInstructions(walkerData, instructions = Seq(new ActiveEntity.Instruction {}))
+    expectMsg(InstructionsApplied())
+
     // should ignore messages
     parentEntity ! ApplyMessages(
-      entity = WalkerData(
-        Fixtures.Walker.properties,
-        Fixtures.Walker.state,
-        Fixtures.Walker.modifiers,
-        Fixtures.MockRefs.walker
-      ),
+      entity = walkerData,
       messages = Seq(
         ProcessCommodities(Seq((Commodity("TestCommodity"), Commodity.Amount(10))))
       )
@@ -1147,7 +1230,75 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
   }
 
   it should "accept player instructions" in { _ =>
-    fail("Not Implemented", new NotImplementedError())
+    val parentEntity = system.actorOf(
+      WalkerParentEntity.props(
+        testActor,
+        Props(
+          new BaseWalker {
+            override protected def behaviour: Behaviour = idling()
+          }
+        )
+      )
+    )
+
+    val walkerData = WalkerData(
+      Fixtures.Walker.properties,
+      Fixtures.Walker.state,
+      Fixtures.Walker.modifiers,
+      Fixtures.MockRefs.walker
+    )
+
+    // should process instructions
+    parentEntity ! ApplyInstructions(
+      walkerData,
+      instructions = Seq(
+        DoTransition(Advance(destination = DestinationPoint(2, 2), destinationActions = Seq.empty))
+      )
+    )
+    expectMsg(InstructionsApplied())
+
+    // should process messages
+    parentEntity ! ApplyMessages(
+      entity = walkerData,
+      messages = Seq(
+        ProcessCommodities(Seq((Commodity("TestCommodity"), Commodity.Amount(10))))
+      )
+    )
+
+    expectMsg(
+      MessagesApplied(
+        Fixtures.Walker.state.copy(
+          commodities = CommoditiesState(
+            available = Map(Commodity("TestCommodity") -> Commodity.Amount(10)),
+            limits = Map(Commodity("TestCommodity") -> Commodity.Amount(100))
+          )
+        )
+      )
+    )
+
+    // is in idling state; cannot attack and should remain idling
+    parentEntity ! ProcessBehaviourTick(
+      map = Fixtures.defaultMapData,
+      entity = WalkerData(
+        Fixtures.Walker.properties.copy(attack = NoAttack),
+        Fixtures.Walker.state,
+        Fixtures.Walker.modifiers,
+        Fixtures.MockRefs.walker
+      )
+    )
+
+    receiveOne(max = 3.seconds) match {
+      case ForwardMessage(MoveEntity(_, cell)) => cell should be(Point(2, 2))
+      case message                             => fail(s"Unexpected message received: [$message]")
+    }
+
+    expectMsg(
+      BehaviourTickProcessed(
+        Fixtures.Walker.state.copy(
+          distanceCovered = Distance(1)
+        )
+      )
+    )
   }
 
   it should "not pass through roadblocks when appropriate" in { _ =>

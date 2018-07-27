@@ -209,6 +209,7 @@ object Fixtures {
     )
 
     val state: State = State(
+      currentPosition = Point(0, 1),
       currentLife = Life(100),
       distanceCovered = Distance(0),
       commodities = CommoditiesState(

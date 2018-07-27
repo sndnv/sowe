@@ -13,8 +13,9 @@ import owe.production.Commodity
 import owe.production.Exchange.{CommodityAvailable, UpdateCommodityState}
 import owe.test.specs.unit.AkkaUnitSpec
 import owe.test.specs.unit.entities.active.behaviour.{Fixtures, ForwardingParentEntity}
-
 import scala.concurrent.duration._
+
+import owe.entities.ActiveEntity
 
 class ProducingResourceSpec extends AkkaUnitSpec("ProducingResourceSpec") {
 
@@ -31,14 +32,37 @@ class ProducingResourceSpec extends AkkaUnitSpec("ProducingResourceSpec") {
     )
 
   "A ProducingResource" should "produce commodities" in { fixture =>
+    val resourceData = ResourceData(
+      Fixtures.Resource.properties,
+      Fixtures.Resource.state,
+      Fixtures.Resource.modifiers,
+      Fixtures.MockRefs.resource
+    )
+
+    // should process instructions
+    fixture.parentEntity ! ApplyInstructions(resourceData, instructions = Seq(new ActiveEntity.Instruction {}))
+    expectMsg(InstructionsApplied())
+
+    // should process messages
+    fixture.parentEntity ! ApplyMessages(
+      entity = resourceData,
+      messages = Seq(
+        ProcessCommodities(Seq((Fixtures.Resource.properties.commodity, Commodity.Amount(-10))))
+      )
+    )
+
+    // should process messages
+    expectMsg(
+      MessagesApplied(
+        Fixtures.Resource.state.copy(
+          currentAmount = Fixtures.Resource.state.currentAmount - Commodity.Amount(10)
+        )
+      )
+    )
+
     fixture.parentEntity ! ProcessBehaviourTick(
       map = Fixtures.defaultMapData,
-      entity = ResourceData(
-        Fixtures.Resource.properties,
-        Fixtures.Resource.state,
-        Fixtures.Resource.modifiers,
-        Fixtures.MockRefs.resource
-      )
+      entity = resourceData
     )
 
     expectMsg(

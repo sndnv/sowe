@@ -2,10 +2,11 @@ package owe.test.specs.unit.entities.active.behaviour.walker.transformations
 
 import org.scalatest.FutureOutcome
 import owe.entities.ActiveEntity.WalkerData
-import owe.entities.Entity.{ProcessAttack, ProcessCommodities}
+import owe.entities.Entity.{ProcessAttack, ProcessCommodities, ProcessMovement}
 import owe.entities.active.Walker.CommoditiesState
 import owe.entities.active.behaviour.walker.transformations.ProcessedUpdateMessages
 import owe.entities.active.attributes.{AttackDamage, Life}
+import owe.map.grid.Point
 import owe.production.Commodity
 import owe.test.specs.unit.AsyncUnitSpec
 import owe.test.specs.unit.entities.active.behaviour.Fixtures
@@ -26,7 +27,23 @@ class ProcessedUpdateMessagesSpec extends AsyncUnitSpec {
     withFixture(test.toNoArgAsyncTest(FixtureParam(transformer, walker)))
   }
 
-  "A ProcessedUpdateMessages transformation" should "handle incoming and outgoing commodities" in { fixture =>
+  "A ProcessedUpdateMessages transformation" should "handle movement updates" in { fixture =>
+    for {
+      noUpdateState <- fixture.transformer.withProcessedUpdateMessages(
+        fixture.walker,
+        pendingMessages = Seq.empty
+      )
+      updatedPositionState <- fixture.transformer.withProcessedUpdateMessages(
+        fixture.walker,
+        pendingMessages = Seq(ProcessMovement(updatedPosition = Point(2, 1)))
+      )
+    } yield {
+      noUpdateState should be(fixture.walker.state)
+      updatedPositionState should be(fixture.walker.state.copy(currentPosition = Point(2, 1)))
+    }
+  }
+
+  it should "handle incoming and outgoing commodities" in { fixture =>
     val commoditiesState = fixture.walker.state.commodities.asInstanceOf[CommoditiesState]
 
     val walkerWitMoreAvailableCommodities = fixture.walker.copy(

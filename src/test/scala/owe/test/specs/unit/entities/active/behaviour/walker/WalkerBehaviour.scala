@@ -1,18 +1,22 @@
 package owe.test.specs.unit.entities.active.behaviour.walker
 
+import scala.collection.immutable.Queue
+
 import akka.actor.Props
 import akka.testkit.TestProbe
 import akka.util.Timeout
 import owe.entities.active.Walker
-import owe.entities.active.Walker.WalkerRef
+import owe.entities.active.Walker.{MovementMode, WalkerRef}
 import owe.events.Event
 import owe.map.GameMap.CreateEntity
 import owe.map.grid.Point
 import owe.test.specs.unit.AkkaUnitSpec
 import owe.test.specs.unit.map.TestGameMap
 import owe.test.specs.unit.map.TestGameMap.StartBehaviour
-
 import scala.concurrent.duration._
+
+import owe.entities.ActiveEntityActor.{AddEntityInstruction, ApplyInstructions}
+import owe.entities.active.behaviour.walker.BaseWalker.{Advance, DestinationEntity, DoTransition, GoToEntity}
 
 trait WalkerBehaviour { _: AkkaUnitSpec =>
   private implicit val timeout: Timeout = 5.seconds
@@ -104,9 +108,82 @@ trait WalkerBehaviour { _: AkkaUnitSpec =>
       moved should be(1)
     }
 
-  def followingWalker(walker: Walker): Unit =
-    it should "follow another walker" in { _ =>
-      fail("Not Implemented", new NotImplementedError())
+  def followingWalker(
+    followingWalker: Walker,
+    followedWalker: Walker,
+    expectedFollowedPath: Queue[Point]
+  ): Unit =
+    followingBehaviour(
+      behave = "follow another walker",
+      followingWalker,
+      followedWalker,
+      expectedFollowedPath
+    )
+
+  def followedWalker(
+    followedWalker: Walker,
+    followingWalker: Walker,
+    expectedFollowedPath: Queue[Point]
+  ): Unit =
+    followingBehaviour(
+      behave = "be followed by another walker",
+      followingWalker,
+      followedWalker,
+      expectedFollowedPath
+    )
+
+  private def followingBehaviour(
+    behave: String,
+    followingWalker: Walker,
+    followedWalker: Walker,
+    expectedFollowedPath: Queue[Point]
+  ): Unit =
+    it should behave in { _ =>
+      val testProbe = TestProbe()
+      val map = system.actorOf(
+        Props(new TestGameMap(testProbe.ref, StartBehaviour.Idle, interval = 500.millis))
+      )
+
+      val followingWalkerPoint = Point(0, 0)
+      val followedWalkerPoint = Point(1, 0)
+
+      map.tell(CreateEntity(followingWalker, followingWalkerPoint), testProbe.ref)
+      testProbe.expectMsg(Event(Event.System.EntityCreated, Some(followingWalkerPoint)))
+      val followingWalkerRef = testProbe.receiveOne(timeout.duration).asInstanceOf[WalkerRef]
+
+      map.tell(CreateEntity(followedWalker, followedWalkerPoint), testProbe.ref)
+      testProbe.expectMsg(Event(Event.System.EntityCreated, Some(followedWalkerPoint)))
+      val followedWalkerRef = testProbe.receiveOne(timeout.duration).asInstanceOf[WalkerRef]
+
+      followingWalkerRef ! AddEntityInstruction(
+        DoTransition(
+          Advance(destination = DestinationEntity(followedWalkerRef), destinationActions = Seq.empty)
+        )
+      )
+
+      val (ticks, positions) = testProbe
+        .receiveWhile(timeout.duration) {
+          case Event(Event.System.TickProcessed, None)   => (1, None)
+          case Event(Event.System.EntityMoved, position) => (0, position)
+          case _                                         => (0, None)
+        }
+        .foldLeft((0, Seq.empty[Point])) {
+          case ((totalTicks, allPositions), (currentTick, currentPosition)) =>
+            (
+              totalTicks + currentTick,
+              currentPosition match {
+                case Some(position) => allPositions :+ position
+                case None           => allPositions
+              }
+            )
+        }
+
+      ticks should be > 0
+
+      val expectedFollowingPath = followedWalkerPoint +: expectedFollowedPath
+
+      positions.size should be(expectedFollowingPath.size + expectedFollowedPath.size)
+      (positions should contain).theSameElementsAs(expectedFollowingPath ++ expectedFollowedPath)
     }
 
   def advancingWalker(walker: Walker, firstDestination: Point, secondDestination: Point): Unit =

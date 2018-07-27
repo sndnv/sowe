@@ -1,8 +1,10 @@
 package owe.entities.active.behaviour.walker
 
+import scala.collection.immutable.Queue
+import scala.concurrent.Future
 import akka.actor.Actor.Receive
 import owe.entities.ActiveEntity
-import owe.entities.ActiveEntity._
+import owe.entities.ActiveEntity.{Instruction, _}
 import owe.entities.ActiveEntityActor._
 import owe.entities.active.Resource.ResourceRef
 import owe.entities.active.Structure.StructureRef
@@ -19,13 +21,13 @@ import owe.entities.active.behaviour.{BaseBehaviour, UpdateExchange}
 import owe.entities.passive.Doodad.DoodadRef
 import owe.entities.passive.Road.RoadRef
 import owe.entities.passive.Roadblock.RoadblockRef
+import owe.map.Cell.Availability
 import owe.map.GameMap._
 import owe.map.MapEntity
 import owe.map.grid.Point
 import owe.production.Commodity
 
-import scala.collection.immutable.Queue
-import scala.concurrent.Future
+import scala.annotation.tailrec
 
 trait BaseWalker
     extends BaseBehaviour
@@ -40,6 +42,10 @@ trait BaseWalker
     WalkerRef(context.parent)
 
   final protected def attacking(nextBehaviour: () => Behaviour): Behaviour = {
+    case ApplyInstructions(walker: WalkerData, instructions) =>
+      log.debug("Applying [{}] instructions: [{}]", instructions.size, instructions)
+      applyInstructions(walker, instructions)
+
     case ApplyMessages(walker: WalkerData, messages) =>
       log.debug("Applying [{}] messages: [{}]", messages.size, messages)
 
@@ -67,6 +73,10 @@ trait BaseWalker
   }
 
   final protected def idling(): Behaviour = {
+    case ApplyInstructions(walker: WalkerData, instructions) =>
+      log.debug("Applying [{}] instructions: [{}]", instructions.size, instructions)
+      applyInstructions(walker, instructions)
+
     case ApplyMessages(walker: WalkerData, messages) =>
       log.debug("Applying [{}] messages: [{}]", messages.size, messages)
 
@@ -98,6 +108,10 @@ trait BaseWalker
   }
 
   final protected def roaming(roamAction: Action): Behaviour = {
+    case ApplyInstructions(walker: WalkerData, instructions) =>
+      log.debug("Applying [{}] instructions: [{}]", instructions.size, instructions)
+      applyInstructions(walker, instructions)
+
     case ApplyMessages(walker: WalkerData, messages) =>
       log.debug("Applying [{}] messages: [{}]", messages.size, messages)
 
@@ -128,7 +142,7 @@ trait BaseWalker
             }
 
             if (canRoam && maxDistance > distanceCovered) {
-              nextPosition(walker)
+              nextPosition(walker.state.path, walker)
                 .foreach { nextPositionOpt =>
                   val updates: Future[Seq[WalkerData => Future[State]]] = nextPositionOpt match {
                     case Some((nextPosition, remainingPath)) =>
@@ -181,6 +195,10 @@ trait BaseWalker
     destination: Destination,
     destinationActions: Seq[Action]
   ): Behaviour = {
+    case ApplyInstructions(walker: WalkerData, instructions) =>
+      log.debug("Applying [{}] instructions: [{}]", instructions.size, instructions)
+      applyInstructions(walker, instructions)
+
     case ApplyMessages(walker: WalkerData, messages) =>
       log.debug("Applying [{}] messages: [{}]", messages.size, messages)
 
@@ -202,58 +220,70 @@ trait BaseWalker
         walker
       )
 
-      val actualDestination: Future[Point] = destination match {
-        case DestinationPoint(point)     => Future.successful(point)
-        case DestinationEntity(entityID) => getEntityData(entityID).map(_.properties.homePosition)
-        case Home                        => Future.successful(walker.properties.homePosition)
-      }
+      def getMovementUpdates(
+        actualDestination: Point,
+        currentPath: Queue[Point],
+        isRetry: Boolean = false
+      ): Future[Seq[WalkerData => Future[State]]] =
+        nextPosition(currentPath, walker).flatMap {
+          case Some((nextPosition, remainingPath)) =>
+            moveEntity(walker.id, nextPosition)
+            Future.successful(
+              Seq(
+                withProcessedMovement _,
+                withProcessedPath(_, remainingPath),
+                withMovementMode(_, mode)
+              )
+            )
 
-      actualDestination
+          case None if !isRetry =>
+            //no free path; can't move
+            calculateAdvancePath(walker.id, actualDestination).flatMap { newAdvancePath =>
+              if (newAdvancePath.nonEmpty) {
+                getMovementUpdates(
+                  actualDestination,
+                  newAdvancePath,
+                  isRetry = true
+                )
+              } else {
+                log.error("Failed to generate new advance path for walker [{}]", walker.id)
+                Future.successful(
+                  Seq(
+                    withMovementMode(_, MovementMode.Idling)
+                  )
+                )
+              }
+            }
+
+          case _ =>
+            log.error("Failed to find passable advance path for walker [{}]", walker.id)
+            Future.successful(
+              Seq(
+                withMovementMode(_, MovementMode.Idling)
+              )
+            )
+        }
+
+      getActualDestination(walker, destination)
         .foreach { actualDestination =>
           if (map.position == actualDestination) {
             self ! Become(() => acting(destinationActions), walker)
           } else {
-            nextPosition(walker).foreach { nextPositionOpt =>
-              val updates: Future[Seq[WalkerData => Future[State]]] = nextPositionOpt match {
-                case Some((nextPosition, remainingPath)) =>
-                  moveEntity(walker.id, nextPosition)
-                  Future.successful(
-                    Seq(
-                      withProcessedMovement,
-                      withProcessedPath(_, remainingPath),
-                      withMovementMode(_, mode)
-                    )
-                  )
-
-                case None =>
-                  //no free path; can't move
-                  calculateAdvancePath(walker.id, actualDestination).map { newAdvancePath =>
-                    if (newAdvancePath.nonEmpty) {
-                      Seq(
-                        withProcessedPath(_, newAdvancePath),
-                        withMovementMode(_, mode)
-                      )
-                    } else {
-                      log.error("Failed to generate new advance path for walker [{}]", walker.id)
-                      Seq(
-                        withMovementMode(_, MovementMode.Idling)
-                      )
-                    }
-                  }
-              }
-
-              updates.foreach { updates =>
-                withAsyncUpdates(walker, updates)
-                  .foreach { updatedData =>
-                    self ! Become(() => advancing(mode, destination, destinationActions), updatedData)
-                  }
-              }
+            getMovementUpdates(actualDestination, walker.state.path).foreach { updates =>
+              withAsyncUpdates(walker, updates)
+                .foreach { updatedData =>
+                  self ! Become(() => advancing(mode, destination, destinationActions), updatedData)
+                }
             }
           }
         }
   }
 
   final protected def acting(actions: Seq[Action]): Behaviour = {
+    case ApplyInstructions(walker: WalkerData, instructions) =>
+      log.debug("Applying [{}] instructions: [{}]", instructions.size, instructions)
+      applyInstructions(walker, instructions)
+
     case ApplyMessages(walker: WalkerData, messages) =>
       log.debug("Applying [{}] messages: [{}]", messages.size, messages)
 
@@ -314,6 +344,9 @@ trait BaseWalker
 
                 case Idle() =>
                   self ! Become(() => idling(), walker)
+
+                case Advance(destination, destinationActions) =>
+                  self ! Become(() => advancing(MovementMode.Advancing, destination, destinationActions), walker)
               }
 
             case NoAction =>
@@ -332,8 +365,55 @@ trait BaseWalker
       }
   }
 
+  protected def getActualDestination(walker: WalkerData, destination: Destination): Future[Point] =
+    destination match {
+      case DestinationPoint(point) =>
+        Future.successful(point)
+
+      case DestinationEntity(entityID) =>
+        getEntityData(entityID).flatMap {
+          case destinationWalker: WalkerData =>
+            Future.successful(destinationWalker.state.currentPosition)
+
+          case destinationResource: ResourceData =>
+            Future.successful(destinationResource.properties.homePosition)
+
+          case destinationStructure: StructureData =>
+            val adjacentPoint = walker.properties.traversalMode match {
+              case TraversalMode.RoadRequired =>
+                getAdjacentRoad(entityID)
+
+              case TraversalMode.RoadPreferred =>
+                getAdjacentRoad(entityID).flatMap {
+                  case Some(point) => Future.successful(Some(point))
+                  case None        => getAdjacentPoint(entityID, Availability.Passable)
+                }
+
+              case TraversalMode.OnLand =>
+                getAdjacentPoint(entityID, Availability.Passable)
+
+              case TraversalMode.OnWater =>
+                ??? // TODO - implement
+            }
+
+            adjacentPoint.map {
+              case Some(point) => point
+              case None        => destinationStructure.properties.homePosition
+            }
+        }
+
+      case Home =>
+        Future.successful(walker.properties.homePosition)
+    }
+
   protected def getEntityData(entityID: ActiveEntityRef): Future[Data] =
     (parentEntity ? ForwardMessage(GetEntity(entityID))).mapTo[Data]
+
+  protected def getAdjacentRoad(entityID: ActiveEntityRef): Future[Option[Point]] =
+    (parentEntity ? ForwardMessage(GetAdjacentRoad(entityID))).mapTo[Option[Point]]
+
+  protected def getAdjacentPoint(entityID: ActiveEntityRef, minimumAvailability: Availability): Future[Option[Point]] =
+    (parentEntity ? ForwardMessage(GetAdjacentPoint(entityID, minimumAvailability))).mapTo[Option[Point]]
 
   protected def getNeighboursData(
     walkerId: WalkerRef,
@@ -348,6 +428,10 @@ trait BaseWalker
     parentEntity ! ForwardMessage(DistributeCommodities(entityID, commodities))
 
   protected def destroying(): Behaviour = {
+    case ApplyInstructions(_, _) =>
+      log.debug("Entity [{}] waiting to be destroyed; instructions application ignored", self)
+      parentEntity ! InstructionsApplied()
+
     case ApplyMessages(walker: WalkerData, _) =>
       log.debug("Entity [{}] waiting to be destroyed; messages application ignored", self)
       parentEntity ! MessagesApplied(walker.state)
@@ -374,6 +458,39 @@ trait BaseWalker
 
       parentEntity ! ForwardMessage(DestroyEntity(walker.id))
       context.become(destroying())
+    }
+
+  @tailrec
+  private def applyInstructions(walker: WalkerData, instructions: Seq[Instruction]): Unit =
+    instructions match {
+      case instruction :: remainingInstructions =>
+        instruction match {
+          case DoTransition(transition) =>
+            val transitionBehaviour = transition match {
+              case Idle() =>
+                () =>
+                  idling()
+
+              case Roam(roamAction) =>
+                () =>
+                  roaming(roamAction)
+
+              case Advance(destination, destinationActions) =>
+                () =>
+                  advancing(MovementMode.Advancing, destination, destinationActions)
+            }
+
+            remainingInstructions.foreach(i => parentEntity ! AddEntityInstruction(i))
+            parentEntity ! InstructionsApplied()
+            become(transitionBehaviour, walker)
+
+          case _ =>
+            log.warning("Instruction [{}] is not supported", instruction)
+            applyInstructions(walker, remainingInstructions)
+        }
+
+      case _ =>
+        parentEntity ! InstructionsApplied()
     }
 
   private def attackEntity(id: ActiveEntityRef, damage: AttackDamage): Unit =
@@ -405,9 +522,8 @@ trait BaseWalker
   private def calculateRoamingPath(walkerId: WalkerRef, length: Distance): Future[Queue[Point]] =
     (parentEntity ? ForwardMessage(GetRoamingPath(walkerId, length))).mapTo[Queue[Point]]
 
-  private def nextPosition(walker: WalkerData): Future[Option[(Point, Queue[Point])]] = {
-    val cellsTravelled = cellsPerTick(walker)
-    val currentPath = walker.state.path
+  private def nextPosition(currentPath: Queue[Point], walker: WalkerData): Future[Option[(Point, Queue[Point])]] = {
+    val cellsTravelled = walker.modifiers.movementSpeed(walker.properties.movementSpeed).value
     val travelPath = currentPath.take(cellsTravelled)
 
     Future.sequence(travelPath.map(getEntitiesData)).map { entities =>
@@ -426,9 +542,6 @@ trait BaseWalker
       }
     }
   }
-
-  private def cellsPerTick(walker: WalkerData): Int =
-    walker.modifiers.movementSpeed(walker.properties.movementSpeed).value
 
   private def isPassable(mapEntity: MapEntity, entityData: Option[Data], walker: WalkerData): Boolean =
     mapEntity.entityRef match {
@@ -451,6 +564,9 @@ trait BaseWalker
 }
 
 object BaseWalker {
+  sealed trait Instruction extends ActiveEntity.Instruction
+  case class DoTransition(transition: Transition) extends Instruction
+
   sealed trait Action
   case object NoAction extends Action
   case class DoOperation(op: WalkerData => Future[State]) extends Action
@@ -462,6 +578,7 @@ object BaseWalker {
   sealed trait Transition extends Action
   case class Roam(roamAction: Action) extends Transition
   case class Idle() extends Transition
+  case class Advance(destination: Destination, destinationActions: Seq[Action]) extends Transition
 
   sealed trait Destination
   case object Home extends Destination

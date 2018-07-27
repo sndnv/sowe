@@ -1,7 +1,7 @@
 package owe.entities.active.behaviour.structure.farming
 
 import owe.entities.ActiveEntity.StructureData
-import owe.entities.ActiveEntityActor.{ApplyMessages, MessagesApplied, ProcessBehaviourTick}
+import owe.entities.ActiveEntityActor._
 import owe.entities.active.Structure.CommoditiesState
 import owe.entities.active.behaviour.UpdateExchange
 import owe.entities.active.behaviour.structure.BaseStructure.Become
@@ -26,6 +26,13 @@ trait FarmingStructure
   override protected def behaviour: Behaviour = farming()
 
   final protected def farming(): Behaviour = {
+    case ApplyInstructions(_, instructions) =>
+      log.debug("Applying [{}] instructions: [{}]", instructions.size, instructions)
+      instructions.foreach { instruction =>
+        log.warning("Instruction [{}] is not supported", instruction)
+      }
+      parentEntity ! InstructionsApplied()
+
     case ApplyMessages(structure: StructureData, messages) =>
       log.debug("Applying [{}] messages: [{}]", messages.size, messages)
 

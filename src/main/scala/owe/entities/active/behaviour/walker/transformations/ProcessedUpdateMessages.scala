@@ -2,9 +2,8 @@ package owe.entities.active.behaviour.walker.transformations
 
 import owe.entities.ActiveEntity.WalkerData
 import owe.entities.Entity
-import owe.entities.Entity.{ProcessAttack, ProcessCommodities}
+import owe.entities.Entity.{ProcessAttack, ProcessCommodities, ProcessMovement}
 import owe.entities.active.Walker.{CommoditiesState, NoCommodities, State}
-import owe.production.Commodity
 
 import scala.concurrent.Future
 
@@ -14,6 +13,11 @@ trait ProcessedUpdateMessages {
       pendingMessages.foldLeft(walker.state) {
         case (currentState, message) =>
           message match {
+            case ProcessMovement(updatedPosition) =>
+              currentState.copy(
+                currentPosition = updatedPosition
+              )
+
             case ProcessAttack(damage) =>
               currentState.copy(currentLife = damage(currentState.currentLife))
 

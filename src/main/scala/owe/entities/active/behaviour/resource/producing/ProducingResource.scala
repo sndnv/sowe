@@ -1,7 +1,7 @@
 package owe.entities.active.behaviour.resource.producing
 
 import owe.entities.ActiveEntity.ResourceData
-import owe.entities.ActiveEntityActor.{ApplyMessages, MessagesApplied, ProcessBehaviourTick}
+import owe.entities.ActiveEntityActor._
 import owe.entities.active.behaviour.UpdateExchange
 import owe.entities.active.behaviour.resource.BaseResource.Become
 import owe.entities.active.behaviour.resource.transformations.{ProcessedUpdateMessages, ReplenishedResources}
@@ -15,6 +15,14 @@ trait ProducingResource extends BaseResource with ProcessedUpdateMessages with R
   override protected def behaviour: Behaviour = producing()
 
   final protected def producing(): Behaviour = {
+    case ApplyInstructions(_, instructions) =>
+      log.error(
+        "Received [{}] instructions: [{}]; resource cannot process instructions",
+        instructions.size,
+        instructions
+      )
+      parentEntity ! InstructionsApplied()
+
     case ApplyMessages(resource: ResourceData, messages) =>
       log.debug("Applying [{}] messages: [{}]", messages.size, messages)
 

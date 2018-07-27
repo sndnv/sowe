@@ -13,14 +13,15 @@ import owe.entities.active.Structure.StructureRef
 import owe.entities.active.Walker.WalkerRef
 import owe.entities.active.attributes.{AttackDamage, Distance}
 import owe.events.Event
-import owe.map.Cell.{ActorRefTag, CellActorRef}
+import owe.map.Cell.{ActorRefTag, Availability, CellActorRef}
 import owe.map.grid.{Grid, Point}
 import owe.map.ops.Ops
 import owe.map.pathfinding.Search
 import owe.production.{Commodity, Exchange}
-
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
+
+import owe.entities.ActiveEntityActor.AddEntityMessage
 
 trait GameMap extends Actor with ActorLogging with Stash with Timers with Ops {
 
@@ -65,6 +66,14 @@ trait GameMap extends Actor with ActorLogging with Stash with Timers with Ops {
     case GetEntity(entityID) =>
       log.debug("Retrieving data for entity [{}]", entityID)
       getEntity(grid, entities, entityID).pipeTo(sender)
+
+    case GetAdjacentRoad(entityID) =>
+      log.debug("Retrieving adjacent road for entity [{}]", entityID)
+      findFirstAdjacentRoad(grid, entities, entityID).pipeTo(sender)
+
+    case GetAdjacentPoint(entityID, minimumAvailability) =>
+      log.debug("Retrieving adjacent point for entity [{}]", entityID)
+      findFirstAdjacentPoint(grid, entities, entityID, minimumAvailability).pipeTo(sender)
 
     case TickExpired(tick) =>
       log.error(
@@ -196,6 +205,7 @@ trait GameMap extends Actor with ActorLogging with Stash with Timers with Ops {
 
           case Right((event, mapEntity, from)) =>
             tracker ! event
+            entityID ! AddEntityMessage(ProcessMovement(updatedPosition = cell))
             self ! EntityUpdate.Move(mapEntity, from, to = cell)
         }
 
@@ -276,6 +286,8 @@ object GameMap {
   case class GetNeighbours(entityID: EntityRef, radius: Distance) extends Message
   case class GetEntities(point: Point) extends Message
   case class GetEntity(entityID: ActiveEntityRef) extends Message
+  case class GetAdjacentRoad(entityID: ActiveEntityRef) extends Message
+  case class GetAdjacentPoint(entityID: ActiveEntityRef, minimumAvailability: Availability) extends Message
   case class CreateEntity(entity: Entity, cell: Point) extends Message
   case class DestroyEntity(entityID: EntityRef) extends Message
   case class MoveEntity(entityID: EntityRef, cell: Point) extends Message

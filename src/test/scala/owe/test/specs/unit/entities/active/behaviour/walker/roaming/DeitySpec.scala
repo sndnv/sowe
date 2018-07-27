@@ -1,5 +1,7 @@
 package owe.test.specs.unit.entities.active.behaviour.walker.roaming
 
+import scala.collection.immutable.Queue
+
 import org.scalatest.Outcome
 import owe.effects.Effect
 import owe.entities.ActiveEntity.{ActiveEntityRef, Data, WalkerData}
@@ -81,7 +83,33 @@ class DeitySpec extends AkkaUnitSpec("DeitySpec") with WalkerBehaviour {
     )
   )
 
-  it should "be able to retrieve animals" in { _ =>
-    fail("Not Implemented", new NotImplementedError())
-  }
+  (it should behave).like(
+    followingWalker(
+      followedWalker = new TestDeity(
+        properties.copy(attack = NoAttack),
+        state.copy(
+          currentPosition = (1, 0),
+          path = Queue[Point]((2, 0), (2, 1), (2, 2))
+        ),
+        modifiers.copy(attack = NoAttack)
+      ) {
+        override protected def createBehaviour(): BaseWalker = new BaseWalker {
+          override protected def behaviour: Behaviour = advancing(
+            mode = MovementMode.Advancing,
+            destination = DestinationPoint((2, 2)),
+            destinationActions = Seq.empty
+          )
+        }
+      },
+      followingWalker = new TestDeity(
+        properties.copy(attack = NoAttack),
+        state.copy(
+          currentPosition = (0, 0),
+          path = Queue.empty
+        ),
+        modifiers.copy(attack = NoAttack)
+      ),
+      expectedFollowedPath = Queue[Point]((2, 0), (2, 1), (2, 2))
+    )
+  )
 }

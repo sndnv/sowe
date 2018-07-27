@@ -85,6 +85,8 @@ trait ProcessedUpdateMessages {
 
               case _ => currentState //can't update labour; not necessary or data missing
             }
+
+          case _ => currentState
         }
     }
 }

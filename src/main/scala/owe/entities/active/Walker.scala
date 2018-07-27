@@ -97,6 +97,7 @@ object Walker {
   ) extends Entity.Properties
 
   case class State(
+    currentPosition: Point,
     currentLife: Life,
     distanceCovered: Distance,
     commodities: Commodities with StateOnly,

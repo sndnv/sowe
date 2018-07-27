@@ -4,7 +4,7 @@ import akka.actor.{ActorRef, Props}
 import akka.util.Timeout
 import org.scalatest.Outcome
 import owe.entities.ActiveEntity.StructureData
-import owe.entities.ActiveEntityActor.{BehaviourTickProcessed, ForwardMessage, ProcessBehaviourTick}
+import owe.entities.ActiveEntityActor._
 import owe.entities.active.Structure._
 import owe.entities.active._
 import owe.entities.active.attributes.RiskAmount
@@ -14,8 +14,10 @@ import owe.production.Commodity
 import owe.production.Exchange.{CommodityRequired, UpdateCommodityState}
 import owe.test.specs.unit.AkkaUnitSpec
 import owe.test.specs.unit.entities.active.behaviour.{Fixtures, ForwardingParentEntity}
-
 import scala.concurrent.duration._
+
+import owe.entities.ActiveEntity
+import owe.entities.Entity.ProcessCommodities
 
 class HousingStructureSpec extends AkkaUnitSpec("HousingStructureSpec") {
 
@@ -32,6 +34,40 @@ class HousingStructureSpec extends AkkaUnitSpec("HousingStructureSpec") {
     )
 
   "A Housing structure" should "consume and require commodities" in { fixture =>
+    val structureData = StructureData(
+      Fixtures.Structure.Housing.properties,
+      Fixtures.Structure.Housing.state,
+      Fixtures.Structure.Housing.modifiers,
+      Fixtures.MockRefs.structure
+    )
+
+    // should process instructions
+    fixture.parentEntity ! ApplyInstructions(structureData, instructions = Seq(new ActiveEntity.Instruction {}))
+    expectMsg(InstructionsApplied())
+
+    // should process messages
+    fixture.parentEntity ! ApplyMessages(
+      entity = structureData,
+      messages = Seq(
+        ProcessCommodities(Seq((Commodity("TestCommodity#1"), Commodity.Amount(10))))
+      )
+    )
+
+    expectMsg(
+      MessagesApplied(
+        Fixtures.Structure.Housing.state.copy(
+          commodities = CommoditiesState(
+            available = Map(Commodity("TestCommodity#1") -> Commodity.Amount(10)),
+            limits = Map(
+              Commodity("TestCommodity#1") -> Commodity.Amount(100),
+              Commodity("TestCommodity#2") -> Commodity.Amount(10),
+              Commodity("TestCommodity#3") -> Commodity.Amount(200)
+            )
+          )
+        )
+      )
+    )
+
     fixture.parentEntity ! ProcessBehaviourTick(
       map = Fixtures.defaultMapData,
       entity = StructureData(

@@ -3,7 +3,7 @@ package owe.test.specs.unit.entities.active.behaviour
 import akka.actor.{Actor, ActorRef, Props}
 import akka.testkit.TestProbe
 import owe.entities.ActiveEntity._
-import owe.entities.ActiveEntityActor.{ApplyMessages, ForwardMessage, ProcessBehaviourTick}
+import owe.entities.ActiveEntityActor.{ApplyInstructions, ApplyMessages, ForwardMessage, ProcessBehaviourTick}
 import owe.entities.Entity
 import owe.entities.Entity.Desirability
 import owe.entities.active.attributes.Distance
@@ -14,7 +14,6 @@ import owe.entities.passive.Doodad.DoodadRef
 import owe.map.GameMap._
 import owe.map.MapEntity
 import owe.map.grid.Point
-
 import scala.collection.immutable.Queue
 
 class WalkerParentEntity(ref: ActorRef, childProps: Props) extends Actor {
@@ -23,9 +22,17 @@ class WalkerParentEntity(ref: ActorRef, childProps: Props) extends Actor {
   import context.system
 
   override def receive: Receive = {
+    case apply: ApplyInstructions => child ! apply
+
     case apply: ApplyMessages => child ! apply
 
     case tick: ProcessBehaviourTick => child ! tick
+
+    case ForwardMessage(GetAdjacentRoad(_)) =>
+      sender ! None
+
+    case ForwardMessage(GetAdjacentPoint(_, _)) =>
+      sender ! None
 
     case ForwardMessage(GetEntity(entityID)) =>
       val result: Data = entityID match {
@@ -119,16 +126,17 @@ class WalkerParentEntity(ref: ActorRef, childProps: Props) extends Actor {
       sender ! result
 
     case ForwardMessage(GetAdvancePath(_, destination)) =>
-      val result: Queue[Point] = if (destination != Point(0, 0)) {
-        Queue(
-          (1, 0),
-          (2, 0),
-          (2, 1),
-          (1, 1),
-          destination
-        )
-      } else {
-        Queue.empty
+      val defaultPath = Queue[Point](
+        (1, 0),
+        (2, 0),
+        (2, 1),
+        (1, 1)
+      )
+
+      val result: Queue[Point] = destination match {
+        case Point(0, 0) => Queue.empty
+        case Point(1, 1) => defaultPath
+        case _           => defaultPath :+ destination
       }
 
       sender ! result
