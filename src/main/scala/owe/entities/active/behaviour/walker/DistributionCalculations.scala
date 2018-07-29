@@ -1,11 +1,40 @@
 package owe.entities.active.behaviour.walker
 
 import owe.Tagging._
-import owe.entities.ActiveEntity.{StructureData, WalkerData}
+import owe.entities.ActiveEntity.{ResourceData, StructureData, WalkerData}
 import owe.entities.active.{Structure, Walker}
 import owe.production.Commodity
 
 object DistributionCalculations {
+  def resourceToWalkerTransfer(
+    resource: ResourceData,
+    walker: WalkerData
+  ): Option[DistributionResult] =
+    walker.state.commodities match {
+      case Walker.CommoditiesState(carrying, limits) =>
+        val commodity = resource.properties.commodity
+        val resourceAmount = resource.state.currentAmount
+
+        limits.get(commodity).flatMap { limit =>
+          val walkerCarrying = carrying.getOrElse(commodity, Commodity.Amount(0))
+          val acceptable = (limit - walkerCarrying).max(Commodity.Amount(0))
+          val transferable = acceptable.min(resourceAmount)
+
+          if (transferable > Commodity.Amount(0)) {
+            Some(
+              DistributionResult(
+                sourceCommodities = Map(commodity -> transferable * -1),
+                targetCommodities = Map(commodity -> transferable)
+              )
+            )
+          } else {
+            None
+          }
+        }
+
+      case _ => None //cannot transfer commodities
+    }
+
   def structureToWalkerTransfer(
     structure: StructureData,
     walker: WalkerData
@@ -14,13 +43,11 @@ object DistributionCalculations {
       case (Structure.CommoditiesState(available, _), Walker.CommoditiesState(carrying, limits)) =>
         val result = calculateCommodityUpdates(
           DistributionData(
-            carrying.tag[WalkerCarrying],
-            available.tag[StructureAvailable],
+            available.tag[SourceAvailable],
+            carrying.tag[TargetAvailable],
             limits.tag[Limits]
-          ),
-          structureToWalkerTransfer
+          )
         )
-
         if (result.isEmpty) {
           None
         } else {
@@ -38,11 +65,10 @@ object DistributionCalculations {
       case (Structure.CommoditiesState(available, limits), Walker.CommoditiesState(carrying, _)) =>
         val result = calculateCommodityUpdates(
           DistributionData(
-            carrying.tag[WalkerCarrying],
-            available.tag[StructureAvailable],
+            carrying.tag[SourceAvailable],
+            available.tag[TargetAvailable],
             limits.tag[Limits]
-          ),
-          walkerToStructureTransfer
+          )
         )
 
         if (result.isEmpty) {
@@ -55,75 +81,46 @@ object DistributionCalculations {
     }
 
   private def calculateCommodityUpdates(
-    commodities: DistributionData,
-    transfer: (
-      Commodity.Amount @@ StructureAvailable,
-      Commodity.Amount @@ WalkerCarrying,
-      Commodity.Amount @@ Limits
-    ) => (Commodity.Amount, Commodity.Amount)
+    commodities: DistributionData
   ): DistributionResult = {
     val result =
-      commodities.walkerCarrying.foldLeft(
-        (Map.empty[Commodity, Commodity.Amount], Map.empty[Commodity, Commodity.Amount])) {
-        case ((structureCommodities, walkerCommodities), (commodity, carrying)) =>
-          (commodities.limits.get(commodity), commodities.structureAvailable.get(commodity)) match {
-            case (Some(limit), maybeExisting) =>
-              val existing = maybeExisting.getOrElse(Commodity.Amount(0))
+      commodities.sourceAvailable
+        .foldLeft(Map.empty[Commodity, Commodity.Amount]) {
+          case (distributedCommodities, (commodity, available)) =>
+            (commodities.limits.get(commodity), commodities.targetAvailable.get(commodity)) match {
+              case (Some(limit), maybeExisting) =>
+                val existing = maybeExisting.getOrElse(Commodity.Amount(0))
 
-              val (structureAmount, walkerAmount) = transfer(
-                existing.tag[StructureAvailable],
-                carrying.tag[WalkerCarrying],
-                limit.tag[Limits]
-              )
+                val distributionAmount = (limit - existing).min(available)
 
-              (
-                structureCommodities + (commodity -> structureAmount),
-                walkerCommodities + (commodity -> walkerAmount)
-              )
+                distributedCommodities + (commodity -> distributionAmount)
 
-            case _ =>
-              (structureCommodities, walkerCommodities) //cannot accept commodity
-          }
-      }
+              case _ =>
+                distributedCommodities // cannot accept commodity
+            }
+        }
+        .filter(_._2 != Commodity.Amount(0))
 
     DistributionResult(
-      structureCommodities = result._1.filter(_._2 != Commodity.Amount(0)),
-      walkerCommodities = result._2.filter(_._2 != Commodity.Amount(0))
+      sourceCommodities = result.mapValues(_ * -1),
+      targetCommodities = result
     )
   }
 
-  private def structureToWalkerTransfer(
-    existing: Commodity.Amount @@ StructureAvailable,
-    carrying: Commodity.Amount @@ WalkerCarrying,
-    limit: Commodity.Amount @@ Limits
-  ): (Commodity.Amount, Commodity.Amount) = {
-    val changeAmount = (limit - carrying).min(existing)
-    (changeAmount * -1, changeAmount)
-  }
-
-  private def walkerToStructureTransfer(
-    existing: Commodity.Amount @@ StructureAvailable,
-    carrying: Commodity.Amount @@ WalkerCarrying,
-    limit: Commodity.Amount @@ Limits
-  ): (Commodity.Amount, Commodity.Amount) = {
-    val changeAmount = (limit - existing).min(carrying)
-    (changeAmount, changeAmount * -1)
-  }
-
-  private trait WalkerCarrying
-  private trait StructureAvailable
+  private trait SourceAvailable
+  private trait TargetAvailable
   private trait Limits
 
   private case class DistributionData(
-    walkerCarrying: Map[Commodity, Commodity.Amount] @@ WalkerCarrying,
-    structureAvailable: Map[Commodity, Commodity.Amount] @@ StructureAvailable,
+    sourceAvailable: Map[Commodity, Commodity.Amount] @@ SourceAvailable,
+    targetAvailable: Map[Commodity, Commodity.Amount] @@ TargetAvailable,
     limits: Map[Commodity, Commodity.Amount] @@ Limits
   )
 
   case class DistributionResult(
-    structureCommodities: Map[Commodity, Commodity.Amount],
-    walkerCommodities: Map[Commodity, Commodity.Amount]
+    sourceCommodities: Map[Commodity, Commodity.Amount],
+    targetCommodities: Map[Commodity, Commodity.Amount]
   ) {
-    def isEmpty: Boolean = structureCommodities.isEmpty || walkerCommodities.isEmpty
+    def isEmpty: Boolean = targetCommodities.isEmpty || sourceCommodities.isEmpty
   }
 }

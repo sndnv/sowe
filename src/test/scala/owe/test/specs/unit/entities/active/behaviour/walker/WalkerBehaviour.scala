@@ -1,22 +1,21 @@
 package owe.test.specs.unit.entities.active.behaviour.walker
 
-import scala.collection.immutable.Queue
-
 import akka.actor.Props
 import akka.testkit.TestProbe
 import akka.util.Timeout
+import owe.entities.ActiveEntityActor.AddEntityInstruction
 import owe.entities.active.Walker
-import owe.entities.active.Walker.{MovementMode, WalkerRef}
+import owe.entities.active.Walker.WalkerRef
+import owe.entities.active.behaviour.walker.BaseWalker._
 import owe.events.Event
 import owe.map.GameMap.CreateEntity
 import owe.map.grid.Point
 import owe.test.specs.unit.AkkaUnitSpec
 import owe.test.specs.unit.map.TestGameMap
 import owe.test.specs.unit.map.TestGameMap.StartBehaviour
-import scala.concurrent.duration._
 
-import owe.entities.ActiveEntityActor.{AddEntityInstruction, ApplyInstructions}
-import owe.entities.active.behaviour.walker.BaseWalker._
+import scala.collection.immutable.Queue
+import scala.concurrent.duration._
 
 trait WalkerBehaviour { _: AkkaUnitSpec =>
   private implicit val timeout: Timeout = 5.seconds
@@ -228,7 +227,7 @@ trait WalkerBehaviour { _: AkkaUnitSpec =>
         case Idle() =>
           moved should be(1)
 
-        case action =>
+        case _ =>
           fail(s"Unexpected action specified: [$action]")
       }
 

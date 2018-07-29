@@ -13,11 +13,8 @@ object UpdateExchange {
       state: Commodity.State
     )(implicit parentEntity: ActiveEntityRef): Unit =
       forwardMessages(
-        commodities.flatMap {
-          case (commodity, amount) if amount > Commodity.Amount(0) =>
-            Some(UpdateCommodityState(commodity, amount, state))
-
-          case _ => None
+        commodities.map {
+          case (commodity, amount) => UpdateCommodityState(commodity, amount, state)
         }.toSeq
       )
   }
@@ -28,11 +25,8 @@ object UpdateExchange {
       commodities: Map[Commodity, Commodity.Amount]
     )(implicit parentEntity: ActiveEntityRef): Unit =
       forwardMessages(
-        commodities.flatMap {
-          case (commodity, updatedAmount) if updatedAmount > Commodity.Amount(0) =>
-            Some(CommodityAvailable(commodity, updatedAmount, entityID))
-
-          case _ => None
+        commodities.map {
+          case (commodity, updatedAmount) => CommodityAvailable(commodity, updatedAmount, entityID)
         }.toSeq
       )
 
@@ -43,7 +37,7 @@ object UpdateExchange {
     )(implicit parentEntity: ActiveEntityRef): Unit =
       forwardMessages(
         updatedCommodities.flatMap {
-          case (commodity, updatedAmount) if updatedAmount > Commodity.Amount(0) =>
+          case (commodity, updatedAmount) =>
             val currentAmount = initialCommodities.getOrElse(commodity, Commodity.Amount(0))
 
             if (currentAmount != updatedAmount) {
@@ -51,8 +45,6 @@ object UpdateExchange {
             } else {
               None
             }
-
-          case _ => None
         }.toSeq
       )
 
@@ -61,11 +53,8 @@ object UpdateExchange {
       consumedCommodities: Map[Commodity, Commodity.Amount]
     )(implicit parentEntity: ActiveEntityRef): Unit =
       forwardMessages(
-        consumedCommodities.flatMap {
-          case (commodity, amount) if amount > Commodity.Amount(0) =>
-            Some(CommodityRequired(commodity, amount, entityID))
-
-          case _ => None
+        consumedCommodities.map {
+          case (commodity, amount) => CommodityRequired(commodity, amount, entityID)
         }.toSeq
       )
 
@@ -75,11 +64,8 @@ object UpdateExchange {
       inTransitCommodities: Map[Commodity, Commodity.Amount]
     )(implicit parentEntity: ActiveEntityRef): Unit =
       forwardMessages(
-        inTransitCommodities.flatMap {
-          case (commodity, amount) if amount > Commodity.Amount(0) =>
-            Some(CommodityInTransit(commodity, amount, source, destination))
-
-          case _ => None
+        inTransitCommodities.map {
+          case (commodity, amount) => CommodityInTransit(commodity, amount, source, destination)
         }.toSeq
       )
   }

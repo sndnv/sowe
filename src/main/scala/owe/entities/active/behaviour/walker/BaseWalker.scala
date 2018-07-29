@@ -376,34 +376,32 @@ trait BaseWalker
             Future.successful(destinationWalker.state.currentPosition)
 
           case destinationResource: ResourceData =>
-            Future.successful(destinationResource.properties.homePosition)
+            getResourceLocation(destinationResource)
 
           case destinationStructure: StructureData =>
-            val adjacentPoint = walker.properties.traversalMode match {
-              case TraversalMode.RoadRequired =>
-                getAdjacentRoad(entityID)
-
-              case TraversalMode.RoadPreferred =>
-                getAdjacentRoad(entityID).flatMap {
-                  case Some(point) => Future.successful(Some(point))
-                  case None        => getAdjacentPoint(entityID, Availability.Passable)
-                }
-
-              case TraversalMode.OnLand =>
-                getAdjacentPoint(entityID, Availability.Passable)
-
-              case TraversalMode.OnWater =>
-                ??? // TODO - implement
-            }
-
-            adjacentPoint.map {
-              case Some(point) => point
-              case None        => destinationStructure.properties.homePosition
-            }
+            getStructureLocation(walker.properties.traversalMode, destinationStructure)
         }
 
       case Home =>
-        Future.successful(walker.properties.homePosition)
+        walker.properties.parent match {
+          case Some(parent) =>
+            getEntityData(parent).flatMap {
+              case parentStructure: StructureData =>
+                getStructureLocation(walker.properties.traversalMode, parentStructure)
+
+              case entity =>
+                log.error(
+                  "Expected structure data for parent entity [{}] but received [{}]",
+                  parent,
+                  entity
+                )
+
+                Future.successful(walker.properties.homePosition)
+            }
+
+          case None =>
+            Future.successful(walker.properties.homePosition)
+        }
     }
 
   protected def getEntityData(entityID: ActiveEntityRef): Future[Data] =
@@ -561,6 +559,35 @@ trait BaseWalker
         }
     }
 
+  private def getResourceLocation(destination: ResourceData): Future[Point] =
+    getAdjacentPoint(destination.id, Availability.Passable).map {
+      case Some(point) => point
+      case None        => destination.properties.homePosition
+    }
+
+  private def getStructureLocation(traversalMode: TraversalMode, destination: StructureData): Future[Point] = {
+    val adjacentPoint = traversalMode match {
+      case TraversalMode.RoadRequired =>
+        getAdjacentRoad(destination.id)
+
+      case TraversalMode.RoadPreferred =>
+        getAdjacentRoad(destination.id).flatMap {
+          case Some(point) => Future.successful(Some(point))
+          case None        => getAdjacentPoint(destination.id, Availability.Passable)
+        }
+
+      case TraversalMode.OnLand =>
+        getAdjacentPoint(destination.id, Availability.Passable)
+
+      case TraversalMode.OnWater =>
+        ??? // TODO - implement
+    }
+
+    adjacentPoint.map {
+      case Some(point) => point
+      case None        => destination.properties.homePosition
+    }
+  }
 }
 
 object BaseWalker {

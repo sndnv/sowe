@@ -65,7 +65,7 @@ object ActiveEntity {
     def withModifiers(newModifiers: Entity.StateModifiers): Data
   }
 
-  case class ResourceData(
+  final case class ResourceData(
     properties: Resource.Properties,
     state: Resource.State,
     modifiers: Resource.StateModifiers,
@@ -82,7 +82,7 @@ object ActiveEntity {
       }
   }
 
-  case class StructureData(
+  final case class StructureData(
     properties: Structure.Properties,
     state: Structure.State,
     modifiers: Structure.StateModifiers,
@@ -99,7 +99,7 @@ object ActiveEntity {
       }
   }
 
-  case class WalkerData(
+  final case class WalkerData(
     properties: Walker.Properties,
     state: Walker.State,
     modifiers: Walker.StateModifiers,

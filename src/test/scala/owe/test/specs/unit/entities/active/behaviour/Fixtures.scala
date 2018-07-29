@@ -44,7 +44,7 @@ object Fixtures {
       name = "TestResource",
       homePosition = Point(0, 0),
       commodity = Commodity("TestCommodity"),
-      maxAmount = Commodity.Amount(500)
+      maxAmount = Commodity.Amount(200)
     )
 
     val state: State = State(

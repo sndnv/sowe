@@ -1,108 +1,57 @@
 package owe.entities.active.behaviour.walker.acting
 
-import owe.entities.ActiveEntity.{ActiveEntityRef, StructureData, WalkerData}
-import owe.entities.active.Walker
-import owe.entities.active.Walker.{CommoditiesState, MovementMode}
-import owe.entities.active.behaviour.UpdateExchange
+import owe.entities.ActiveEntity.WalkerData
+import owe.entities.active.Structure.StructureRef
+import owe.entities.active.Walker.CommoditiesState
 import owe.entities.active.behaviour.walker.BaseWalker._
-import owe.entities.active.behaviour.walker.DistributionCalculations.DistributionResult
-import owe.entities.active.behaviour.walker.{BaseWalker, DistributionCalculations}
-import owe.production.Commodity
 
-import scala.concurrent.Future
-
-trait Carrier extends BaseWalker {
-  protected def target: ActiveEntityRef
-  protected def source: ActiveEntityRef
+trait Carrier extends ActingWalker {
   protected def actions: Seq[Action]
   protected def canReturnCommodities: Boolean
 
-  import context.dispatcher
-
-  private def load(walker: WalkerData, target: ActiveEntityRef): Future[Walker.State] =
-    getEntityData(target).map {
-      case structure: StructureData =>
-        DistributionCalculations.structureToWalkerTransfer(structure, walker) match {
-          case Some(DistributionResult(structureCommodities, walkerCommodities)) =>
-            distributeCommodities(structure.id, structureCommodities.toSeq)
-
-            UpdateExchange.Stats.inTransitCommodities(
-              walker.id,
-              target,
-              walkerCommodities
-            )
-
-            walker.state.commodities match {
-              case CommoditiesState(available, limits) =>
-                walker.state.copy(
-                  commodities = CommoditiesState(
-                    available = available.mergeWithLimits(walkerCommodities, limits),
-                    limits
-                  )
-                )
-
-              case _ => walker.state //data missing
-            }
-
-          case None => walker.state //cannot transfer commodities
-        }
-
-      case _ => walker.state //cannot transfer commodities
+  final protected def retrieve(from: StructureRef, to: StructureRef): Seq[Action] =
+    if (canReturnCommodities) {
+      Seq[Action](
+        GoToEntity(from),
+        DoOperation(load(_, from, to)),
+        GoToEntity(to),
+        DoOperation(unload(_, to)),
+        GoToEntity(from),
+        DoRepeatableOperation(unload(_, from), hasCommodities),
+        GoHome()
+      )
+    } else {
+      Seq[Action](
+        GoToEntity(from),
+        DoOperation(load(_, from, to)),
+        GoHome(),
+        DoRepeatableOperation(unload(_, to), hasCommodities)
+      )
     }
 
-  private def unload(walker: WalkerData, target: ActiveEntityRef): Future[Walker.State] =
-    getEntityData(target).map {
-      case structure: StructureData =>
-        DistributionCalculations.walkerToStructureTransfer(structure, walker) match {
-          case Some(DistributionResult(structureCommodities, walkerCommodities)) =>
-            distributeCommodities(structure.id, structureCommodities.toSeq)
-
-            UpdateExchange.Stats.inTransitCommodities(
-              walker.id,
-              target,
-              walkerCommodities
-            )
-
-            walker.state.commodities match {
-              case CommoditiesState(available, limits) =>
-                walker.state.copy(
-                  commodities = CommoditiesState(
-                    available = available.mergeWithLimits(walkerCommodities, limits),
-                    limits
-                  )
-                )
-
-              case _ => walker.state //data missing
-            }
-
-          case None => walker.state //cannot transfer commodities
-        }
-
-      case _ => walker.state //cannot transfer commodities
+  final protected def deliver(from: StructureRef, to: StructureRef): Seq[Action] =
+    if (canReturnCommodities) {
+      Seq[Action](
+        DoOperation(load(_, from, to)),
+        GoToEntity(to),
+        DoOperation(unload(_, to)),
+        GoHome(),
+        DoRepeatableOperation(unload(_, from), hasCommodities)
+      )
+    } else {
+      Seq[Action](
+        DoOperation(load(_, from, to)),
+        GoToEntity(to),
+        DoRepeatableOperation(unload(_, to), hasCommodities),
+        GoHome()
+      )
     }
 
-  private def unloadComplete(walker: WalkerData): Boolean =
-    (walker.state.mode, canReturnCommodities) match {
-      case (MovementMode.Returning, true)  => false //wait for enough free space
-      case (MovementMode.Returning, false) => true //can't wait for free space; done
-      case (_, true)                       => true //return with remaining commodities
-      case (_, false)                      => false //wait for enough free space
+  private def hasCommodities(walker: WalkerData): Boolean =
+    walker.state.commodities match {
+      case CommoditiesState(available, _) => available.nonEmpty
+      case _                              => false // has no commodities
     }
-
-  final protected def retrieveResources: Seq[Action] = Seq[Action](
-    GoToEntity(target),
-    DoOperation(load(_, target)),
-    GoHome(),
-    DoRepeatableOperation(unload(_, source), unloadComplete)
-  )
-
-  final protected def deliver: Seq[Action] = Seq[Action](
-    DoOperation(load(_, source)),
-    GoToEntity(target),
-    DoRepeatableOperation(unload(_, target), unloadComplete),
-    GoHome(),
-    DoRepeatableOperation(unload(_, source), unloadComplete)
-  )
 
   final override protected def behaviour: Behaviour = acting(actions)
 }

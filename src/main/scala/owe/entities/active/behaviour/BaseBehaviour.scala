@@ -25,7 +25,7 @@ trait BaseBehaviour extends Actor with ActorLogging {
 
   final override def receive: Receive = base.orElse(behaviour)
 
-  private[behaviour] def withUpdates[D <: Data: ClassTag, S <: Entity.State](
+  private[owe] def withUpdates[D <: Data: ClassTag, S <: Entity.State](
     entity: D,
     updates: Seq[D => S]
   ): Future[D] =
@@ -36,7 +36,7 @@ trait BaseBehaviour extends Actor with ActorLogging {
       }
     )
 
-  private[behaviour] def withAsyncUpdates[D <: Data: ClassTag, S <: Entity.State](
+  private[owe] def withAsyncUpdates[D <: Data: ClassTag, S <: Entity.State](
     entity: D,
     updates: Seq[D => Future[S]]
   ): Future[D] = {
@@ -48,7 +48,6 @@ trait BaseBehaviour extends Actor with ActorLogging {
             result.flatMap { updatedState =>
               entity.withState(updatedState) match {
                 case update: D => nextUpdate(update)
-                case data      => Future.failed(new IllegalStateException(s"Unexpected data encountered: [$data]"))
               }
             },
             remainingUpdates
@@ -63,7 +62,6 @@ trait BaseBehaviour extends Actor with ActorLogging {
         applyUpdates(head(entity), tail).flatMap { updatedState =>
           entity.withState(updatedState) match {
             case update: D => Future.successful(update)
-            case data      => Future.failed(new IllegalStateException(s"Unexpected data encountered: [$data]"))
           }
         }
 

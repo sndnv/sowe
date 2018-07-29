@@ -50,13 +50,8 @@ class Courier(parameters: Parameters) extends Walker {
   }
 
   override protected def createBehaviour(): BaseWalker = new Carrier {
-    override protected def source: StructureRef = parameters.source
-
     override protected def canReturnCommodities: Boolean = true
-
-    override protected def actions: Seq[BaseWalker.Action] = deliver
-
-    override protected def target: StructureRef = parameters.target
+    override protected def actions: Seq[BaseWalker.Action] = deliver(parameters.source, parameters.target)
   }
 
   override protected def createEffects(): Seq[(Data => Boolean, Effect)] = Seq.empty

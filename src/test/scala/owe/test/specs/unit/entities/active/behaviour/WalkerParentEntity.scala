@@ -8,25 +8,30 @@ import owe.entities.Entity
 import owe.entities.Entity.Desirability
 import owe.entities.active.attributes.Distance
 import owe.entities.active.Resource.ResourceRef
-import owe.entities.active.Structure.StructureRef
+import owe.entities.active.Structure.{CommoditiesState, StructureRef}
 import owe.entities.active.Walker.WalkerRef
 import owe.entities.passive.Doodad.DoodadRef
 import owe.map.GameMap._
 import owe.map.MapEntity
 import owe.map.grid.Point
+import owe.production.Commodity
+import owe.test.specs.unit.entities.active.behaviour.WalkerParentEntity.ForwardToChild
+
 import scala.collection.immutable.Queue
 
-class WalkerParentEntity(ref: ActorRef, childProps: Props) extends Actor {
+class WalkerParentEntity(
+  ref: ActorRef,
+  childProps: Props
+) extends Actor {
   private val child = context.actorOf(childProps)
 
   import context.system
 
   override def receive: Receive = {
-    case apply: ApplyInstructions => child ! apply
-
-    case apply: ApplyMessages => child ! apply
-
+    case apply: ApplyInstructions   => child ! apply
+    case apply: ApplyMessages       => child ! apply
     case tick: ProcessBehaviourTick => child ! tick
+    case ForwardToChild(message)    => child ! message
 
     case ForwardMessage(GetAdjacentRoad(_)) =>
       sender ! None
@@ -47,7 +52,12 @@ class WalkerParentEntity(ref: ActorRef, childProps: Props) extends Actor {
         case entityRef: StructureRef =>
           StructureData(
             Fixtures.Structure.Producing.properties,
-            Fixtures.Structure.Producing.state,
+            Fixtures.Structure.Producing.state.copy(
+              commodities = CommoditiesState(
+                available = Map(Commodity("TestCommodity") -> Commodity.Amount(100)),
+                limits = Map(Commodity("TestCommodity") -> Commodity.Amount(175))
+              )
+            ),
             Fixtures.Structure.Producing.modifiers,
             entityRef
           )
@@ -159,5 +169,7 @@ class WalkerParentEntity(ref: ActorRef, childProps: Props) extends Actor {
 }
 
 object WalkerParentEntity {
+  case class ForwardToChild(message: Any)
+
   def props(ref: ActorRef, childProps: Props) = Props(classOf[WalkerParentEntity], ref, childProps)
 }

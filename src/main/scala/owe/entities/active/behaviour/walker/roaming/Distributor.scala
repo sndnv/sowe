@@ -27,7 +27,7 @@ trait Distributor extends BaseWalker {
               structure,
               walker.copy(state = currentState)
             ) match {
-              case Some(DistributionResult(structureCommodities, walkerCommodities)) =>
+              case Some(DistributionResult(walkerCommodities, structureCommodities)) =>
                 distributeCommodities(structure.id, structureCommodities.toSeq)
                 currentState.commodities match {
                   case CommoditiesState(available, limits) =>

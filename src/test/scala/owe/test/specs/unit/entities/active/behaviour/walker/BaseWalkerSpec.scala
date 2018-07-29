@@ -1308,8 +1308,4 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
   it should "not pass through enemy units" in { _ =>
     fail("Not Implemented", new NotImplementedError())
   }
-
-  it should "halt movement if target cannot accept resources" in { _ =>
-    fail("Not Implemented", new NotImplementedError())
-  }
 }
