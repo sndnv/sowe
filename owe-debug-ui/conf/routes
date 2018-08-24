@@ -1,0 +1,4 @@
+# Routes
+
+GET     /                           controllers.Home.root
+GET     /assets/*file               controllers.Assets.versioned(file)
