@@ -2,11 +2,15 @@ package owe.map
 
 import java.util.UUID
 
+import scala.concurrent.ExecutionContext
+import scala.concurrent.duration._
+
 import akka.actor.{Actor, ActorLogging, ActorRef, PoisonPill, Stash, Timers}
 import akka.pattern.pipe
 import akka.util.Timeout
 import owe.Tagging._
 import owe.entities.ActiveEntity.ActiveEntityRef
+import owe.entities.ActiveEntityActor.AddEntityMessage
 import owe.entities.Entity
 import owe.entities.Entity._
 import owe.entities.active.Structure.StructureRef
@@ -18,10 +22,6 @@ import owe.map.grid.{Grid, Point}
 import owe.map.ops.Ops
 import owe.map.pathfinding.Search
 import owe.production.{Commodity, Exchange}
-import scala.concurrent.ExecutionContext
-import scala.concurrent.duration._
-
-import owe.entities.ActiveEntityActor.AddEntityMessage
 
 trait GameMap extends Actor with ActorLogging with Stash with Timers with Ops {
 
@@ -179,7 +179,7 @@ trait GameMap extends Actor with ActorLogging with Stash with Timers with Ops {
           case Right((mapEntity, event)) =>
             tracker ! event
             if (senderRef != context.system.deadLetters) { senderRef ! mapEntity.entityRef }
-            self ! EntityUpdate.Add(mapEntity, cell)
+            self ! EntityUpdate.Add(mapEntity, mapEntity.parentCell)
         }
 
     case DestroyEntity(entityID) =>
@@ -246,6 +246,10 @@ trait GameMap extends Actor with ActorLogging with Stash with Timers with Ops {
     case EntityTickProcessed(tick) =>
       log.error("Entity response received from sender [{}] for tick [{}] while idle", sender, tick)
       tracker ! Event(Event.System.UnexpectedEntityResponseReceived, cell = None)
+
+    case GetGrid() =>
+      log.debug("Retrieving grid data")
+      getGridData(grid).pipeTo(sender)
   }
 
   override def receive: Receive = idle(entities = Map.empty, currentTick = 0)
@@ -281,6 +285,7 @@ object GameMap {
   private[map] case class TickExpired(tick: Int) extends Message
   case class EntityTickProcessed(tick: Int) extends Message
 
+  case class GetGrid() extends Message
   case class GetAdvancePath(entityID: WalkerRef, destination: Point) extends Message
   case class GetRoamingPath(entityID: WalkerRef, length: Distance) extends Message
   case class GetNeighbours(entityID: EntityRef, radius: Distance) extends Message

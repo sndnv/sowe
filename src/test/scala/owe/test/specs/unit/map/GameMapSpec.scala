@@ -16,7 +16,7 @@ import owe.entities.passive.Road
 import owe.entities.passive.Road.RoadRef
 import owe.events.Event
 import owe.map.GameMap._
-import owe.map.grid.Point
+import owe.map.grid.{Grid, Point}
 import owe.production.Commodity
 import owe.production.Exchange.GetExchangeStats
 import owe.test.specs.unit.AkkaUnitSpec
@@ -26,7 +26,7 @@ import owe.test.specs.unit.map.TestGameMap.StartBehaviour
 import scala.collection.immutable.Queue
 import scala.concurrent.duration._
 
-import owe.map.Cell.Availability
+import owe.map.Cell.{Availability, CellData}
 
 class GameMapSpec extends AkkaUnitSpec("GameMapSpec") {
 
@@ -274,5 +274,25 @@ class GameMapSpec extends AkkaUnitSpec("GameMapSpec") {
     val map = system.actorOf(Props(new TestGameMap(testActor, StartBehaviour.Idle)))
     map ! EntityTickProcessed(tick = 0)
     expectMsg(Event(Event.System.UnexpectedEntityResponseReceived, cell = None))
+  }
+
+  it should "respond with grid data when idle" in { _ =>
+    val map = system.actorOf(Props(new TestGameMap(testActor, StartBehaviour.Idle)))
+    map ! GetGrid()
+
+    val grid = receiveOne(timeout.duration).asInstanceOf[Grid[CellData]]
+    grid.toMap should be(
+      Map(
+        Point(0, 0) -> CellData.empty,
+        Point(1, 0) -> CellData.empty,
+        Point(2, 0) -> CellData.empty,
+        Point(0, 1) -> CellData.empty,
+        Point(1, 1) -> CellData.empty,
+        Point(2, 1) -> CellData.empty,
+        Point(0, 2) -> CellData.empty,
+        Point(1, 2) -> CellData.empty,
+        Point(2, 2) -> CellData.empty
+      )
+    )
   }
 }

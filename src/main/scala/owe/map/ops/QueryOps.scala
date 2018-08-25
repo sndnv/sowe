@@ -11,9 +11,9 @@ import owe.entities.active.attributes.Distance
 import owe.map.Cell.{CellActorRef, CellData, GetCellData, GetEntity}
 import owe.map._
 import owe.map.grid.{Grid, Point}
-
 import scala.collection.immutable.Queue
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Success}
 
 trait QueryOps { _: PathfindingOps =>
 
@@ -127,4 +127,16 @@ trait QueryOps { _: PathfindingOps =>
         val message = s"Failed to find entity with ID [$entityID] while retrieving its data"
         Future.failed(new IllegalStateException(message))
     }
+
+  def getGridData(grid: Grid[CellActorRef]): Future[Grid[CellData]] =
+    Future
+      .traverse(grid.map(ref => (ref ? GetCellData()).mapTo[CellData]).toMap) {
+        case (point, future) => future.map(cell => (point, cell))
+      }
+      .flatMap { seq =>
+        grid.rebuilt(seq.toMap) match {
+          case Success(data) => Future.successful(data)
+          case Failure(e)    => Future.failed(e)
+        }
+      }
 }

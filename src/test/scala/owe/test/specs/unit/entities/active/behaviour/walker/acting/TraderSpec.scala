@@ -101,7 +101,7 @@ class TraderSpec extends AkkaUnitSpec("TraderSpec") {
         case UpdateCommodityState(Commodity("TestCommodity#2"), Commodity.Amount(40), Lost)  => CommoditiesBought
         case UpdateCommodityState(Commodity("TestCommodity#3"), Commodity.Amount(100), Lost) => CommoditiesNotTraded
         case Event(Event.System.EntityDestroyed, _)                                          => TraderLeft
-        case m                                                                               => println(m); Ignored
+        case _                                                                               => Ignored
       }
       .foldLeft(Expectations.empty) {
         case (exps, current) =>

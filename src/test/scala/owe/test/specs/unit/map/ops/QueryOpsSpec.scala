@@ -13,13 +13,12 @@ import owe.entities.active.Structure._
 import owe.entities.active.Walker.WalkerRef
 import owe.entities.active.attributes.{Distance, Life}
 import owe.entities.{ActiveEntity, Entity}
-import owe.map.Cell.{AddEntity, CellActorRef}
+import owe.map.Cell.{AddEntity, CellActorRef, CellData}
 import owe.map.grid.{Grid, Point}
 import owe.map.ops.{AvailabilityOps, PathfindingOps, QueryOps}
 import owe.map.pathfinding.{DepthFirstSearch, Search}
 import owe.map.{Cell, MapEntity}
 import owe.test.specs.unit.AsyncUnitSpec
-
 import scala.collection.immutable.Queue
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
@@ -207,6 +206,38 @@ class QueryOpsSpec extends AsyncUnitSpec {
       }
 
       successfulResult should be(existingStructureData)
+    }
+  }
+
+  they should "retrieve grid data" in { fixture =>
+    val structureRef = StructureRef(system.actorOf(Props(new TestEntity(existingStructureData))))
+    fixture.grid.getUnsafe((1, 1)) ! AddEntity(existingStructureMapEntity.copy(entityRef = structureRef))
+    fixture.grid.getUnsafe((1, 2)) ! AddEntity(existingStructureMapEntity.copy(entityRef = structureRef))
+
+    for {
+      gridMap <- fixture.ops.getGridData(fixture.grid).map(_.toMap)
+    } yield {
+      gridMap should be(
+        Map(
+          Point(0, 0) -> CellData.empty,
+          Point(1, 0) -> CellData.empty,
+          Point(2, 0) -> CellData.empty,
+          Point(0, 1) -> CellData.empty,
+          Point(1, 1) -> CellData.empty.copy(
+            entities = Map(
+              structureRef -> MapEntity(structureRef, (1, 1), Entity.Size(2, 1), Entity.Desirability.Min)
+            )
+          ),
+          Point(2, 1) -> CellData.empty,
+          Point(0, 2) -> CellData.empty,
+          Point(1, 2) -> CellData.empty.copy(
+            entities = Map(
+              structureRef -> MapEntity(structureRef, (1, 1), Entity.Size(2, 1), Entity.Desirability.Min)
+            )
+          ),
+          Point(2, 2) -> CellData.empty
+        )
+      )
     }
   }
 }

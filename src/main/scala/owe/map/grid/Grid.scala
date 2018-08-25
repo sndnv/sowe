@@ -96,6 +96,22 @@ class Grid[A: ClassTag](private val data: Array[Array[A]]) {
     result
   }
 
+  def rebuilt[B: ClassTag](elements: Map[Point, B]): Try[Grid[B]] =
+    Try {
+      mapIndexed {
+        case (point, _) =>
+          elements.get(point) match {
+            case Some(element) =>
+              element
+
+            case None =>
+              throw new IllegalArgumentException(
+                s"Failed to get element for [$point]; elements need to exist for all points in the grid"
+              )
+          }
+      }
+    }
+
   def forall(p: A => Boolean): Boolean = data.forall(_.forall(p))
 
   def exists(p: A => Boolean): Boolean = data.exists(_.exists(p))

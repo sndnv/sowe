@@ -1,5 +1,8 @@
 package owe.test.specs.unit.map.grid
 
+import scala.util.Success
+
+import akka.actor.FSM.Failure
 import org.scalatest.Outcome
 import owe.map.grid.{Grid, Point}
 import owe.test.specs.unit.UnitSpec
@@ -168,6 +171,33 @@ class GridSpec extends UnitSpec {
         Point(2, 2) -> 8
       )
     )
+  }
+
+  it should "be rebuild-able from a map" in { fixture =>
+    val targetMap = Map(
+      Point(0, 0) -> "1",
+      Point(1, 0) -> "2",
+      Point(2, 0) -> "3",
+      Point(0, 1) -> "4",
+      Point(1, 1) -> "5",
+      Point(2, 1) -> "6",
+      Point(0, 2) -> "7",
+      Point(1, 2) -> "8",
+      Point(2, 2) -> "9"
+    )
+
+    fixture.grid
+      .rebuilt(targetMap)
+      .map(_.toMap) should be(
+      Success(targetMap)
+    )
+
+    assertThrows[IllegalArgumentException] {
+      fixture.grid
+        .rebuilt(Map.empty[Point, String])
+        .map(_.toMap)
+        .get
+    }
   }
 
   it should "search for elements" in { fixture =>
