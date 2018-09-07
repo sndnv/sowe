@@ -1,30 +1,36 @@
 package owe.events
 
-import owe.events.Event.Identifier
+import owe.map.MapEntity
 import owe.map.grid.Point
 
-case class Event(id: Identifier, cell: Option[Point])
+trait Event {
+  def id: Event.Identifier
+}
 
 object Event {
   sealed trait Identifier
 
-  sealed trait System extends Identifier
-  object System {
-    case object EntityCreated extends System
-    case object EntityDestroyed extends System
-    case object EntityMoved extends System
-    case object EntityMissing extends System
-    case object CellsUnavailable extends System
-    case object SpawnPointUnavailable extends System
-    case object CellOutOfBounds extends System
-    case object DestinationUnreachable extends System
-    case object MessageForwarded extends System
-    case object UnexpectedEntityFound extends System
-    case object UnexpectedEntityResponseReceived extends System
-    case object TickProcessed extends System
-    case object TickExpired extends System
+  sealed trait Engine extends Identifier
+  object Engine {
+    case object EntityCreated extends Engine
+    case object EntityDestroyed extends Engine
+    case object EntityMoved extends Engine
+    case object EntityMissing extends Engine
+    case object CellsUnavailable extends Engine
+    case object SpawnPointUnavailable extends Engine
+    case object CellOutOfBounds extends Engine
+    case object DestinationUnreachable extends Engine
+    case object MessageForwarded extends Engine
+    case object UnexpectedEntityFound extends Engine
+    case object UnexpectedEntityResponseReceived extends Engine
+    case object TickProcessed extends Engine
+    case object TickExpired extends Engine
   }
 
   //doc - to be extended per game
   trait Game extends Identifier
+
+  case class SystemEvent(id: Identifier) extends Event
+  case class CellEvent(id: Identifier, targetCell: Point) extends Event
+  case class EntityEvent(id: Identifier, mapEntity: MapEntity, targetCell: Point) extends Event
 }

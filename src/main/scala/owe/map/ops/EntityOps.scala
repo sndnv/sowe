@@ -1,5 +1,7 @@
 package owe.map.ops
 
+import scala.concurrent.{ExecutionContext, Future}
+
 import akka.actor.{Actor, ActorRef}
 import akka.pattern.ask
 import akka.util.Timeout
@@ -11,11 +13,10 @@ import owe.entities.active.Walker.SpawnLocation
 import owe.entities.passive.Doodad.DoodadRef
 import owe.entities.passive.Road.RoadRef
 import owe.events.Event
+import owe.events.Event.{CellEvent, EntityEvent, SystemEvent}
 import owe.map.Cell._
 import owe.map._
 import owe.map.grid.{Grid, Point}
-
-import scala.concurrent.{ExecutionContext, Future}
 
 trait EntityOps { _: AvailabilityOps =>
 
@@ -64,23 +65,23 @@ trait EntityOps { _: AvailabilityOps =>
                     .sequence(Entity.cells(mapEntity.`size`, point).map(cellAvailabilityForPoint(grid, _)))
                     .map { cellsAvailability =>
                       if (cellsAvailability.forall(_ >= targetAvailability)) {
-                        Right((mapEntity, Event(Event.System.EntityCreated, Some(point))))
+                        Right((mapEntity, EntityEvent(Event.Engine.EntityCreated, mapEntity, point)))
                       } else {
-                        Left(Event(Event.System.CellsUnavailable, Some(point)))
+                        Left(CellEvent(Event.Engine.CellsUnavailable, point))
                       }
                     }
                 } else {
-                  Future.successful(Left(Event(Event.System.CellsUnavailable, Some(point))))
+                  Future.successful(Left(CellEvent(Event.Engine.CellsUnavailable, point)))
                 }
               }
 
             case None =>
-              Future.successful(Left(Event(Event.System.CellOutOfBounds, Some(point))))
+              Future.successful(Left(CellEvent(Event.Engine.CellOutOfBounds, point)))
           }
 
         case None =>
           Future.successful(
-            Left(Event(Event.System.SpawnPointUnavailable, cell = None))
+            Left(SystemEvent(Event.Engine.SpawnPointUnavailable))
           )
       }
   }
@@ -102,22 +103,22 @@ trait EntityOps { _: AvailabilityOps =>
               case Some(mapEntity) =>
                 Right(
                   (
-                    Event(Event.System.EntityDestroyed, Some(cell)),
+                    EntityEvent(Event.Engine.EntityDestroyed, mapEntity, cell),
                     mapEntity,
                     cell
                   )
                 )
 
               case None =>
-                Left(Event(Event.System.EntityMissing, Some(cell)))
+                Left(CellEvent(Event.Engine.EntityMissing, cell))
             }
 
           case _ =>
-            Future.successful(Left(Event(Event.System.EntityMissing, Some(cell))))
+            Future.successful(Left(CellEvent(Event.Engine.EntityMissing, cell)))
         }
 
       case None =>
-        Future.successful(Left(Event(Event.System.CellOutOfBounds, cell = None)))
+        Future.successful(Left(SystemEvent(Event.Engine.CellOutOfBounds)))
     }
 
   def moveEntity(
@@ -129,13 +130,13 @@ trait EntityOps { _: AvailabilityOps =>
     val result = for {
       currentCell <- entities
         .get(entityID)
-        .toRight(Event(Event.System.CellsUnavailable, cell = None)): Either[Event, Point]
+        .toRight(SystemEvent(Event.Engine.CellsUnavailable)): Either[Event, Point]
       currentMapCell <- grid
         .get(currentCell)
-        .toRight(Event(Event.System.CellOutOfBounds, Some(currentCell))): Either[Event, CellActorRef]
+        .toRight(CellEvent(Event.Engine.CellOutOfBounds, currentCell)): Either[Event, CellActorRef]
       newMapCell <- grid
         .get(newCell)
-        .toRight(Event(Event.System.CellOutOfBounds, Some(newCell))): Either[Event, CellActorRef]
+        .toRight(CellEvent(Event.Engine.CellOutOfBounds, newCell)): Either[Event, CellActorRef]
     } yield {
       (currentMapCell ? GetEntity(entityID)).mapTo[Option[MapEntity]].flatMap {
         case Some(currentMapEntity) =>
@@ -148,22 +149,22 @@ trait EntityOps { _: AvailabilityOps =>
                   if (cellsAvailability.forall(_ >= targetAvailability)) {
                     Right(
                       (
-                        Event(Event.System.EntityMoved, Some(newCell)),
+                        EntityEvent(Event.Engine.EntityMoved, currentMapEntity, newCell),
                         currentMapEntity,
                         currentCell
                       )
                     )
                   } else {
-                    Left(Event(Event.System.CellsUnavailable, Some(newCell)))
+                    Left(CellEvent(Event.Engine.CellsUnavailable, newCell))
                   }
                 }
             } else {
-              Future.successful(Left(Event(Event.System.CellsUnavailable, Some(newCell))))
+              Future.successful(Left(CellEvent(Event.Engine.CellsUnavailable, newCell)))
             }
           }
 
         case None =>
-          Future.successful(Left(Event(Event.System.CellsUnavailable, Some(newCell))))
+          Future.successful(Left(CellEvent(Event.Engine.CellsUnavailable, newCell)))
       }
     }
 

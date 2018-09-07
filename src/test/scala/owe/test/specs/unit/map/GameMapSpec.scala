@@ -26,11 +26,13 @@ import owe.test.specs.unit.map.TestGameMap.StartBehaviour
 import scala.collection.immutable.Queue
 import scala.concurrent.duration._
 
+import owe.events.Event.{CellEvent, EntityEvent, SystemEvent}
 import owe.map.Cell.{Availability, CellData}
+import owe.test.specs.unit.entities.EntityTestHelpers
 
-class GameMapSpec extends AkkaUnitSpec("GameMapSpec") {
+class GameMapSpec extends AkkaUnitSpec("GameMapSpec") with EntityTestHelpers {
 
-  private implicit val timeout: Timeout = 3.seconds
+  protected implicit val timeout: Timeout = 3.seconds
 
   case class FixtureParam()
 
@@ -49,7 +51,7 @@ class GameMapSpec extends AkkaUnitSpec("GameMapSpec") {
       )
     )
 
-    expectMsg(Event(Event.System.TickProcessed, cell = None))
+    expectMsg(SystemEvent(Event.Engine.TickProcessed))
 
     class NonResponsiveEntity extends Resource {
       override protected def createActiveEntityData(): ActiveEntityRef => Data = {
@@ -82,10 +84,10 @@ class GameMapSpec extends AkkaUnitSpec("GameMapSpec") {
     }
 
     map ! CreateEntity(new NonResponsiveEntity, (0, 0))
-    expectMsg(Event(Event.System.EntityCreated, Some((0, 0))))
+    this.expectEntityCreatedAt((0, 0))
     expectMsgType[ResourceRef]
 
-    expectMsg(Event(Event.System.TickExpired, cell = None))
+    expectMsg(SystemEvent(Event.Engine.TickExpired))
   }
 
   it should "respond with advance paths when waiting" in { _ =>
@@ -152,7 +154,7 @@ class GameMapSpec extends AkkaUnitSpec("GameMapSpec") {
   it should "log unexpected entity tick responses when waiting" in { _ =>
     val map = system.actorOf(Props(new TestGameMap(testActor, StartBehaviour.Waiting)))
     map ! EntityTickProcessed(tick = 42)
-    expectMsg(Event(Event.System.UnexpectedEntityResponseReceived, cell = None))
+    expectMsg(SystemEvent(Event.Engine.UnexpectedEntityResponseReceived))
   }
 
   it should "create entities when idle" in { _ =>
@@ -160,11 +162,11 @@ class GameMapSpec extends AkkaUnitSpec("GameMapSpec") {
     val entity = new Road()
 
     map ! CreateEntity(entity, (0, 0))
-    expectMsg(Event(Event.System.EntityCreated, Some((0, 0))))
+    this.expectEntityCreatedAt(0, 0)
     expectMsgType[RoadRef]
 
     map ! CreateEntity(entity, (13, 5))
-    expectMsg(Event(Event.System.CellOutOfBounds, Some((13, 5))))
+    expectMsg(CellEvent(Event.Engine.CellOutOfBounds, (13, 5)))
   }
 
   it should "destroy entities when idle" in { _ =>
@@ -172,15 +174,15 @@ class GameMapSpec extends AkkaUnitSpec("GameMapSpec") {
     val entity = new Road()
 
     map ! CreateEntity(entity, (0, 0))
-    expectMsg(Event(Event.System.EntityCreated, Some((0, 0))))
+    this.expectEntityCreatedAt(0, 0)
 
     val entityRef = receiveOne(timeout.duration).asInstanceOf[RoadRef]
 
     map ! DestroyEntity(entityRef)
-    expectMsg(Event(Event.System.EntityDestroyed, Some((0, 0))))
+    this.expectEntityDestroyedAt((0, 0))
 
     map ! DestroyEntity(WalkerRef(TestProbe().ref))
-    expectMsg(Event(Event.System.CellOutOfBounds, cell = None))
+    expectMsg(SystemEvent(Event.Engine.CellOutOfBounds))
   }
 
   it should "move entities when idle" in { _ =>
@@ -188,15 +190,15 @@ class GameMapSpec extends AkkaUnitSpec("GameMapSpec") {
     val entity = new Road()
 
     map ! CreateEntity(entity, (0, 0))
-    expectMsg(Event(Event.System.EntityCreated, Some((0, 0))))
+    this.expectEntityCreatedAt(0, 0)
 
     val entityRef = receiveOne(timeout.duration).asInstanceOf[RoadRef]
 
     map ! MoveEntity(entityRef, (0, 1))
-    expectMsg(Event(Event.System.EntityMoved, Some((0, 1))))
+    this.expectEntityMovedTo((0, 1))
 
     map ! MoveEntity(entityRef, (13, 5))
-    expectMsg(Event(Event.System.CellOutOfBounds, Some((13, 5))))
+    expectMsg(CellEvent(Event.Engine.CellOutOfBounds, (13, 5)))
   }
 
   it should "process commodity distribution when idle" in { _ =>
@@ -204,12 +206,12 @@ class GameMapSpec extends AkkaUnitSpec("GameMapSpec") {
     val entity = new Tree()
 
     map ! CreateEntity(entity, (0, 0))
-    expectMsg(Event(Event.System.EntityCreated, Some((0, 0))))
+    this.expectEntityCreatedAt(0, 0)
 
     val entityRef = receiveOne(timeout.duration).asInstanceOf[ResourceRef]
 
     map ! DistributeCommodities(entityRef, Seq.empty)
-    expectMsgAllOf(Event(Event.System.MessageForwarded, Some((0, 0))))
+    expectMsgAllOf(CellEvent(Event.Engine.MessageForwarded, (0, 0)))
   }
 
   it should "process entity attacks when idle" in { _ =>
@@ -217,12 +219,12 @@ class GameMapSpec extends AkkaUnitSpec("GameMapSpec") {
     val entity = new Tree()
 
     map ! CreateEntity(entity, (0, 0))
-    expectMsg(Event(Event.System.EntityCreated, Some((0, 0))))
+    this.expectEntityCreatedAt(0, 0)
 
     val entityRef = receiveOne(timeout.duration).asInstanceOf[ResourceRef]
 
     map ! AttackEntity(entityRef, AttackDamage(0))
-    expectMsgAllOf(Event(Event.System.MessageForwarded, Some((0, 0))))
+    expectMsgAllOf(CellEvent(Event.Engine.MessageForwarded, (0, 0)))
   }
 
   it should "process labour found updates when idle" in { _ =>
@@ -230,12 +232,12 @@ class GameMapSpec extends AkkaUnitSpec("GameMapSpec") {
     val entity = new CoalMine()
 
     map ! CreateEntity(entity, (0, 0))
-    expectMsg(Event(Event.System.EntityCreated, Some((0, 0))))
+    this.expectEntityCreatedAt(0, 0)
 
     val entityRef = receiveOne(timeout.duration).asInstanceOf[StructureRef]
 
     map ! LabourFound(entityRef)
-    expectMsgAllOf(Event(Event.System.MessageForwarded, Some((0, 0))))
+    expectMsgAllOf(CellEvent(Event.Engine.MessageForwarded, (0, 0)))
   }
 
   it should "process occupants updates when idle" in { _ =>
@@ -243,12 +245,12 @@ class GameMapSpec extends AkkaUnitSpec("GameMapSpec") {
     val entity = new CoalMine()
 
     map ! CreateEntity(entity, (0, 0))
-    expectMsg(Event(Event.System.EntityCreated, Some((0, 0))))
+    this.expectEntityCreatedAt(0, 0)
 
     val entityRef = receiveOne(timeout.duration).asInstanceOf[StructureRef]
 
     map ! OccupantsUpdate(entityRef, occupants = 10)
-    expectMsgAllOf(Event(Event.System.MessageForwarded, Some((0, 0))))
+    expectMsgAllOf(CellEvent(Event.Engine.MessageForwarded, (0, 0)))
   }
 
   it should "process labour updates when idle" in { _ =>
@@ -256,12 +258,12 @@ class GameMapSpec extends AkkaUnitSpec("GameMapSpec") {
     val entity = new CoalMine()
 
     map ! CreateEntity(entity, (0, 0))
-    expectMsg(Event(Event.System.EntityCreated, Some((0, 0))))
+    this.expectEntityCreatedAt(0, 0)
 
     val entityRef = receiveOne(timeout.duration).asInstanceOf[StructureRef]
 
     map ! LabourUpdate(entityRef, employees = 10)
-    expectMsgAllOf(Event(Event.System.MessageForwarded, Some((0, 0))))
+    expectMsgAllOf(CellEvent(Event.Engine.MessageForwarded, (0, 0)))
   }
 
   it should "forward messages to commodity exchange when idle" in { _ =>
@@ -273,7 +275,7 @@ class GameMapSpec extends AkkaUnitSpec("GameMapSpec") {
   it should "log entity tick responses when idle" in { _ =>
     val map = system.actorOf(Props(new TestGameMap(testActor, StartBehaviour.Idle)))
     map ! EntityTickProcessed(tick = 0)
-    expectMsg(Event(Event.System.UnexpectedEntityResponseReceived, cell = None))
+    expectMsg(SystemEvent(Event.Engine.UnexpectedEntityResponseReceived))
   }
 
   it should "respond with grid data when idle" in { _ =>

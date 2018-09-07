@@ -13,12 +13,14 @@ import owe.map.grid.Point
 import owe.test.specs.unit.AkkaUnitSpec
 import owe.test.specs.unit.map.TestGameMap
 import owe.test.specs.unit.map.TestGameMap.StartBehaviour
-
 import scala.collection.immutable.Queue
 import scala.concurrent.duration._
 
-trait WalkerBehaviour { _: AkkaUnitSpec =>
-  private implicit val timeout: Timeout = 5.seconds
+import owe.events.Event.{EntityEvent, SystemEvent}
+import owe.test.specs.unit.entities.EntityTestHelpers
+
+trait WalkerBehaviour extends EntityTestHelpers { _: AkkaUnitSpec =>
+  protected implicit val timeout: Timeout = 5.seconds
 
   def roamingWalker(walker: Walker): Unit =
     it should "roam around" in { _ =>
@@ -29,13 +31,13 @@ trait WalkerBehaviour { _: AkkaUnitSpec =>
 
       val walkerPoint = Point(0, 0)
       map.tell(CreateEntity(walker, walkerPoint), testProbe.ref)
-      testProbe.expectMsg(Event(Event.System.EntityCreated, Some(walkerPoint)))
+      testProbe.expectEntityCreatedAt(walkerPoint)
       testProbe.expectMsgType[WalkerRef]
 
       val (ticks, moved) = testProbe
         .receiveWhile(timeout.duration) {
-          case Event(Event.System.TickProcessed, None) => (1, 0)
-          case Event(Event.System.EntityMoved, _)      => (0, 1)
+          case SystemEvent(Event.Engine.TickProcessed)     => (1, 0)
+          case EntityEvent(Event.Engine.EntityMoved, _, _) => (0, 1)
         }
         .foldLeft((0, 0)) {
           case ((totalTicks, totalMoved), (currentTick, currentMoved)) =>
@@ -57,18 +59,18 @@ trait WalkerBehaviour { _: AkkaUnitSpec =>
       val enemyPoint = Point(1, 1)
 
       map.tell(CreateEntity(walker, walkerPoint), testProbe.ref)
-      testProbe.expectMsg(Event(Event.System.EntityCreated, Some(walkerPoint)))
+      testProbe.expectEntityCreatedAt(walkerPoint)
       testProbe.expectMsgType[WalkerRef]
 
       map.tell(CreateEntity(enemy, enemyPoint), testProbe.ref)
-      testProbe.expectMsg(Event(Event.System.EntityCreated, Some(enemyPoint)))
+      testProbe.expectEntityCreatedAt(enemyPoint)
       testProbe.expectMsgType[WalkerRef]
 
       val (ticks, destroyed) = testProbe
         .receiveWhile(timeout.duration) {
-          case Event(Event.System.TickProcessed, None) => (1, 0)
-          case Event(Event.System.EntityDestroyed, _)  => (0, 1)
-          case _                                       => (0, 0)
+          case SystemEvent(Event.Engine.TickProcessed)         => (1, 0)
+          case EntityEvent(Event.Engine.EntityDestroyed, _, _) => (0, 1)
+          case _                                               => (0, 0)
         }
         .foldLeft((0, 0)) {
           case ((totalTicks, totalDestroyed), (currentTick, currentDestroyed)) =>
@@ -89,14 +91,14 @@ trait WalkerBehaviour { _: AkkaUnitSpec =>
       val walkerPoint = Point(2, 2)
 
       map.tell(CreateEntity(walker, walkerPoint), testProbe.ref)
-      testProbe.expectMsg(Event(Event.System.EntityCreated, Some(walkerPoint)))
+      testProbe.expectEntityCreatedAt(walkerPoint)
       testProbe.expectMsgType[WalkerRef]
 
       val (ticks, moved) = testProbe
         .receiveWhile(timeout.duration) {
-          case Event(Event.System.TickProcessed, None)               => (1, 0)
-          case Event(Event.System.EntityMoved, Some(`homePosition`)) => (0, 1)
-          case _                                                     => (0, 0)
+          case SystemEvent(Event.Engine.TickProcessed)                  => (1, 0)
+          case EntityEvent(Event.Engine.EntityMoved, _, `homePosition`) => (0, 1)
+          case _                                                        => (0, 0)
         }
         .foldLeft((0, 0)) {
           case ((totalTicks, totalMoved), (currentTick, currentMoved)) =>
@@ -147,11 +149,11 @@ trait WalkerBehaviour { _: AkkaUnitSpec =>
       val followedWalkerPoint = Point(1, 0)
 
       map.tell(CreateEntity(followingWalker, followingWalkerPoint), testProbe.ref)
-      testProbe.expectMsg(Event(Event.System.EntityCreated, Some(followingWalkerPoint)))
+      testProbe.expectEntityCreatedAt(followingWalkerPoint)
       val followingWalkerRef = testProbe.receiveOne(timeout.duration).asInstanceOf[WalkerRef]
 
       map.tell(CreateEntity(followedWalker, followedWalkerPoint), testProbe.ref)
-      testProbe.expectMsg(Event(Event.System.EntityCreated, Some(followedWalkerPoint)))
+      testProbe.expectEntityCreatedAt(followedWalkerPoint)
       val followedWalkerRef = testProbe.receiveOne(timeout.duration).asInstanceOf[WalkerRef]
 
       followingWalkerRef ! AddEntityInstruction(
@@ -162,9 +164,9 @@ trait WalkerBehaviour { _: AkkaUnitSpec =>
 
       val (ticks, positions) = testProbe
         .receiveWhile(timeout.duration) {
-          case Event(Event.System.TickProcessed, None)   => (1, None)
-          case Event(Event.System.EntityMoved, position) => (0, position)
-          case _                                         => (0, None)
+          case SystemEvent(Event.Engine.TickProcessed)            => (1, None)
+          case EntityEvent(Event.Engine.EntityMoved, _, position) => (0, Some(position))
+          case _                                                  => (0, None)
         }
         .foldLeft((0, Seq.empty[Point])) {
           case ((totalTicks, allPositions), (currentTick, currentPosition)) =>
@@ -195,19 +197,19 @@ trait WalkerBehaviour { _: AkkaUnitSpec =>
       val walkerPoint = Point(2, 0)
 
       map.tell(CreateEntity(walker, walkerPoint), testProbe.ref)
-      testProbe.expectMsg(Event(Event.System.EntityCreated, Some(walkerPoint)))
+      testProbe.expectEntityCreatedAt(walkerPoint)
       testProbe.expectMsgType[WalkerRef]
 
       val (ticks, moved) = testProbe
         .receiveWhile(timeout.duration) {
-          case Event(Event.System.TickProcessed, None)              => (1, 0)
-          case Event(Event.System.EntityMoved, Some(`destination`)) => (0, 1)
+          case SystemEvent(Event.Engine.TickProcessed)                 => (1, 0)
+          case EntityEvent(Event.Engine.EntityMoved, _, `destination`) => (0, 1)
           case event =>
             action match {
               case GoToPoint(secondDestination) =>
                 event match {
-                  case Event(Event.System.EntityMoved, Some(`secondDestination`)) => (0, 1)
-                  case _                                                          => (0, 0)
+                  case EntityEvent(Event.Engine.EntityMoved, _, `secondDestination`) => (0, 1)
+                  case _                                                             => (0, 0)
                 }
 
               case _ => (0, 0)

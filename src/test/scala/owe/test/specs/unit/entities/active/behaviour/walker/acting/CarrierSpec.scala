@@ -23,16 +23,18 @@ import owe.test.specs.unit.AkkaUnitSpec
 import owe.test.specs.unit.entities.active.behaviour.Fixtures
 import owe.test.specs.unit.map.TestGameMap
 import owe.test.specs.unit.map.TestGameMap.StartBehaviour
-
 import scala.collection.immutable.Queue
 import scala.concurrent.duration._
 
-class CarrierSpec extends AkkaUnitSpec("CarrierSpec") {
+import owe.events.Event.{CellEvent, EntityEvent, SystemEvent}
+import owe.test.specs.unit.entities.EntityTestHelpers
+
+class CarrierSpec extends AkkaUnitSpec("CarrierSpec") with EntityTestHelpers {
 
   import CarrierSpec.Expectation._
   import CarrierSpec._
 
-  private implicit val timeout: Timeout = 5.seconds
+  protected implicit val timeout: Timeout = 5.seconds
 
   private val properties: Properties = Fixtures.Walker.properties.copy(
     homePosition = Point(0, 0),
@@ -185,28 +187,28 @@ class CarrierSpec extends AkkaUnitSpec("CarrierSpec") {
     val parentStructurePoint = Point(0, 0)
 
     map.tell(CreateEntity(parentStructure, parentStructurePoint), testProbe.ref)
-    testProbe.expectMsg(Event(Event.System.EntityCreated, Some(parentStructurePoint)))
+    testProbe.expectEntityCreatedAt(parentStructurePoint)
     val parentStructureRef = testProbe.receiveOne(timeout.duration).asInstanceOf[StructureRef]
 
     val targetStructurePoint = Point(2, 2)
 
     map.tell(CreateEntity(targetStructure, targetStructurePoint), testProbe.ref)
-    testProbe.expectMsg(Event(Event.System.EntityCreated, Some(targetStructurePoint)))
+    testProbe.expectEntityCreatedAt(targetStructurePoint)
     val targetStructureRef = testProbe.receiveOne(timeout.duration).asInstanceOf[StructureRef]
 
     val walkerPoint = Point(0, 1)
     val walker = walkerFactory(parentStructureRef, targetStructureRef)
 
     map.tell(CreateEntity(walker, walkerPoint), testProbe.ref)
-    testProbe.expectMsg(Event(Event.System.EntityCreated, Some(walkerPoint)))
+    testProbe.expectEntityCreatedAt(walkerPoint)
     testProbe.expectMsgType[WalkerRef]
 
     Expectations.fromList(
       testProbe
         .receiveWhile(timeout.duration) {
-          case Event(Event.System.TickProcessed, None)                                    => TickProcessed
-          case Event(Event.System.EntityMoved, _)                                         => WalkerMoved
-          case Event(Event.System.MessageForwarded, _)                                    => CommodityDistributed
+          case SystemEvent(Event.Engine.TickProcessed)                                    => TickProcessed
+          case EntityEvent(Event.Engine.EntityMoved, _, _)                                => WalkerMoved
+          case CellEvent(Event.Engine.MessageForwarded, _)                                => CommodityDistributed
           case CommodityInTransit(Commodity("TestCommodity"), Commodity.Amount(50), _, _) => CommodityRetrieved
           case CommodityInTransit(Commodity("TestCommodity"), Commodity.Amount(20), _, _) => CommodityStored
           case CommodityInTransit(Commodity("TestCommodity"), Commodity.Amount(0), _, _)  => CommodityReturned

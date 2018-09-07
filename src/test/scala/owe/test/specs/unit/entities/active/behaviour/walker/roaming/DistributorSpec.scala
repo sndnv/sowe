@@ -1,8 +1,9 @@
 package owe.test.specs.unit.entities.active.behaviour.walker.roaming
 
+import scala.concurrent.duration._
+
 import akka.actor.Props
 import akka.testkit.TestProbe
-import akka.util.Timeout
 import org.scalatest.Outcome
 import owe.effects.Effect
 import owe.entities.ActiveEntity.{ActiveEntityRef, Data, StructureData, WalkerData}
@@ -16,6 +17,7 @@ import owe.entities.active.behaviour.walker.BaseWalker
 import owe.entities.active.behaviour.walker.roaming.Distributor
 import owe.entities.active.{Structure, Walker}
 import owe.events.Event
+import owe.events.Event.{CellEvent, EntityEvent, SystemEvent}
 import owe.map.GameMap.CreateEntity
 import owe.map.grid.Point
 import owe.production.Commodity
@@ -26,11 +28,7 @@ import owe.test.specs.unit.entities.definitions.active.structures.StorageBuildin
 import owe.test.specs.unit.map.TestGameMap
 import owe.test.specs.unit.map.TestGameMap.StartBehaviour
 
-import scala.concurrent.duration._
-
 class DistributorSpec extends AkkaUnitSpec("DistributorSpec") with WalkerBehaviour {
-  private implicit val timeout: Timeout = 5.seconds
-
   private class TestDistributor(
     properties: Properties,
     state: State,
@@ -140,23 +138,23 @@ class DistributorSpec extends AkkaUnitSpec("DistributorSpec") with WalkerBehavio
     }
 
     map.tell(CreateEntity(structure1, (1, 0)), testProbe.ref)
-    testProbe.expectMsg(Event(Event.System.EntityCreated, Some((1, 0))))
+    testProbe.expectEntityCreatedAt((1, 0))
     testProbe.expectMsgType[StructureRef]
 
     map.tell(CreateEntity(structure2, (2, 2)), testProbe.ref)
-    testProbe.expectMsg(Event(Event.System.EntityCreated, Some((2, 2))))
+    testProbe.expectEntityCreatedAt((2, 2))
     testProbe.expectMsgType[StructureRef]
 
     map.tell(CreateEntity(parentBuilding, (2, 0)), testProbe.ref)
-    testProbe.expectMsg(Event(Event.System.EntityCreated, Some((2, 0))))
+    testProbe.expectEntityCreatedAt((2, 0))
     testProbe.expectMsgType[StructureRef]
 
     val (ticks, acted, created) = testProbe
       .receiveWhile(timeout.duration) {
-        case Event(Event.System.TickProcessed, None) => (1, 0, 0)
-        case Event(Event.System.MessageForwarded, _) => (0, 1, 0)
-        case Event(Event.System.EntityCreated, _)    => (0, 0, 1)
-        case _                                       => (0, 0, 0)
+        case SystemEvent(Event.Engine.TickProcessed)       => (1, 0, 0)
+        case CellEvent(Event.Engine.MessageForwarded, _)   => (0, 1, 0)
+        case EntityEvent(Event.Engine.EntityCreated, _, _) => (0, 0, 1)
+        case _                                             => (0, 0, 0)
       }
       .foldLeft((0, 0, 0)) {
         case ((totalTicks, totalActed, totalCreated), (currentTick, currentActed, currentCreated)) =>
@@ -212,24 +210,24 @@ class DistributorSpec extends AkkaUnitSpec("DistributorSpec") with WalkerBehavio
     }
 
     map.tell(CreateEntity(structure1, (1, 0)), testProbe.ref)
-    testProbe.expectMsg(Event(Event.System.EntityCreated, Some((1, 0))))
+    testProbe.expectEntityCreatedAt(1, 0)
     testProbe.expectMsgType[StructureRef]
 
     map.tell(CreateEntity(structure2, (2, 2)), testProbe.ref)
-    testProbe.expectMsg(Event(Event.System.EntityCreated, Some((2, 2))))
+    testProbe.expectEntityCreatedAt(2, 2)
     testProbe.expectMsgType[StructureRef]
 
     map.tell(CreateEntity(parentBuilding, (2, 0)), testProbe.ref)
-    testProbe.expectMsg(Event(Event.System.EntityCreated, Some((2, 0))))
+    testProbe.expectEntityCreatedAt(2, 0)
     testProbe.expectMsgType[StructureRef]
 
     val (ticks, acted, created, destroyed) = testProbe
       .receiveWhile(timeout.duration) {
-        case Event(Event.System.TickProcessed, None) => (1, 0, 0, 0)
-        case Event(Event.System.MessageForwarded, _) => (0, 1, 0, 0)
-        case Event(Event.System.EntityCreated, _)    => (0, 0, 1, 0)
-        case Event(Event.System.EntityDestroyed, _)  => (0, 0, 0, 1)
-        case _                                       => (0, 0, 0, 0)
+        case SystemEvent(Event.Engine.TickProcessed)         => (1, 0, 0, 0)
+        case CellEvent(Event.Engine.MessageForwarded, _)     => (0, 1, 0, 0)
+        case EntityEvent(Event.Engine.EntityCreated, _, _)   => (0, 0, 1, 0)
+        case EntityEvent(Event.Engine.EntityDestroyed, _, _) => (0, 0, 0, 1)
+        case _                                               => (0, 0, 0, 0)
       }
       .foldLeft((0, 0, 0, 0)) {
         case ((totalTicks, totalActed, totalCreated, totalDestroyed),

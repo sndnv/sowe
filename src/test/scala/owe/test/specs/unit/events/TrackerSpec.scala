@@ -2,6 +2,7 @@ package owe.test.specs.unit.events
 
 import akka.actor.ActorRef
 import org.scalatest.Outcome
+import owe.events.Event.SystemEvent
 import owe.events.Tracker._
 import owe.events.{Event, Tracker}
 import owe.map.grid.Point
@@ -13,6 +14,8 @@ class TrackerSpec extends AkkaUnitSpec("TrackerSpec") {
   case object TestEvent2 extends Event.Game
   case object TestEvent3 extends Event.Game
 
+  case class TestEvent(id: Event.Identifier, targetCell: Option[Point]) extends Event
+
   case class FixtureParam()
 
   def withFixture(test: OneArgTest): Outcome =
@@ -22,13 +25,13 @@ class TrackerSpec extends AkkaUnitSpec("TrackerSpec") {
 
   "A Tracker" should "attach observers" in { _ =>
     val events = Seq(
-      Event.System.EntityCreated,
-      Event.System.EntityDestroyed,
-      Event.System.EntityMoved,
-      Event.System.CellsUnavailable,
-      Event.System.CellOutOfBounds,
-      Event.System.EntityMissing,
-      Event.System.DestinationUnreachable,
+      Event.Engine.EntityCreated,
+      Event.Engine.EntityDestroyed,
+      Event.Engine.EntityMoved,
+      Event.Engine.CellsUnavailable,
+      Event.Engine.CellOutOfBounds,
+      Event.Engine.EntityMissing,
+      Event.Engine.DestinationUnreachable,
       TestEvent1,
       TestEvent2,
       TestEvent3
@@ -39,9 +42,9 @@ class TrackerSpec extends AkkaUnitSpec("TrackerSpec") {
   }
 
   it should "forward events to observers" in { _ =>
-    val event1 = Event(id = Event.System.EntityCreated, cell = None)
-    val event2 = Event(id = TestEvent2, cell = Some(Point(0, 0)))
-    val event3 = Event(id = TestEvent1, cell = Some(Point(5, 1)))
+    val event1 = SystemEvent(id = Event.Engine.EntityMissing)
+    val event2 = TestEvent(id = TestEvent2, targetCell = Some(Point(0, 0)))
+    val event3 = TestEvent(id = TestEvent1, targetCell = Some(Point(5, 1)))
 
     tracker ! event1
     tracker ! event2
@@ -53,8 +56,8 @@ class TrackerSpec extends AkkaUnitSpec("TrackerSpec") {
   }
 
   it should "allow event querying" in { _ =>
-    val event2 = Event(id = TestEvent2, cell = Some(Point(0, 0)))
-    val event3 = Event(id = TestEvent1, cell = Some(Point(5, 1)))
+    val event2 = TestEvent(id = TestEvent2, targetCell = Some(Point(0, 0)))
+    val event3 = TestEvent(id = TestEvent1, targetCell = Some(Point(5, 1)))
 
     tracker ! GetGameEventsLog()
     expectMsg(Vector(event2, event3))
@@ -69,19 +72,19 @@ class TrackerSpec extends AkkaUnitSpec("TrackerSpec") {
 
   it should "detach observers" in { _ =>
     val events = Seq(
-      Event.System.CellsUnavailable,
-      Event.System.CellOutOfBounds,
-      Event.System.EntityMissing
+      Event.Engine.CellsUnavailable,
+      Event.Engine.CellOutOfBounds,
+      Event.Engine.EntityMissing
     )
 
     tracker ! DetachEventsObserver(testActor, events: _*)
     expectMsg(EventsObserverDetached(events: _*))
 
-    val detachedEvent = Event(id = Event.System.EntityMissing, cell = None)
+    val detachedEvent = TestEvent(id = Event.Engine.EntityMissing, targetCell = None)
     tracker ! detachedEvent
     expectNoMessage()
 
-    val attachedEvent = Event(id = Event.System.DestinationUnreachable, cell = None)
+    val attachedEvent = TestEvent(id = Event.Engine.DestinationUnreachable, targetCell = None)
     tracker ! attachedEvent
     expectMsg(attachedEvent)
   }

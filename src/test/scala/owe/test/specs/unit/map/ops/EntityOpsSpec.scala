@@ -21,9 +21,10 @@ import owe.map.grid.{Grid, Point}
 import owe.map.ops.{AvailabilityOps, EntityOps}
 import owe.map.{Cell, MapEntity}
 import owe.test.specs.unit.AsyncUnitSpec
-
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
+
+import owe.events.Event.{CellEvent, EntityEvent, SystemEvent}
 
 class EntityOpsSpec extends AsyncUnitSpec {
   private implicit val timeout: Timeout = 3.seconds
@@ -131,15 +132,15 @@ class EntityOpsSpec extends AsyncUnitSpec {
         roadCell
       )
     } yield {
-      outOfBoundsCellResult should be(Left(Event(Event.System.CellOutOfBounds, Some(outOfBoundsCell))))
-      unavailableMainCellResult should be(Left(Event(Event.System.CellsUnavailable, Some(unavailableMainCell))))
-      unavailableEntityCellsResult should be(Left(Event(Event.System.CellsUnavailable, Some(unavailableEntityCell))))
-      adjacentSpawnPointUnavailableResult should be(Left(Event(Event.System.SpawnPointUnavailable, None)))
-      adjacentRoadUnavailableResult should be(Left(Event(Event.System.SpawnPointUnavailable, None)))
+      outOfBoundsCellResult should be(Left(CellEvent(Event.Engine.CellOutOfBounds, outOfBoundsCell)))
+      unavailableMainCellResult should be(Left(CellEvent(Event.Engine.CellsUnavailable, unavailableMainCell)))
+      unavailableEntityCellsResult should be(Left(CellEvent(Event.Engine.CellsUnavailable, unavailableEntityCell)))
+      adjacentSpawnPointUnavailableResult should be(Left(SystemEvent(Event.Engine.SpawnPointUnavailable)))
+      adjacentRoadUnavailableResult should be(Left(SystemEvent(Event.Engine.SpawnPointUnavailable)))
 
       successfulResult match {
-        case Left(event)       => fail(s"Expected successful result but event [$event] encountered")
-        case Right((_, event)) => event should be(Event(Event.System.EntityCreated, Some(roadCell)))
+        case Left(event)               => fail(s"Expected successful result but event [$event] encountered")
+        case Right((mapEntity, event)) => event should be(EntityEvent(Event.Engine.EntityCreated, mapEntity, roadCell))
       }
     }
   }
@@ -188,11 +189,12 @@ class EntityOpsSpec extends AsyncUnitSpec {
       expectedEntityNotFound <- fixture.ops.destroyEntity(fixture.grid, entities, expectedEntityID)
       successfulResult <- fixture.ops.destroyEntity(fixture.grid, entities, entityID)
     } yield {
-      outOfBoundsCellResult should be(Left(Event(Event.System.CellOutOfBounds, cell = None)))
-      entityMissingResult should be(Left(Event(Event.System.EntityMissing, Some(missingEntityCell))))
-      expectedEntityNotFound should be(Left(Event(Event.System.EntityMissing, Some(expectedEntityCell))))
+      outOfBoundsCellResult should be(Left(SystemEvent(Event.Engine.CellOutOfBounds)))
+      entityMissingResult should be(Left(CellEvent(Event.Engine.EntityMissing, missingEntityCell)))
+      expectedEntityNotFound should be(Left(CellEvent(Event.Engine.EntityMissing, expectedEntityCell)))
 
-      successfulResult should be(Right((Event(Event.System.EntityDestroyed, Some(entityCell)), mapEntity, entityCell)))
+      successfulResult should be(
+        Right((EntityEvent(Event.Engine.EntityDestroyed, mapEntity, entityCell), mapEntity, entityCell)))
     }
   }
 
@@ -289,14 +291,15 @@ class EntityOpsSpec extends AsyncUnitSpec {
         newCell
       )
     } yield {
-      currentCellNotFoundResult should be(Left(Event(Event.System.CellsUnavailable, cell = None)))
-      currentMapCellNotFoundResult should be(Left(Event(Event.System.CellOutOfBounds, Some(outOfBoundsCell))))
-      newCellNotFoundResult should be(Left(Event(Event.System.CellOutOfBounds, Some(outOfBoundsCell))))
-      currentEntityNotFoundResult should be(Left(Event(Event.System.CellsUnavailable, Some(newCell))))
-      newCellUnavailableResult should be(Left(Event(Event.System.CellsUnavailable, Some(unavailableNewCell))))
-      someEntityCellUnavailableResult should be(Left(Event(Event.System.CellsUnavailable, Some(newCell))))
+      currentCellNotFoundResult should be(Left(SystemEvent(Event.Engine.CellsUnavailable)))
+      currentMapCellNotFoundResult should be(Left(CellEvent(Event.Engine.CellOutOfBounds, outOfBoundsCell)))
+      newCellNotFoundResult should be(Left(CellEvent(Event.Engine.CellOutOfBounds, outOfBoundsCell)))
+      currentEntityNotFoundResult should be(Left(CellEvent(Event.Engine.CellsUnavailable, newCell)))
+      newCellUnavailableResult should be(Left(CellEvent(Event.Engine.CellsUnavailable, unavailableNewCell)))
+      someEntityCellUnavailableResult should be(Left(CellEvent(Event.Engine.CellsUnavailable, newCell)))
 
-      successfulResult should be(Right((Event(Event.System.EntityMoved, Some(newCell)), walkerMapEntity, walkerCell)))
+      successfulResult should be(
+        Right((EntityEvent(Event.Engine.EntityMoved, walkerMapEntity, newCell), walkerMapEntity, walkerCell)))
     }
   }
 

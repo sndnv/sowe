@@ -12,8 +12,9 @@ import owe.events.Event
 import owe.map.Cell.{CellActorRef, GetEntity}
 import owe.map.MapEntity
 import owe.map.grid.{Grid, Point}
-
 import scala.concurrent.{ExecutionContext, Future}
+
+import owe.events.Event.{CellEvent, SystemEvent}
 
 trait ForwardingOps {
 
@@ -29,24 +30,24 @@ trait ForwardingOps {
     val result = for {
       parentCell <- entities
         .get(entityID)
-        .toRight(Event(Event.System.EntityMissing, cell = None)): Either[Event, Point]
+        .toRight(SystemEvent(Event.Engine.EntityMissing)): Either[Event, Point]
       mapCell <- grid
         .get(parentCell)
-        .toRight(Event(Event.System.CellOutOfBounds, Some(parentCell))): Either[Event, CellActorRef]
+        .toRight(CellEvent(Event.Engine.CellOutOfBounds, parentCell)): Either[Event, CellActorRef]
     } yield {
       (mapCell ? GetEntity(entityID)).mapTo[Option[MapEntity]].map {
         case Some(mapEntity) =>
           mapEntity.entityRef match {
             case activeEntity: ActiveEntityRef =>
               activeEntity ! AddEntityMessage(message)
-              Event(Event.System.MessageForwarded, cell = Some(parentCell))
+              CellEvent(Event.Engine.MessageForwarded, targetCell = parentCell)
 
             case _: PassiveEntityRef =>
-              Event(Event.System.UnexpectedEntityFound, Some(parentCell))
+              CellEvent(Event.Engine.UnexpectedEntityFound, parentCell)
           }
 
         case None =>
-          Event(Event.System.EntityMissing, Some(parentCell))
+          CellEvent(Event.Engine.EntityMissing, parentCell)
       }
     }
 

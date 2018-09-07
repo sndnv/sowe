@@ -4,7 +4,7 @@ import akka.actor.{Actor, ActorRef, Props}
 import owe.events.Tracker._
 
 class Tracker() extends Actor {
-  private def handler(observers: Map[Event.Identifier, Seq[ActorRef]], gameEventsLog: Vector[Event]): Receive = {
+  private def track(observers: Map[Event.Identifier, Seq[ActorRef]], gameEventsLog: Vector[Event]): Receive = {
     case event: Event =>
       observers.getOrElse(event.id, Seq.empty).foreach(_ ! event)
       val updatedEventsLog = event.id match {
@@ -12,7 +12,7 @@ class Tracker() extends Actor {
         case _             => gameEventsLog //system events are not stored
       }
 
-      context.become(handler(observers, updatedEventsLog))
+      context.become(track(observers, updatedEventsLog))
 
     case attach: AttachEventsObserver =>
       val updatedObservers = attach.events.foldLeft(observers) {
@@ -21,7 +21,7 @@ class Tracker() extends Actor {
       }
 
       attach.actor ! EventsObserverAttached(attach.events: _*)
-      context.become(handler(updatedObservers, gameEventsLog))
+      context.become(track(updatedObservers, gameEventsLog))
 
     case detach: DetachEventsObserver =>
       val (detachedEvents, updatedObservers) = detach.events.foldLeft((Seq.empty[Event.Identifier], observers)) {
@@ -45,16 +45,16 @@ class Tracker() extends Actor {
       }
 
       detach.actor ! EventsObserverDetached(detachedEvents: _*)
-      context.become(handler(updatedObservers, gameEventsLog))
+      context.become(track(updatedObservers, gameEventsLog))
 
     case GetGameEventsLog() =>
       sender ! gameEventsLog
 
     case ClearGameEventsLog() =>
-      context.become(handler(observers, Vector.empty))
+      context.become(track(observers, Vector.empty))
   }
 
-  override def receive: Receive = handler(observers = Map.empty, gameEventsLog = Vector.empty)
+  override def receive: Receive = track(observers = Map.empty, gameEventsLog = Vector.empty)
 }
 
 object Tracker {

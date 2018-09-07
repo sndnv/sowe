@@ -2,7 +2,6 @@ package owe.test.specs.unit.entities.active.behaviour.walker.roaming
 
 import akka.actor.Props
 import akka.testkit.TestProbe
-import akka.util.Timeout
 import org.scalatest.Outcome
 import owe.effects.Effect
 import owe.entities.ActiveEntity.{ActiveEntityRef, Data, StructureData, WalkerData}
@@ -24,12 +23,11 @@ import owe.test.specs.unit.entities.active.behaviour.walker.WalkerBehaviour
 import owe.test.specs.unit.entities.definitions.active.structures.StorageBuilding
 import owe.test.specs.unit.map.TestGameMap
 import owe.test.specs.unit.map.TestGameMap.StartBehaviour
-
 import scala.concurrent.duration._
 
-class RecruiterSpec extends AkkaUnitSpec("RecruiterSpec") with WalkerBehaviour {
-  private implicit val timeout: Timeout = 5.seconds
+import owe.events.Event.{CellEvent, EntityEvent, SystemEvent}
 
+class RecruiterSpec extends AkkaUnitSpec("RecruiterSpec") with WalkerBehaviour {
   private class TestRecruiter(
     properties: Properties,
     state: State,
@@ -141,19 +139,19 @@ class RecruiterSpec extends AkkaUnitSpec("RecruiterSpec") with WalkerBehaviour {
     }
 
     map.tell(CreateEntity(structure, (1, 0)), testProbe.ref)
-    testProbe.expectMsg(Event(Event.System.EntityCreated, Some((1, 0))))
+    testProbe.expectEntityCreatedAt((1, 0))
     testProbe.expectMsgType[StructureRef]
 
     map.tell(CreateEntity(parentBuilding, (2, 0)), testProbe.ref)
-    testProbe.expectMsg(Event(Event.System.EntityCreated, Some((2, 0))))
+    testProbe.expectEntityCreatedAt((2, 0))
     testProbe.expectMsgType[StructureRef]
 
     val (ticks, acted, created) = testProbe
       .receiveWhile(timeout.duration) {
-        case Event(Event.System.TickProcessed, None) => (1, 0, 0)
-        case Event(Event.System.MessageForwarded, _) => (0, 1, 0)
-        case Event(Event.System.EntityCreated, _)    => (0, 0, 1)
-        case _                                       => (0, 0, 0)
+        case SystemEvent(Event.Engine.TickProcessed)       => (1, 0, 0)
+        case CellEvent(Event.Engine.MessageForwarded, _)   => (0, 1, 0)
+        case EntityEvent(Event.Engine.EntityCreated, _, _) => (0, 0, 1)
+        case _                                             => (0, 0, 0)
       }
       .foldLeft((0, 0, 0)) {
         case ((totalTicks, totalActed, totalCreated), (currentTick, currentActed, currentCreated)) =>

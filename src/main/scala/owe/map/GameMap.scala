@@ -17,6 +17,7 @@ import owe.entities.active.Structure.StructureRef
 import owe.entities.active.Walker.WalkerRef
 import owe.entities.active.attributes.{AttackDamage, Distance}
 import owe.events.Event
+import owe.events.Event.SystemEvent
 import owe.map.Cell.{ActorRefTag, Availability, CellActorRef}
 import owe.map.grid.{Grid, Point}
 import owe.map.ops.Ops
@@ -84,7 +85,7 @@ trait GameMap extends Actor with ActorLogging with Stash with Timers with Ops {
       )
       scheduleNextTick()
       unstashAll()
-      tracker ! Event(Event.System.TickExpired, cell = None)
+      tracker ! SystemEvent(Event.Engine.TickExpired)
       context.become(idle(entities, currentTick + 1))
 
     case EntityTickProcessed(tick) =>
@@ -101,7 +102,7 @@ trait GameMap extends Actor with ActorLogging with Stash with Timers with Ops {
           timers.cancel(CollectionTimer)
           scheduleNextTick()
           unstashAll()
-          tracker ! Event(Event.System.TickProcessed, cell = None)
+          tracker ! SystemEvent(Event.Engine.TickProcessed)
           context.become(idle(entities, currentTick + 1))
         }
       } else {
@@ -111,7 +112,7 @@ trait GameMap extends Actor with ActorLogging with Stash with Timers with Ops {
           tick,
           currentTick
         )
-        tracker ! Event(Event.System.UnexpectedEntityResponseReceived, cell = None)
+        tracker ! SystemEvent(Event.Engine.UnexpectedEntityResponseReceived)
       }
 
     case message =>
@@ -245,7 +246,7 @@ trait GameMap extends Actor with ActorLogging with Stash with Timers with Ops {
 
     case EntityTickProcessed(tick) =>
       log.error("Entity response received from sender [{}] for tick [{}] while idle", sender, tick)
-      tracker ! Event(Event.System.UnexpectedEntityResponseReceived, cell = None)
+      tracker ! SystemEvent(Event.Engine.UnexpectedEntityResponseReceived)
 
     case GetGrid() =>
       log.debug("Retrieving grid data")

@@ -16,9 +16,10 @@ import owe.map.Cell.{AddEntity, CellActorRef}
 import owe.map.grid.{Grid, Point}
 import owe.map.ops.ForwardingOps
 import owe.test.specs.unit.AsyncUnitSpec
-
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
+
+import owe.events.Event.{CellEvent, SystemEvent}
 
 class ForwardingOpsSpec extends AsyncUnitSpec {
   private implicit val timeout: Timeout = 3.seconds
@@ -92,11 +93,11 @@ class ForwardingOpsSpec extends AsyncUnitSpec {
       unexpectedEntityResult <- fixture.ops.forwardEntityMessage(fixture.grid, entities, roadEntityID, message)
       successfulResult <- fixture.ops.forwardEntityMessage(fixture.grid, entities, walkerEntityID, message)
     } yield {
-      entityNotFoundResult should be(Event(Event.System.EntityMissing, cell = None))
-      cellMissingResult should be(Event(Event.System.CellOutOfBounds, Some(outOfBoundsCell)))
-      mapEntityMissingResult should be(Event(Event.System.EntityMissing, Some(missingMapEntityCell)))
-      unexpectedEntityResult should be(Event(Event.System.UnexpectedEntityFound, Some(roadCell)))
-      successfulResult should be(Event(Event.System.MessageForwarded, cell = Some(walkerCell)))
+      entityNotFoundResult should be(SystemEvent(Event.Engine.EntityMissing))
+      cellMissingResult should be(CellEvent(Event.Engine.CellOutOfBounds, outOfBoundsCell))
+      mapEntityMissingResult should be(CellEvent(Event.Engine.EntityMissing, missingMapEntityCell))
+      unexpectedEntityResult should be(CellEvent(Event.Engine.UnexpectedEntityFound, roadCell))
+      successfulResult should be(CellEvent(Event.Engine.MessageForwarded, walkerCell))
 
       val entityMessage = walkerTestProbe.receiveOne(timeout.duration).asInstanceOf[AddEntityMessage]
       entityMessage.message should be(ProcessLabourFound())

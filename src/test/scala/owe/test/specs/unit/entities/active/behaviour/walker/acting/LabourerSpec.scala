@@ -27,15 +27,17 @@ import owe.test.specs.unit.AkkaUnitSpec
 import owe.test.specs.unit.entities.active.behaviour.Fixtures
 import owe.test.specs.unit.map.TestGameMap
 import owe.test.specs.unit.map.TestGameMap.StartBehaviour
-
 import scala.collection.immutable.Queue
 import scala.concurrent.duration._
 
-class LabourerSpec extends AkkaUnitSpec("LabourerSpec") {
+import owe.events.Event.{CellEvent, EntityEvent, SystemEvent}
+import owe.test.specs.unit.entities.EntityTestHelpers
+
+class LabourerSpec extends AkkaUnitSpec("LabourerSpec") with EntityTestHelpers {
   import LabourerSpec._
   import LabourerSpec.Expectation._
 
-  private implicit val timeout: Timeout = 5.seconds
+  protected implicit val timeout: Timeout = 5.seconds
 
   private val properties: Properties = Fixtures.Walker.properties.copy(
     homePosition = Point(0, 0),
@@ -69,14 +71,14 @@ class LabourerSpec extends AkkaUnitSpec("LabourerSpec") {
     val structure = new TestStructure
 
     map.tell(CreateEntity(structure, structurePoint), testProbe.ref)
-    testProbe.expectMsg(Event(Event.System.EntityCreated, Some(structurePoint)))
+    testProbe.expectEntityCreatedAt(structurePoint)
     val structureRef = testProbe.receiveOne(timeout.duration).asInstanceOf[StructureRef]
 
     val resourcePoint = Point(2, 2)
     val resource = new TestResource
 
     map.tell(CreateEntity(resource, resourcePoint), testProbe.ref)
-    testProbe.expectMsg(Event(Event.System.EntityCreated, Some(resourcePoint)))
+    testProbe.expectEntityCreatedAt(resourcePoint)
     val resourceRef = testProbe.receiveOne(timeout.duration).asInstanceOf[ResourceRef]
 
     val walkerPoint = Point(0, 1)
@@ -90,14 +92,14 @@ class LabourerSpec extends AkkaUnitSpec("LabourerSpec") {
     )
 
     map.tell(CreateEntity(walker, walkerPoint), testProbe.ref)
-    testProbe.expectMsg(Event(Event.System.EntityCreated, Some(walkerPoint)))
+    testProbe.expectEntityCreatedAt(walkerPoint)
     testProbe.expectMsgType[WalkerRef]
 
     val result = testProbe
       .receiveWhile(timeout.duration) {
-        case Event(Event.System.TickProcessed, None)                                       => TickProcessed
-        case Event(Event.System.EntityMoved, _)                                            => WalkerMoved
-        case Event(Event.System.MessageForwarded, _)                                       => CommodityDistributed
+        case SystemEvent(Event.Engine.TickProcessed)                                       => TickProcessed
+        case EntityEvent(Event.Engine.EntityMoved, _, _)                                   => WalkerMoved
+        case CellEvent(Event.Engine.MessageForwarded, _)                                   => CommodityDistributed
         case UpdateCommodityState(Commodity("TestCommodity"), _, Commodity.State.Produced) => CommodityProduced
         case CommodityInTransit(Commodity("TestCommodity"), Commodity.Amount(100), _, _)   => CommodityRetrieved
         case CommodityInTransit(Commodity("TestCommodity"), Commodity.Amount(70), _, _)    => CommodityStored
@@ -141,14 +143,14 @@ class LabourerSpec extends AkkaUnitSpec("LabourerSpec") {
     val walkerPoint = Point(2, 0)
 
     map.tell(CreateEntity(walker, walkerPoint), testProbe.ref)
-    testProbe.expectMsg(Event(Event.System.EntityCreated, Some(walkerPoint)))
+    testProbe.expectEntityCreatedAt(walkerPoint)
     testProbe.expectMsgType[WalkerRef]
 
     val (ticks, moved) = testProbe
       .receiveWhile(timeout.duration) {
-        case Event(Event.System.TickProcessed, None)              => (1, 0)
-        case Event(Event.System.EntityMoved, Some(`destination`)) => (0, 1)
-        case _                                                    => (0, 0)
+        case SystemEvent(Event.Engine.TickProcessed)                 => (1, 0)
+        case EntityEvent(Event.Engine.EntityMoved, _, `destination`) => (0, 1)
+        case _                                                       => (0, 0)
       }
       .foldLeft((0, 0)) {
         case ((totalTicks, totalMoved), (currentTick, currentMoved)) =>
