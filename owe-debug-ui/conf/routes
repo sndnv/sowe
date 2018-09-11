@@ -1,4 +1,10 @@
 # Routes
 
-GET     /                           controllers.Home.root
+GET     /                           controllers.Root.index
+GET     /entity                     controllers.Root.getEntity(entityId: String)
+POST    /entity                     controllers.Root.constructEntity
+DELETE  /entity                     controllers.Root.destroyEntity(entityId: String)
+GET     /entities                   controllers.Root.entities
+GET     /exchange                   controllers.Root.exchange
+GET     /events                     controllers.Root.events
 GET     /assets/*file               controllers.Assets.versioned(file)

@@ -30,6 +30,8 @@ lazy val `owe-debug-ui` = (project in file("owe-debug-ui"))
   .settings(
     libraryDependencies ++= Seq(
       guice,
+      "org.webjars" % "jquery" % "3.3.1-1",
+      "com.typesafe.play" %% "play-json" % "2.7.0-M1",
       "org.scalatestplus.play" %% "scalatestplus-play" % "3.1.2" % Test
     )
   )

@@ -1,0 +1,176 @@
+@import owe.map.grid.Point
+@import owe.map.MapEntity
+@import play.api.libs.json._
+@import helper.CSRF
+
+@(structureSizes: JsValue, rows: Seq[Seq[(Point, JsObject)]])(implicit request: RequestHeader, assetsFinder: AssetsFinder)
+
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+    <title>Home</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/uikit/3.0.0-rc.10/css/uikit.min.css" />
+    <link rel="stylesheet" media="screen" href='@assetsFinder.path("css/core.css")'>
+    <link rel="stylesheet" media="screen" href='@assetsFinder.path("lib/jquery-json-presenter/jquery.jsonPresenter.css")'>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/uikit/3.0.0-rc.10/js/uikit.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/uikit/3.0.0-rc.10/js/uikit-icons.min.js"></script>
+    <script src="https://unpkg.com/tippy.js@@2.5.4/dist/tippy.all.min.js"></script>
+    <script src='@assetsFinder.path("lib/jquery/jquery.min.js")'></script>
+    <script src='@assetsFinder.path("lib/jquery-json-presenter/jquery.jsonPresenter.js")'></script>
+    <script src='@assetsFinder.path("js/core.js")'></script>
+</head>
+    <body>
+        <div class="uk-container uk-container-expand">
+            <div class="uk-text-center uk-flex uk-flex-center" uk-grid>
+                <div class="uk-flex-first">
+                    <div class="uk-padding uk-padding-remove-right">
+                        <div class="uk-card uk-card-default uk-card-body">
+                            <ul uk-tab>
+                                <li><a href="#">Map</a></li>
+                                <li><a href="#">Exchange</a></li>
+                                <li><a href="#">Events</a></li>
+                            </ul>
+                            <ul class="uk-switcher uk-margin uk-text-left">
+                                <li>
+                                    <div id="cell-details"></div>
+                                    <table class="game-grid">
+                                        <colgroup></colgroup>
+                                        @for(_ <- rows.head) {
+                                        <colgroup></colgroup>
+                                        }
+                                        <thead>
+                                        <tr>
+                                            <th></th>
+                                            @for((point, _) <- rows.head) {
+                                            <th>@{"%02d".format(point.x)}</th>
+                                            }
+                                        </tr>
+                                        </thead>
+                                        <tbody>
+                                        @for(row <- rows){
+                                        <tr>
+                                            <th>@{"%02d".format(row.head._1.y)}</th>
+                                            @for((point, entities) <- row){
+                                            <td class="entity-cell"
+                                                data-entities=@{entities.toString}
+                                                data-point="(@{point.x},@{point.y})">
+                                            </td>
+                                            }
+                                        </tr>
+                                        }
+                                        </tbody>
+                                    </table>
+                                </li>
+                                <li>
+                                    <ul uk-tab>
+                                        <li><a href="#">Stats</a></li>
+                                        <li><a href="#">Commodities</a></li>
+                                        <li><a href="#">Entities</a></li>
+                                    </ul>
+                                    <ul class="uk-switcher uk-margin uk-text-left">
+                                        <li class="exchange-stats"></li>
+                                        <li class="exchange-commodities"></li>
+                                        <li class="exchange-entities"></li>
+                                    </ul>
+                                </li>
+                                <li>
+                                    <ul class="game-events" uk-accordion>
+                                    </ul>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="uk-flex-last">
+                    <div class="uk-width-large uk-padding uk-padding-remove-left">
+                        <div class="uk-card uk-card-default uk-card-body uk-margin-bottom">
+                            <div class="uk-margin">
+                                <button class="uk-button uk-button-small uk-button-default construction-button uk-padding-small"
+                                        title="Build House"
+                                        data-construct="House" data-construct-type="structure">
+                                    <span uk-icon="icon: home"></span>
+                                </button>
+                                <button class="uk-button uk-button-small uk-button-default construction-button uk-padding-small"
+                                        title="Build Storage"
+                                        data-construct="StorageBuilding" data-construct-type="structure">
+                                    <span uk-icon="icon: thumbnails"></span>
+                                </button>
+                                <button class="uk-button uk-button-small uk-button-default construction-button uk-padding-small"
+                                        title="Build Firehouse"
+                                        data-construct="Firehouse" data-construct-type="structure">
+                                    <span uk-icon="icon: paint-bucket"></span>
+                                </button>
+                                <button class="uk-button uk-button-small uk-button-default construction-button uk-padding-small"
+                                        data-construct="" data-construct-type="">
+                                    <span uk-icon="icon: minus"></span>
+                                </button>
+                            </div>
+                            <div class="uk-margin">
+                                <button class="uk-button uk-button-small uk-button-default construction-button uk-padding-small"
+                                        title="Build Road"
+                                        data-construct="Road" data-construct-type="road">
+                                    <span uk-icon="icon: more-vertical"></span>
+                                </button>
+                                <button class="uk-button uk-button-small uk-button-default construction-button uk-padding-small"
+                                        title="Build Roadblock"
+                                        data-construct="Roadblock" data-construct-type="roadblock">
+                                    <span uk-icon="icon: location"></span>
+                                </button>
+                                <button class="uk-button uk-button-small uk-button-default construction-button uk-padding-small"
+                                        data-construct="" data-construct-type="">
+                                    <span uk-icon="icon: minus"></span>
+                                </button>
+                                <button class="uk-button uk-button-small uk-button-default construction-button uk-padding-small"
+                                        data-construct="" data-construct-type="">
+                                    <span uk-icon="icon: minus"></span>
+                                </button>
+                            </div>
+                            <div class="uk-margin">
+                                <button class="uk-button uk-button-small uk-button-danger construction-button uk-padding-small"
+                                        title="Destroy"
+                                        data-construct="destroy" data-construct-type="destroy">
+                                    <span uk-icon="icon: close"></span>
+                                </button>
+                                <button class="uk-button uk-button-small uk-button-default construction-button uk-padding-small"
+                                        title="Build Tea Plant"
+                                        data-construct="TeaPlant" data-construct-type="resource">
+                                    <span uk-icon="icon: git-branch"></span>
+                                </button>
+                                <button class="uk-button uk-button-small uk-button-default construction-button uk-padding-small"
+                                        title="Build Doodad"
+                                        data-construct="Doodad" data-construct-type="doodad">
+                                    <span uk-icon="icon: image"></span>
+                                </button>
+                                <button class="uk-button uk-button-small uk-button-default construction-button uk-padding-small"
+                                        data-construct="" data-construct-type="">
+                                    <span uk-icon="icon: minus"></span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="uk-card uk-card-default uk-card-body uk-margin-bottom construction-info"
+                             data-csrf-token=@{CSRF.getToken.value}>
+                            ...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="entities-details" class="uk-modal-full" uk-modal>
+            <div class="uk-modal-dialog uk-modal-body">
+                <button class="uk-modal-close-default" type="button" uk-close></button>
+                <div class="uk-position-relative uk-visible-toggle" uk-slideshow>
+
+                    <ul class="entities-details-items uk-slideshow-items"></ul>
+
+                    <a class="uk-position-center-left uk-position-small uk-hidden-hover" href="#" uk-slidenav-previous uk-slideshow-item="previous"></a>
+                    <a class="uk-position-center-right uk-position-small uk-hidden-hover" href="#" uk-slidenav-next uk-slideshow-item="next"></a>
+
+                    <div class="uk-position-bottom-center uk-position-small">
+                        <ul class="uk-dotnav entities-details-items-dotnav"></ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="structure-sizes" data-sizes=@{structureSizes.toString}></div>
+    </body>
+</html>
