@@ -251,6 +251,14 @@ trait GameMap extends Actor with ActorLogging with Stash with Timers with Ops {
     case GetGrid() =>
       log.debug("Retrieving grid data")
       getGridData(grid).pipeTo(sender)
+
+    case GetEntities(point) =>
+      log.debug("Retrieving entities in cell [{}]", point)
+      getEntities(grid, point).pipeTo(sender)
+
+    case GetEntity(entityID) =>
+      log.debug("Retrieving data for entity [{}]", entityID)
+      getEntity(grid, entities, entityID).pipeTo(sender)
   }
 
   override def receive: Receive = idle(entities = Map.empty, currentTick = 0)

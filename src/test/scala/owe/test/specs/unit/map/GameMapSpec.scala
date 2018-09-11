@@ -297,4 +297,20 @@ class GameMapSpec extends AkkaUnitSpec("GameMapSpec") with EntityTestHelpers {
       )
     )
   }
+
+  it should "respond with multiple entities when idle" in { _ =>
+    val map = system.actorOf(Props(new TestGameMap(testActor, StartBehaviour.Idle)))
+
+    map ! GetEntities((0, 1))
+    expectMsg(Seq.empty)
+  }
+
+  it should "respond with single entities when idle" in { _ =>
+    val map = system.actorOf(Props(new TestGameMap(testActor, StartBehaviour.Idle)))
+
+    val entityRef = WalkerRef(TestProbe().ref)
+
+    map ! GetEntity(entityRef)
+    expectMsgType[Status.Failure]
+  }
 }
