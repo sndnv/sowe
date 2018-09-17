@@ -200,7 +200,7 @@ object Fixtures {
       movementSpeed = Speed(150),
       maxRoamingDistance = Distance(50),
       attack = AttackProperties(
-        rate = AttackRate(3),
+        rate = AttackRate(100),
         damage = AttackDamage(50),
         distance = Distance(25),
         target = _ => true
@@ -224,7 +224,7 @@ object Fixtures {
       movementSpeed = Speed.Modifier(100),
       maxRoamingDistance = Distance.Modifier(100),
       attack = AttackModifiers(
-        rate = AttackRate.Modifier(200),
+        rate = AttackRate.Modifier(50),
         damage = AttackDamage.Modifier(50),
         distance = Distance.Modifier(100)
       )

@@ -504,7 +504,9 @@ trait BaseWalker
           .map { neighbours =>
             neighbours.collectFirst {
               case (entityID, entity) if attackProperties.target(entity) =>
-                (entityID, attackModifiers.damage(attackProperties.damage))
+                val modifiedAttackRate = attackModifiers.rate(attackProperties.rate)
+                val modifiedAttackDamage = attackModifiers.damage(attackProperties.damage)
+                (entityID, modifiedAttackRate(modifiedAttackDamage))
             }
           }
 

@@ -48,7 +48,7 @@ object Walker {
   case object NoAttack extends Attack with PropertiesOnly with StateModifiersOnly
 
   case class AttackProperties(
-    rate: AttackRate, // TODO - use attack rate to calculate final damage
+    rate: AttackRate,
     damage: AttackDamage,
     distance: Distance,
     target: Data => Boolean
@@ -56,7 +56,7 @@ object Walker {
       with PropertiesOnly
 
   case class AttackModifiers(
-    rate: AttackRate.Modifier, // TODO - use attack rate to calculate final damage
+    rate: AttackRate.Modifier,
     damage: AttackDamage.Modifier,
     distance: Distance.Modifier
   ) extends Attack

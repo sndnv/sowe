@@ -87,7 +87,7 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
       case message                              => fail(s"Unexpected message received: [$message]")
     }
 
-    damage should be(AttackDamage(25))
+    damage should be(AttackDamage(12))
 
     expectMsg(
       BehaviourTickProcessed(
@@ -241,7 +241,7 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
       case message                              => fail(s"Unexpected message received: [$message]")
     }
 
-    damage should be(AttackDamage(25))
+    damage should be(AttackDamage(12))
 
     expectMsg(
       BehaviourTickProcessed(
@@ -477,7 +477,7 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
       case message                              => fail(s"Unexpected message received: [$message]")
     }
 
-    damage should be(AttackDamage(25))
+    damage should be(AttackDamage(12))
 
     expectMsg(
       BehaviourTickProcessed(
