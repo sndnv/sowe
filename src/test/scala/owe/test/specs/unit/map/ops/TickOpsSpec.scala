@@ -1,12 +1,12 @@
 package owe.test.specs.unit.map.ops
 
-import akka.actor.{Actor, ActorSystem, Props}
+import akka.actor.{Actor, ActorRef, ActorSystem, Props}
 import akka.testkit.TestProbe
 import akka.util.Timeout
 import org.scalatest.FutureOutcome
 import owe.Tagging._
 import owe.effects.Effect
-import owe.entities.ActiveEntityActor.GetActiveEffects
+import owe.entities.ActiveEntityActor.{GetActiveEffects, ProcessEntityTick}
 import owe.entities.Entity
 import owe.entities.Entity.Desirability
 import owe.entities.active.Structure.StructureRef
@@ -27,6 +27,13 @@ class TickOpsSpec extends AsyncUnitSpec {
   private class TestEntity(effects: Seq[Effect]) extends Actor {
     override def receive: Receive = {
       case GetActiveEffects() => sender ! effects
+    }
+  }
+
+  private class ForwardingTestEntity(ref: ActorRef) extends Actor {
+    override def receive: Receive = {
+      case GetActiveEffects() => sender ! Seq.empty[Effect]
+      case message            => ref.forward(message)
     }
   }
 
@@ -139,8 +146,38 @@ class TickOpsSpec extends AsyncUnitSpec {
       successfulResult1 <- fixture.ops.processTick(fixture.grid, tick = 0, (0, 0), (2, 2)).map(_.processedEntities)
       successfulResult2 <- fixture.ops.processTick(fixture.grid, tick = 0, (2, 1), (2, 2)).map(_.processedEntities)
     } yield {
-      successfulResult1 should be(2)
+      successfulResult1 should be(1)
       successfulResult2 should be(0)
+    }
+  }
+
+  they should "not send multiple tick processing requests to the same entity" in { fixture =>
+    val testProbe = TestProbe()
+    val structureRef = StructureRef(system.actorOf(Props(new ForwardingTestEntity(testProbe.ref))))
+
+    val structureEntity = MapEntity(
+      entityRef = structureRef,
+      parentCell = Point(0, 0),
+      size = Entity.Size(2, 2),
+      desirability = Desirability.Min
+    )
+
+    fixture.grid.getUnsafe((0, 0)) ! AddEntity(structureEntity)
+    fixture.grid.getUnsafe((0, 1)) ! AddEntity(structureEntity)
+    fixture.grid.getUnsafe((1, 0)) ! AddEntity(structureEntity)
+    fixture.grid.getUnsafe((1, 1)) ! AddEntity(structureEntity)
+
+    val result = fixture.ops.processTick(fixture.grid, tick = 0, (0, 0), (2, 2)).map(_.processedEntities)
+
+    val ticks = testProbe.receiveWhile(timeout.duration) {
+      case tick: ProcessEntityTick => tick
+    }
+
+    for {
+      successfulResult1 <- result
+    } yield {
+      ticks.size should be(1)
+      successfulResult1 should be(1)
     }
   }
 }

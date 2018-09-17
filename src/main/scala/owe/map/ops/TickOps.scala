@@ -84,13 +84,24 @@ trait TickOps {
     start: Point,
     end: Point
   )(implicit sender: ActorRef = Actor.noSender): Future[Int] = {
-    def processCell(currentCell: Point, processedEntities: Int): Future[Int] =
+    def processCell(currentCell: Point, processedEntities: Set[ActiveEntityRef]): Future[Set[ActiveEntityRef]] =
       grid
         .get(currentCell) match {
         case Some(cell) =>
           (cell ? GetCellData())
             .mapTo[CellData]
             .flatMap { cellData =>
+              val activeEntities = cellData.entities.flatMap {
+                case (_, mapEntity) =>
+                  mapEntity.entityRef match {
+                    case entity: ActiveEntityRef if !processedEntities.contains(entity) =>
+                      Some((mapEntity.parentCell, entity))
+
+                    case _ =>
+                      None
+                  }
+              }
+
               val updatedCellState = activeEffects
                 .get(currentCell)
                 .map { effects =>
@@ -103,14 +114,9 @@ trait TickOps {
                         }
                     }
 
-                  cellData.entities.foreach {
-                    case (_, mapEntity) =>
-                      mapEntity.entityRef match {
-                        case entity: ActiveEntityRef =>
-                          entity ! ApplyEffects(entityEffects)
-
-                        case _ => () //do nothing
-                      }
+                  activeEntities.foreach {
+                    case (_, entity) =>
+                      entity ! ApplyEffects(entityEffects)
                   }
 
                   cellEffects.foldLeft(cellData.state) {
@@ -119,23 +125,18 @@ trait TickOps {
                 }
                 .getOrElse(cellData.state)
 
-              cellData.entities.foreach {
-                case (_, mapEntity) =>
-                  mapEntity.entityRef match {
-                    case entity: ActiveEntityRef =>
-                      entity ! ProcessEntityTick(tick, MapData(mapEntity.parentCell, updatedCellState))
-
-                    case _ => () //do nothing
-                  }
+              activeEntities.foreach {
+                case (parent, entity) =>
+                  entity ! ProcessEntityTick(tick, MapData(parent, updatedCellState))
               }
 
               if (currentCell == end) {
-                Future.successful(processedEntities + cellData.entities.size)
+                Future.successful(processedEntities ++ activeEntities.values)
               } else {
                 grid
                   .nextPoint(currentCell)
                   .map { nextCell =>
-                    processCell(nextCell, processedEntities + cellData.entities.size)
+                    processCell(nextCell, processedEntities ++ activeEntities.values)
                   }
                   .getOrElse(
                     Future.failed(
@@ -149,6 +150,6 @@ trait TickOps {
           Future.failed(new IllegalArgumentException(s"Failed to find cell at [$currentCell]"))
       }
 
-    processCell(currentCell = start, processedEntities = 0)
+    processCell(currentCell = start, processedEntities = Set.empty).map(_.size)
   }
 }
