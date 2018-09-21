@@ -3,21 +3,21 @@ package owe.test.specs.unit.map.ops
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
-import akka.actor.{Actor, ActorSystem, Props}
+import akka.actor.{Actor, ActorRef, ActorSystem, Props}
 import akka.testkit.TestProbe
 import akka.util.Timeout
 import org.scalatest.FutureOutcome
-import owe.map.{Cell, MapEntity}
-import owe.map.Cell._
-import owe.map.ops.AvailabilityOps
-import owe.test.specs.unit.AsyncUnitSpec
 import owe.Tagging._
 import owe.entities.Entity
 import owe.entities.Entity.{Desirability, EntityRef}
 import owe.entities.active.Structure.StructureRef
 import owe.entities.active.Walker.WalkerRef
 import owe.entities.passive.Road.RoadRef
+import owe.map.Cell._
 import owe.map.grid.{Grid, Point}
+import owe.map.ops.AvailabilityOps
+import owe.map.{Cell, MapEntity}
+import owe.test.specs.unit.AsyncUnitSpec
 
 class AvailabilityOpsSpec extends AsyncUnitSpec {
   private class Ops extends AvailabilityOps {
@@ -25,10 +25,11 @@ class AvailabilityOpsSpec extends AsyncUnitSpec {
     override protected implicit val ec: ExecutionContext = scala.concurrent.ExecutionContext.global
   }
 
-  private class TestActor extends Actor {
+  private class TestActor(hasRoad: Boolean = true, hasRoadblock: Boolean = true) extends Actor {
     override def receive: Receive = {
       case GetCellAvailability() => sender ! Cell.Availability.Buildable
-      case HasRoad()             => sender ! true
+      case HasRoad()             => sender ! hasRoad
+      case HasRoadblock()        => sender ! hasRoadblock
       case GetEntity(entityID) =>
         entityID match {
           case _: RoadRef =>
@@ -48,6 +49,7 @@ class AvailabilityOpsSpec extends AsyncUnitSpec {
   }
 
   private implicit val system: ActorSystem = ActorSystem()
+  implicit val sender: ActorRef = Actor.noSender
 
   case class FixtureParam(ops: AvailabilityOps, grid: Grid[CellActorRef])
 
@@ -77,6 +79,32 @@ class AvailabilityOpsSpec extends AsyncUnitSpec {
       gridResult should be(Cell.Availability.Buildable)
       gridResultOutOfBounds should be(Cell.Availability.OutOfBounds)
       hasRoad should be(true)
+    }
+  }
+
+  they should "check if a cell has a roadblock" in { fixture =>
+    val cellWithRoadblockRef = system.actorOf(Props(new TestActor(hasRoadblock = true))).tag[Cell.ActorRefTag]
+    val cellWithoutRoadblockRef = system.actorOf(Props(new TestActor(hasRoadblock = false))).tag[Cell.ActorRefTag]
+
+    for {
+      withRoadblockResult <- fixture.ops.cellHasRoadblock(cellWithRoadblockRef)
+      withoutRoadblockResult <- fixture.ops.cellHasRoadblock(cellWithoutRoadblockRef)
+    } yield {
+      withRoadblockResult should be(true)
+      withoutRoadblockResult should be(false)
+    }
+  }
+
+  they should "check if a cell has a road" in { fixture =>
+    val cellWithRoadRef = system.actorOf(Props(new TestActor(hasRoad = true))).tag[Cell.ActorRefTag]
+    val cellWithoutRoadRef = system.actorOf(Props(new TestActor(hasRoad = false))).tag[Cell.ActorRefTag]
+
+    for {
+      withRoadResult <- fixture.ops.cellHasRoad(cellWithRoadRef)
+      withoutRoadResult <- fixture.ops.cellHasRoad(cellWithoutRoadRef)
+    } yield {
+      withRoadResult should be(true)
+      withoutRoadResult should be(false)
     }
   }
 

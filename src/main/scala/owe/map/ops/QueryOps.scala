@@ -3,7 +3,7 @@ package owe.map.ops
 import akka.actor.{Actor, ActorRef}
 import akka.pattern.ask
 import akka.util.Timeout
-import owe.entities.ActiveEntity.{ActiveEntityRef, Data}
+import owe.entities.ActiveEntity.{ActiveEntityRef, Data, WalkerData}
 import owe.entities.ActiveEntityActor.GetData
 import owe.entities.Entity.EntityRef
 import owe.entities.active.Walker.WalkerRef
@@ -25,10 +25,14 @@ trait QueryOps { _: PathfindingOps =>
     entities: Map[EntityRef, Point],
     entityID: WalkerRef,
     destination: Point
-  )(implicit sender: ActorRef = Actor.noSender): Future[Queue[Point]] =
+  )(implicit sender: ActorRef): Future[Queue[Point]] =
     entities
       .get(entityID)
-      .map(start => generateAdvancePath(grid, start, destination))
+      .map { start =>
+        (entityID ? GetData()).mapTo[WalkerData].flatMap { walkerData =>
+          generateAdvancePath(grid, start, destination, walkerData.properties.traversalMode)
+        }
+      }
       .getOrElse(Future.successful(Queue.empty))
 
   def getRoamingPath(
@@ -36,10 +40,14 @@ trait QueryOps { _: PathfindingOps =>
     entities: Map[EntityRef, Point],
     entityID: WalkerRef,
     length: Distance
-  )(implicit sender: ActorRef = Actor.noSender): Future[Queue[Point]] =
+  )(implicit sender: ActorRef): Future[Queue[Point]] =
     entities
       .get(entityID)
-      .map(start => generateRoamPath(grid, start, length))
+      .map { start =>
+        (entityID ? GetData()).mapTo[WalkerData].flatMap { walkerData =>
+          generateRoamPath(grid, start, length, walkerData.properties.traversalMode)
+        }
+      }
       .getOrElse(Future.successful(Queue.empty))
 
   def getNeighbours(
@@ -47,7 +55,7 @@ trait QueryOps { _: PathfindingOps =>
     entities: Map[EntityRef, Point],
     entityID: EntityRef,
     radius: Distance
-  )(implicit sender: ActorRef = Actor.noSender): Future[Seq[(EntityRef, Data)]] =
+  )(implicit sender: ActorRef): Future[Seq[(EntityRef, Data)]] =
     entities
       .get(entityID)
       .map { point =>
@@ -79,7 +87,7 @@ trait QueryOps { _: PathfindingOps =>
   def getEntities(
     grid: Grid[CellActorRef],
     point: Point
-  )(implicit sender: ActorRef = Actor.noSender): Future[Seq[(MapEntity, Option[Data])]] =
+  )(implicit sender: ActorRef): Future[Seq[(MapEntity, Option[Data])]] =
     grid
       .get(point)
       .map { mapCell =>
@@ -107,7 +115,7 @@ trait QueryOps { _: PathfindingOps =>
     grid: Grid[CellActorRef],
     entities: Map[EntityRef, Point],
     entityID: EntityRef
-  )(implicit sender: ActorRef = Actor.noSender): Future[Data] =
+  )(implicit sender: ActorRef): Future[Data] =
     entities
       .get(entityID)
       .flatMap(grid.get)

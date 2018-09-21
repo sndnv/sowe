@@ -102,6 +102,13 @@ class CellSpec extends AkkaUnitSpec("CellSpec") {
     fixture.cell ! HasRoad()
     expectMsg(false)
 
+    fixture.cell ! HasRoadblock()
+    expectMsg(true)
+
+    fixture.cell ! RemoveEntity(roadblockEntity.entityRef)
+    fixture.cell ! HasRoadblock()
+    expectMsg(false)
+
     fixture.cell ! AddEntity(doodadEntity)
     fixture.cell ! GetCellAvailability()
     expectMsg(Cell.Availability.Occupied)

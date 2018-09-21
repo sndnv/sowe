@@ -18,28 +18,42 @@ trait AvailabilityOps {
 
   def cellAvailability(
     cell: CellActorRef
-  )(implicit sender: ActorRef = Actor.noSender): Future[Availability] =
+  )(implicit sender: ActorRef): Future[Availability] =
     (cell ? GetCellAvailability()).mapTo[Availability]
 
   def cellAvailabilityForPoint(
     grid: Grid[CellActorRef],
     cell: Point
-  )(implicit sender: ActorRef = Actor.noSender): Future[Availability] =
+  )(implicit sender: ActorRef): Future[Availability] =
     grid
       .get(cell)
       .map(cellAvailability)
       .getOrElse(Future.successful(Availability.OutOfBounds))
 
+  def cellHasRoadblock(
+    grid: Grid[CellActorRef],
+    cell: Point
+  )(implicit sender: ActorRef): Future[Boolean] =
+    grid
+      .get(cell)
+      .map(cellHasRoadblock)
+      .getOrElse(Future.successful(false))
+
+  def cellHasRoadblock(
+    cell: CellActorRef
+  )(implicit sender: ActorRef): Future[Boolean] =
+    (cell ? HasRoadblock()).mapTo[Boolean]
+
   def cellHasRoad(
     cell: CellActorRef
-  )(implicit sender: ActorRef = Actor.noSender): Future[Boolean] =
+  )(implicit sender: ActorRef): Future[Boolean] =
     (cell ? HasRoad()).mapTo[Boolean]
 
   def findFirstAdjacentRoad(
     grid: Grid[CellActorRef],
     entities: Map[EntityRef, Point],
     entityID: EntityRef
-  )(implicit sender: ActorRef = Actor.noSender): Future[Option[Point]] =
+  )(implicit sender: ActorRef): Future[Option[Point]] =
     (for {
       parentPoint <- entities.get(entityID)
       parentCell <- grid.get(parentPoint)
@@ -69,7 +83,7 @@ trait AvailabilityOps {
     entities: Map[EntityRef, Point],
     entityID: EntityRef,
     minimumAvailability: Availability
-  )(implicit sender: ActorRef = Actor.noSender): Future[Option[Point]] =
+  )(implicit sender: ActorRef): Future[Option[Point]] =
     (for {
       parentPoint <- entities.get(entityID)
       parentCell <- grid.get(parentPoint)

@@ -2,8 +2,8 @@ package owe.map.ops
 
 import scala.collection.immutable.Queue
 import scala.concurrent.{ExecutionContext, Future}
-
 import akka.actor.{Actor, ActorRef}
+import owe.entities.active.Walker.TraversalMode
 import owe.entities.active.attributes.Distance
 import owe.map.Cell.{Availability, CellActorRef}
 import owe.map.grid.{Grid, Point}
@@ -14,41 +14,23 @@ trait PathfindingOps { _: AvailabilityOps =>
   protected val search: Search
   protected implicit val ec: ExecutionContext
 
-  def passableNeighboursOf(
-    grid: Grid[CellActorRef],
-    cell: Point
-  )(implicit sender: ActorRef = Actor.noSender): Future[Seq[Point]] =
-    //TODO - allow corner neighbours only for specific walkers that don't need roads
-    //TODO - handle roadblocks for specific walkers
-    Future
-      .sequence(
-        cell
-          .neighbours(withCornerNeighbours = true)
-          .map { point =>
-            cellAvailabilityForPoint(grid, point).map { availability =>
-              if (availability >= Availability.Passable) {
-                Some(point)
-              } else {
-                None
-              }
-            }
-          }
-      )
-      .map(_.flatten)
-
   //TODO - check if path should follow roads
   def generateAdvancePath(
     grid: Grid[CellActorRef],
     start: Point,
-    end: Point
+    end: Point,
+    traversalMode: TraversalMode
   )(implicit sender: ActorRef = Actor.noSender): Future[Queue[Point]] =
-    search.calculate(start, end, passableNeighboursOf(grid, _)).map(_.drop(1))
+    search
+      .calculate(start, end, passableNeighboursOf(grid, _, traversalMode, roadblockRestricted = false))
+      .map(_.drop(1))
 
   //TODO - check if path should follow roads
   def generateRoamPath(
     grid: Grid[CellActorRef],
     start: Point,
-    maxDistance: Distance
+    maxDistance: Distance,
+    traversalMode: TraversalMode
   )(implicit sender: ActorRef = Actor.noSender): Future[Queue[Point]] = {
     def extendPath(
       currentCell: Point,
@@ -58,7 +40,7 @@ trait PathfindingOps { _: AvailabilityOps =>
     ): Future[Seq[Point]] = {
       val maxDistanceNotReached = currentPath.lengthCompare(maxDistance.value) < 0
       if (maxDistanceNotReached) {
-        passableNeighboursOf(grid, currentCell).flatMap { neighbours =>
+        passableNeighboursOf(grid, currentCell, traversalMode, roadblockRestricted = true).flatMap { neighbours =>
           neighbours.filterNot { neighbour =>
             examined.contains(neighbour)
           }.headOption match {
@@ -92,4 +74,44 @@ trait PathfindingOps { _: AvailabilityOps =>
 
     extendPath(start, currentPath = Seq.empty, examined = Seq.empty, backtracked = Seq.empty).map(_.to[Queue])
   }
+
+  def passableNeighboursOf(
+    grid: Grid[CellActorRef],
+    cell: Point,
+    traversalMode: TraversalMode,
+    roadblockRestricted: Boolean
+  )(implicit sender: ActorRef = Actor.noSender): Future[Seq[Point]] =
+    Future
+      .sequence(
+        cell
+          .neighbours(withCornerNeighbours = diagonalMovementAllowed(traversalMode))
+          .map { point =>
+            cellAvailabilityForPoint(grid, point).flatMap { availability =>
+              if (availability >= Availability.Passable) {
+                if (roadblockRestricted) {
+                  cellHasRoadblock(grid, point).map { hasRoadblock =>
+                    if (hasRoadblock) {
+                      None
+                    } else {
+                      Some(point)
+                    }
+                  }
+                } else {
+                  Future.successful(Some(point))
+                }
+              } else {
+                Future.successful(None)
+              }
+            }
+          }
+      )
+      .map(_.flatten)
+
+  def diagonalMovementAllowed(traversalMode: TraversalMode): Boolean =
+    traversalMode match {
+      case TraversalMode.RoadRequired  => false
+      case TraversalMode.RoadPreferred => true // TODO - should follow road (no diagonal movement), if available
+      case TraversalMode.OnLand        => true
+      case TraversalMode.OnWater       => true
+    }
 }

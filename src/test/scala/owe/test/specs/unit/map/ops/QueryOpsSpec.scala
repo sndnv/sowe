@@ -1,17 +1,21 @@
 package owe.test.specs.unit.map.ops
 
-import akka.actor.{Actor, ActorSystem, Props}
+import scala.collection.immutable.Queue
+import scala.concurrent.ExecutionContext
+import scala.concurrent.duration._
+
+import akka.actor.{Actor, ActorRef, ActorSystem, Props}
 import akka.testkit.TestProbe
 import akka.util.Timeout
 import org.scalatest.FutureOutcome
 import owe.Tagging._
-import owe.entities.ActiveEntity.StructureData
+import owe.entities.ActiveEntity.{StructureData, WalkerData}
 import owe.entities.ActiveEntityActor.GetData
 import owe.entities.Entity.{Desirability, EntityRef}
-import owe.entities.active.Structure
 import owe.entities.active.Structure._
-import owe.entities.active.Walker.WalkerRef
-import owe.entities.active.attributes.{Distance, Life}
+import owe.entities.active.Walker.{MovementMode, TraversalMode, WalkerRef}
+import owe.entities.active.attributes._
+import owe.entities.active.{Structure, Walker}
 import owe.entities.{ActiveEntity, Entity}
 import owe.map.Cell.{AddEntity, CellActorRef, CellData}
 import owe.map.grid.{Grid, Point}
@@ -19,16 +23,13 @@ import owe.map.ops.{AvailabilityOps, PathfindingOps, QueryOps}
 import owe.map.pathfinding.{DepthFirstSearch, Search}
 import owe.map.{Cell, MapEntity}
 import owe.test.specs.unit.AsyncUnitSpec
-import scala.collection.immutable.Queue
-import scala.concurrent.ExecutionContext
-import scala.concurrent.duration._
 
 class QueryOpsSpec extends AsyncUnitSpec {
   private implicit val timeout: Timeout = 3.seconds
 
   private class TestEntity(data: ActiveEntity.Data) extends Actor {
     override def receive: Receive = {
-      case GetData() => sender ! data
+      case GetData() => sender.tell(data, self)
     }
   }
 
@@ -39,6 +40,7 @@ class QueryOpsSpec extends AsyncUnitSpec {
   }
 
   private implicit val system: ActorSystem = ActorSystem()
+  private implicit val testProbe: ActorRef = Actor.noSender
 
   private val existingStructureMapEntity = MapEntity(
     entityRef = StructureRef(TestProbe().ref),
@@ -79,6 +81,33 @@ class QueryOpsSpec extends AsyncUnitSpec {
     id = StructureRef(TestProbe().ref)
   )
 
+  private val walkerData = WalkerData(
+    properties = Walker.Properties(
+      parent = None,
+      homePosition = Point(0, 1),
+      name = "TestWalker",
+      maxLife = Life(500),
+      movementSpeed = Speed(150),
+      maxRoamingDistance = Distance(50),
+      attack = Walker.NoAttack,
+      traversalMode = TraversalMode.OnLand
+    ),
+    state = Walker.State(
+      currentPosition = Point(0, 1),
+      currentLife = Life(100),
+      distanceCovered = Distance(0),
+      commodities = Walker.NoCommodities,
+      path = Queue.empty,
+      mode = MovementMode.Advancing
+    ),
+    modifiers = Walker.StateModifiers(
+      movementSpeed = Speed.Modifier(100),
+      maxRoamingDistance = Distance.Modifier(100),
+      attack = Walker.NoAttack
+    ),
+    id = WalkerRef(TestProbe().ref)
+  )
+
   case class FixtureParam(ops: QueryOps, grid: Grid[CellActorRef])
 
   def withFixture(test: OneArgAsyncTest): FutureOutcome =
@@ -95,8 +124,9 @@ class QueryOpsSpec extends AsyncUnitSpec {
     )
 
   "Query ops" should "retrieve advance paths" in { fixture =>
-    fixture.grid.getUnsafe((1, 1)) ! AddEntity(existingStructureMapEntity)
-    fixture.grid.getUnsafe((1, 2)) ! AddEntity(existingStructureMapEntity)
+    val structureRef = StructureRef(system.actorOf(Props(new TestEntity(existingStructureData))))
+    fixture.grid.getUnsafe((1, 1)) ! AddEntity(existingStructureMapEntity.copy(entityRef = structureRef))
+    fixture.grid.getUnsafe((1, 2)) ! AddEntity(existingStructureMapEntity.copy(entityRef = structureRef))
 
     val invalidDestination = Point(13, 5)
     val destination = Point(2, 2)
@@ -104,7 +134,7 @@ class QueryOpsSpec extends AsyncUnitSpec {
     val missingEntityID = WalkerRef(TestProbe().ref)
 
     val walkerCell = Point(0, 1)
-    val walkerEntityID = WalkerRef(TestProbe().ref)
+    val walkerEntityID = WalkerRef(system.actorOf(Props(new TestEntity(walkerData))))
 
     val entities = Map[EntityRef, Point](
       walkerEntityID -> walkerCell
@@ -122,13 +152,14 @@ class QueryOpsSpec extends AsyncUnitSpec {
   }
 
   they should "retrieve roaming paths" in { fixture =>
-    fixture.grid.getUnsafe((1, 1)) ! AddEntity(existingStructureMapEntity)
-    fixture.grid.getUnsafe((1, 2)) ! AddEntity(existingStructureMapEntity)
+    val structureRef = StructureRef(system.actorOf(Props(new TestEntity(existingStructureData))))
+    fixture.grid.getUnsafe((1, 1)) ! AddEntity(existingStructureMapEntity.copy(entityRef = structureRef))
+    fixture.grid.getUnsafe((1, 2)) ! AddEntity(existingStructureMapEntity.copy(entityRef = structureRef))
 
     val missingEntityID = WalkerRef(TestProbe().ref)
 
     val walkerCell = Point(0, 1)
-    val walkerEntityID = WalkerRef(TestProbe().ref)
+    val walkerEntityID = WalkerRef(system.actorOf(Props(new TestEntity(walkerData))))
 
     val entities = Map[EntityRef, Point](
       walkerEntityID -> walkerCell

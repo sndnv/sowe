@@ -81,6 +81,17 @@ class Cell extends Actor {
       }
 
       sender ! result
+
+    case HasRoadblock() =>
+      val result = data.entities.exists {
+        case (_, entity) =>
+          entity.entityRef match {
+            case _: RoadblockRef => true
+            case _               => false
+          }
+      }
+
+      sender ! result
   }
 
   override def receive: Receive = handler(CellData.empty)
@@ -103,6 +114,7 @@ object Cell {
   case class GetCellData() extends Message
   case class GetCellAvailability() extends Message
   case class HasRoad() extends Message
+  case class HasRoadblock() extends Message
 
   trait Effect extends owe.effects.Effect {
     def apply(state: State): State
