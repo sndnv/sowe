@@ -29,7 +29,7 @@ object Fixtures {
     desirability = Cell.Desirability.Neutral,
     fertility = Fertility.Max,
     water = Water.Max,
-    buildingAllowed = true
+    restrictions = Cell.Restrictions.None
   )
 
   val defaultMapData: MapData = MapData(

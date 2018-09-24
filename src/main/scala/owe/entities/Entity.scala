@@ -6,6 +6,7 @@ import akka.util.Timeout
 import owe.entities.Entity.Desirability
 import owe.entities.active.attributes.AttackDamage
 import owe.map.Cell
+import owe.map.Cell.Availability
 import owe.map.grid.Point
 import owe.production.Commodity
 
@@ -15,6 +16,7 @@ trait Entity {
   def `size`: Entity.Size
   def `type`: Entity.Type
   def `desirability`: Desirability
+  def acceptsAvailability(availability: Availability): Boolean
 
   def props()(implicit timeout: Timeout): Props
 }

@@ -1300,12 +1300,4 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
       )
     )
   }
-
-  it should "not pass through roadblocks when appropriate" in { _ =>
-    fail("Not Implemented", new NotImplementedError())
-  }
-
-  it should "not pass through enemy units" in { _ =>
-    fail("Not Implemented", new NotImplementedError())
-  }
 }

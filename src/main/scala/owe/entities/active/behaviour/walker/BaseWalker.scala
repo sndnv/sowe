@@ -1,7 +1,5 @@
 package owe.entities.active.behaviour.walker
 
-import scala.collection.immutable.Queue
-import scala.concurrent.Future
 import akka.actor.Actor.Receive
 import owe.entities.ActiveEntity
 import owe.entities.ActiveEntity.{Instruction, _}
@@ -23,11 +21,13 @@ import owe.entities.passive.Road.RoadRef
 import owe.entities.passive.Roadblock.RoadblockRef
 import owe.map.Cell.Availability
 import owe.map.GameMap._
-import owe.map.MapEntity
+import owe.map.{Cell, MapEntity}
 import owe.map.grid.Point
 import owe.production.Commodity
 
 import scala.annotation.tailrec
+import scala.collection.immutable.Queue
+import scala.concurrent.Future
 
 trait BaseWalker
     extends BaseBehaviour
@@ -408,10 +408,13 @@ trait BaseWalker
     (parentEntity ? ForwardMessage(GetEntity(entityID))).mapTo[Data]
 
   protected def getAdjacentRoad(entityID: ActiveEntityRef): Future[Option[Point]] =
-    (parentEntity ? ForwardMessage(GetAdjacentRoad(entityID))).mapTo[Option[Point]]
+    getAdjacentPoint(entityID, _.hasRoad)
 
-  protected def getAdjacentPoint(entityID: ActiveEntityRef, minimumAvailability: Availability): Future[Option[Point]] =
-    (parentEntity ? ForwardMessage(GetAdjacentPoint(entityID, minimumAvailability))).mapTo[Option[Point]]
+  protected def getAdjacentPoint(
+    entityID: ActiveEntityRef,
+    matchesAvailability: Availability => Boolean
+  ): Future[Option[Point]] =
+    (parentEntity ? ForwardMessage(GetAdjacentPoint(entityID, matchesAvailability))).mapTo[Option[Point]]
 
   protected def getNeighboursData(
     walkerId: WalkerRef,
@@ -528,7 +531,7 @@ trait BaseWalker
 
     Future.sequence(travelPath.map(getEntitiesData)).map { entities =>
       val isTravelPathPassable = entities.flatten.forall {
-        case (mapEntity, entityData) => isPassable(mapEntity, entityData, walker)
+        case (mapEntity, entityData) => canPass(mapEntity, entityData, walker)
       }
 
       if (isTravelPathPassable) {
@@ -543,13 +546,13 @@ trait BaseWalker
     }
   }
 
-  private def isPassable(mapEntity: MapEntity, entityData: Option[Data], walker: WalkerData): Boolean =
+  private def canPass(mapEntity: MapEntity, entityData: Option[Data], walker: WalkerData): Boolean =
     mapEntity.entityRef match {
       case _: DoodadRef    => false
       case _: RoadRef      => true
       case _: RoadblockRef => walker.state.mode != MovementMode.Roaming
       case _: StructureRef => false
-      case _: ResourceRef  => false
+      case _: ResourceRef  => true
       case walkerRef: WalkerRef =>
         if (walkerRef != parentEntity) {
           walker.properties.attack match {
@@ -562,7 +565,10 @@ trait BaseWalker
     }
 
   private def getResourceLocation(destination: ResourceData): Future[Point] =
-    getAdjacentPoint(destination.id, Availability.Passable).map {
+    getAdjacentPoint(
+      destination.id,
+      availability => availability.isPassable
+    ).map {
       case Some(point) => point
       case None        => destination.properties.homePosition
     }
@@ -574,15 +580,27 @@ trait BaseWalker
 
       case TraversalMode.RoadPreferred =>
         getAdjacentRoad(destination.id).flatMap {
-          case Some(point) => Future.successful(Some(point))
-          case None        => getAdjacentPoint(destination.id, Availability.Passable)
+          case Some(point) =>
+            Future.successful(Some(point))
+
+          case None =>
+            getAdjacentPoint(
+              destination.id,
+              availability => availability.isPassable && availability.cellType != Cell.Type.Water
+            )
         }
 
       case TraversalMode.OnLand =>
-        getAdjacentPoint(destination.id, Availability.Passable)
+        getAdjacentPoint(
+          destination.id,
+          availability => availability.isPassable && availability.cellType != Cell.Type.Water
+        )
 
       case TraversalMode.OnWater =>
-        ??? // TODO - implement
+        getAdjacentPoint(
+          destination.id,
+          availability => availability.isPassable && availability.cellType == Cell.Type.Water
+        )
     }
 
     adjacentPoint.map {

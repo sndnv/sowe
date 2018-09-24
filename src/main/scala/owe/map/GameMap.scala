@@ -4,7 +4,6 @@ import java.util.UUID
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
-
 import akka.actor.{Actor, ActorLogging, ActorRef, PoisonPill, Stash, Timers}
 import akka.pattern.pipe
 import akka.util.Timeout
@@ -18,7 +17,7 @@ import owe.entities.active.Walker.WalkerRef
 import owe.entities.active.attributes.{AttackDamage, Distance}
 import owe.events.Event
 import owe.events.Event.SystemEvent
-import owe.map.Cell.{ActorRefTag, Availability, CellActorRef}
+import owe.map.Cell.{Availability, CellActorRef}
 import owe.map.grid.{Grid, Point}
 import owe.map.ops.Ops
 import owe.map.pathfinding.Search
@@ -45,7 +44,7 @@ trait GameMap extends Actor with ActorLogging with Stash with Timers with Ops {
   protected val tracker: ActorRef
   protected val search: Search
 
-  private val grid = Grid[CellActorRef](height, width, context.actorOf(Cell.props()).tag[ActorRefTag])
+  private val grid = Grid[CellActorRef](height, width, context.actorOf(Cell.props()).tag[Cell.ActorRefTag])
 
   protected def waiting(entities: Map[EntityRef, Point], currentTick: Int, pendingEntityResponses: Int): Receive = {
     case GetAdvancePath(entityID, destination) =>
@@ -68,13 +67,9 @@ trait GameMap extends Actor with ActorLogging with Stash with Timers with Ops {
       log.debug("Retrieving data for entity [{}]", entityID)
       getEntity(grid, entities, entityID).pipeTo(sender)
 
-    case GetAdjacentRoad(entityID) =>
-      log.debug("Retrieving adjacent road for entity [{}]", entityID)
-      findFirstAdjacentRoad(grid, entities, entityID).pipeTo(sender)
-
-    case GetAdjacentPoint(entityID, minimumAvailability) =>
+    case GetAdjacentPoint(entityID, matchesAvailability) =>
       log.debug("Retrieving adjacent point for entity [{}]", entityID)
-      findFirstAdjacentPoint(grid, entities, entityID, minimumAvailability).pipeTo(sender)
+      findFirstAdjacentPoint(grid, entities, entityID, matchesAvailability).pipeTo(sender)
 
     case TickExpired(tick) =>
       log.error(
@@ -300,8 +295,7 @@ object GameMap {
   case class GetNeighbours(entityID: EntityRef, radius: Distance) extends Message
   case class GetEntities(point: Point) extends Message
   case class GetEntity(entityID: ActiveEntityRef) extends Message
-  case class GetAdjacentRoad(entityID: ActiveEntityRef) extends Message
-  case class GetAdjacentPoint(entityID: ActiveEntityRef, minimumAvailability: Availability) extends Message
+  case class GetAdjacentPoint(entityID: ActiveEntityRef, matchesAvailability: Availability => Boolean) extends Message
   case class CreateEntity(entity: Entity, cell: Point) extends Message
   case class DestroyEntity(entityID: EntityRef) extends Message
   case class MoveEntity(entityID: EntityRef, cell: Point) extends Message

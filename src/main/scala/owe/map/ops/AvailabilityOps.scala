@@ -1,13 +1,14 @@
 package owe.map.ops
 
-import akka.actor.{Actor, ActorRef}
+import akka.actor.ActorRef
 import akka.pattern.ask
 import akka.util.Timeout
 import owe.entities.Entity
 import owe.entities.Entity.EntityRef
+import owe.entities.active.Walker.TraversalMode
 import owe.map.Cell._
-import owe.map.MapEntity
 import owe.map.grid.{Grid, Point}
+import owe.map.{Cell, MapEntity}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -21,68 +22,19 @@ trait AvailabilityOps {
   )(implicit sender: ActorRef): Future[Availability] =
     (cell ? GetCellAvailability()).mapTo[Availability]
 
-  def cellAvailabilityForPoint(
+  def cellAvailability(
     grid: Grid[CellActorRef],
     cell: Point
-  )(implicit sender: ActorRef): Future[Availability] =
+  )(implicit sender: ActorRef): Option[Future[Availability]] =
     grid
       .get(cell)
       .map(cellAvailability)
-      .getOrElse(Future.successful(Availability.OutOfBounds))
-
-  def cellHasRoadblock(
-    grid: Grid[CellActorRef],
-    cell: Point
-  )(implicit sender: ActorRef): Future[Boolean] =
-    grid
-      .get(cell)
-      .map(cellHasRoadblock)
-      .getOrElse(Future.successful(false))
-
-  def cellHasRoadblock(
-    cell: CellActorRef
-  )(implicit sender: ActorRef): Future[Boolean] =
-    (cell ? HasRoadblock()).mapTo[Boolean]
-
-  def cellHasRoad(
-    cell: CellActorRef
-  )(implicit sender: ActorRef): Future[Boolean] =
-    (cell ? HasRoad()).mapTo[Boolean]
-
-  def findFirstAdjacentRoad(
-    grid: Grid[CellActorRef],
-    entities: Map[EntityRef, Point],
-    entityID: EntityRef
-  )(implicit sender: ActorRef): Future[Option[Point]] =
-    (for {
-      parentPoint <- entities.get(entityID)
-      parentCell <- grid.get(parentPoint)
-    } yield {
-      (parentCell ? GetEntity(entityID)).mapTo[Option[MapEntity]].flatMap {
-        case Some(mapEntity) =>
-          val cells = Entity.cells(mapEntity.size, parentPoint)
-          Future
-            .sequence(
-              cells
-                .flatMap(point => grid.indexes().window(point, radius = 1).toSeq)
-                .distinct
-                .flatMap(point => grid.get(point).map(cell => (point, cell)))
-                .collect {
-                  case (point, cell) if !cells.contains(point) =>
-                    cellHasRoad(cell).map(if (_) Some(point) else None)
-                }
-            )
-            .map(_.flatten.sorted.headOption)
-
-        case None => Future.successful(None)
-      }
-    }).getOrElse(Future.successful(None))
 
   def findFirstAdjacentPoint(
     grid: Grid[CellActorRef],
     entities: Map[EntityRef, Point],
     entityID: EntityRef,
-    minimumAvailability: Availability
+    matchesAvailability: Availability => Boolean
   )(implicit sender: ActorRef): Future[Option[Point]] =
     (for {
       parentPoint <- entities.get(entityID)
@@ -90,7 +42,7 @@ trait AvailabilityOps {
     } yield {
       (parentCell ? GetEntity(entityID)).mapTo[Option[MapEntity]].flatMap {
         case Some(mapEntity) =>
-          val cells = Entity.cells(mapEntity.size, parentPoint)
+          val cells = Entity.cells(mapEntity.spec.`size`, parentPoint)
           Future
             .sequence(
               cells
@@ -99,8 +51,8 @@ trait AvailabilityOps {
                 .flatMap(point => grid.get(point).map(cell => (point, cell)))
                 .collect {
                   case (point, cell) if !cells.contains(point) =>
-                    cellAvailability(cell).map { avalability =>
-                      if (avalability >= minimumAvailability) {
+                    cellAvailability(cell).map { availability =>
+                      if (matchesAvailability(availability)) {
                         Some(point)
                       } else {
                         None
@@ -113,4 +65,26 @@ trait AvailabilityOps {
         case None => Future.successful(None)
       }
     }).getOrElse(Future.successful(None))
+
+  def isTraversable(
+    traversalMode: TraversalMode,
+    roadblockRestricted: Boolean,
+    availability: Availability
+  ): Boolean =
+    traversalMode match {
+      case TraversalMode.RoadRequired =>
+        val hasRoad =
+          availability.entityTypes.contains(Entity.Type.Road)
+
+        val affectedByRoadblock =
+          roadblockRestricted && availability.entityTypes.contains(Entity.Type.Roadblock)
+
+        hasRoad && !affectedByRoadblock
+
+      case TraversalMode.OnLand | TraversalMode.RoadPreferred =>
+        availability.cellType == Cell.Type.Land || availability.cellType == Cell.Type.Floodplain
+
+      case TraversalMode.OnWater =>
+        availability.cellType == Cell.Type.Water
+    }
 }

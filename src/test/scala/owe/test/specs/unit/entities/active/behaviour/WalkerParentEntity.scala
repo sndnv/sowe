@@ -4,18 +4,18 @@ import akka.actor.{Actor, ActorRef, Props}
 import akka.testkit.TestProbe
 import owe.entities.ActiveEntity._
 import owe.entities.ActiveEntityActor.{ApplyInstructions, ApplyMessages, ForwardMessage, ProcessBehaviourTick}
-import owe.entities.Entity
-import owe.entities.Entity.Desirability
-import owe.entities.active.attributes.Distance
 import owe.entities.active.Resource.ResourceRef
 import owe.entities.active.Structure.{CommoditiesState, StructureRef}
 import owe.entities.active.Walker.WalkerRef
+import owe.entities.active.attributes.Distance
+import owe.entities.passive.Doodad
 import owe.entities.passive.Doodad.DoodadRef
 import owe.map.GameMap._
 import owe.map.MapEntity
 import owe.map.grid.Point
 import owe.production.Commodity
 import owe.test.specs.unit.entities.active.behaviour.WalkerParentEntity.ForwardToChild
+import owe.test.specs.unit.entities.definitions.active.walkers.Archer
 
 import scala.collection.immutable.Queue
 
@@ -32,9 +32,6 @@ class WalkerParentEntity(
     case apply: ApplyMessages       => child ! apply
     case tick: ProcessBehaviourTick => child ! tick
     case ForwardToChild(message)    => child ! message
-
-    case ForwardMessage(GetAdjacentRoad(_)) =>
-      sender ! None
 
     case ForwardMessage(GetAdjacentPoint(_, _)) =>
       sender ! None
@@ -107,8 +104,7 @@ class WalkerParentEntity(
         val walkerEntity = MapEntity(
           entityRef = walkerRef,
           parentCell = point,
-          size = Entity.Size(1, 1),
-          desirability = Desirability.Min
+          spec = new Archer
         )
 
         val walkerData = WalkerData(
@@ -121,8 +117,7 @@ class WalkerParentEntity(
         val doodadEntity = MapEntity(
           entityRef = DoodadRef(TestProbe().ref),
           parentCell = point,
-          size = Entity.Size(1, 1),
-          desirability = Desirability.Min
+          spec = new Doodad
         )
 
         Seq(

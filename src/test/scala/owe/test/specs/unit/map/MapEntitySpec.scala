@@ -3,11 +3,17 @@ package owe.test.specs.unit.map
 import akka.actor.ActorSystem
 import akka.testkit.TestProbe
 import org.scalatest.Outcome
-import owe.entities.Entity
+import owe.effects.Effect
+import owe.entities.{ActiveEntity, Entity}
 import owe.entities.Entity.Desirability
+import owe.entities.active.{Resource, Structure, Walker}
 import owe.entities.active.Resource.ResourceRef
 import owe.entities.active.Structure.StructureRef
 import owe.entities.active.Walker.WalkerRef
+import owe.entities.active.behaviour.resource.BaseResource
+import owe.entities.active.behaviour.structure.BaseStructure
+import owe.entities.active.behaviour.walker.BaseWalker
+import owe.entities.passive.{Doodad, Road, Roadblock}
 import owe.entities.passive.Doodad.DoodadRef
 import owe.entities.passive.Road.RoadRef
 import owe.entities.passive.Roadblock.RoadblockRef
@@ -27,8 +33,7 @@ class MapEntitySpec extends UnitSpec {
     val entity = MapEntity(
       entityRef = DoodadRef(TestProbe().ref),
       parentCell = Point(0, 0),
-      size = Entity.Size(1, 1),
-      desirability = Desirability.Min
+      spec = new Doodad
     )
 
     entity.entityType should be(Entity.Type.Doodad)
@@ -68,8 +73,7 @@ class MapEntitySpec extends UnitSpec {
     val entity = MapEntity(
       entityRef = DoodadRef(TestProbe().ref),
       parentCell = Point(0, 0),
-      size = Entity.Size(1, 1),
-      desirability = Desirability.Min
+      spec = new Doodad
     )
 
     entity.parentCell should be(Point(0, 0))
@@ -85,49 +89,52 @@ class MapEntitySpec extends UnitSpec {
     MapEntity(
       actorRef = TestProbe().ref,
       parentCell = Point(0, 0),
-      size = Entity.Size(1, 1),
-      desirability = Desirability.Min,
-      `type` = Entity.Type.Doodad
+      spec = new Doodad
     ).entityRef shouldBe a[DoodadRef]
 
     MapEntity(
       actorRef = TestProbe().ref,
       parentCell = Point(0, 0),
-      size = Entity.Size(1, 1),
-      desirability = Desirability.Min,
-      `type` = Entity.Type.Road
+      spec = new Road
     ).entityRef shouldBe a[RoadRef]
 
     MapEntity(
       actorRef = TestProbe().ref,
       parentCell = Point(0, 0),
-      size = Entity.Size(1, 1),
-      desirability = Desirability.Min,
-      `type` = Entity.Type.Roadblock
+      spec = new Roadblock
     ).entityRef shouldBe a[RoadblockRef]
 
     MapEntity(
       actorRef = TestProbe().ref,
       parentCell = Point(0, 0),
-      size = Entity.Size(1, 1),
-      desirability = Desirability.Min,
-      `type` = Entity.Type.Resource
+      spec = new Resource {
+        override protected def createActiveEntityData(): ActiveEntity.ActiveEntityRef => ActiveEntity.Data = ???
+        override protected def createEffects(): Seq[(ActiveEntity.Data => Boolean, Effect)] = ???
+        override protected def createBehaviour(): BaseResource = ???
+      }
     ).entityRef shouldBe a[ResourceRef]
 
     MapEntity(
       actorRef = TestProbe().ref,
       parentCell = Point(0, 0),
-      size = Entity.Size(1, 1),
-      desirability = Desirability.Min,
-      `type` = Entity.Type.Structure
+      spec = new Structure {
+        override protected def createActiveEntityData(): ActiveEntity.ActiveEntityRef => ActiveEntity.Data = ???
+        override protected def createEffects(): Seq[(ActiveEntity.Data => Boolean, Effect)] = ???
+        override protected def createBehaviour(): BaseStructure = ???
+        override def `size`: Entity.Size = ???
+        override def `desirability`: Desirability = ???
+      }
     ).entityRef shouldBe a[StructureRef]
 
     MapEntity(
       actorRef = TestProbe().ref,
       parentCell = Point(0, 0),
-      size = Entity.Size(1, 1),
-      desirability = Desirability.Min,
-      `type` = Entity.Type.Walker
+      spec = new Walker {
+        override def spawnLocation: Walker.SpawnLocation = ???
+        override protected def createActiveEntityData(): ActiveEntity.ActiveEntityRef => ActiveEntity.Data = ???
+        override protected def createEffects(): Seq[(ActiveEntity.Data => Boolean, Effect)] = ???
+        override protected def createBehaviour(): BaseWalker = ???
+      }
     ).entityRef shouldBe a[WalkerRef]
   }
 }

@@ -3,8 +3,9 @@ package owe.map.grid
 import scala.language.implicitConversions
 
 case class Point(x: Int, y: Int) {
-  def neighbours(withCornerNeighbours: Boolean): Seq[Point] =
-    Point.neighboursOf(this, withCornerNeighbours)
+  def neighbours(withCornerNeighbours: Boolean): Seq[Point] = Point.neighboursOf(this, withCornerNeighbours)
+
+  def isDirectNeighbourOf(other: Point): Boolean = Point.areDirectNeighbours(this, other)
 
   def distanceBetween(otherPoint: Point): Double = Point.distanceBetween(this, otherPoint)
 }
@@ -12,6 +13,9 @@ case class Point(x: Int, y: Int) {
 object Point {
   implicit def tupleToPoint(t: (Int, Int)): Point = Point(t._1, t._2)
   implicit def ordering[A <: Point]: Ordering[A] = Ordering.by(p => (p.y, p.x))
+
+  def areDirectNeighbours(a: Point, b: Point): Boolean =
+    distanceBetween(a, b) == 1.0
 
   def neighboursOf(point: Point, withCornerNeighbours: Boolean): Seq[Point] = {
     val Point(x, y) = point
@@ -32,9 +36,9 @@ object Point {
     }
   }
 
-  def distanceBetween(point1: Point, point2: Point): Double = {
-    val x = (point2.x - point1.x).abs
-    val y = (point2.y - point1.y).abs
+  def distanceBetween(a: Point, b: Point): Double = {
+    val x = (b.x - a.x).abs
+    val y = (b.y - a.y).abs
 
     Math.sqrt(x * x + y * y)
   }

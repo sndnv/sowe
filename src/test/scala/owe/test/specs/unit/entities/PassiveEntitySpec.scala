@@ -4,6 +4,7 @@ import akka.util.Timeout
 import org.scalatest.Outcome
 import owe.entities.ActiveEntityActor.GetData
 import owe.entities.{Entity, PassiveEntity}
+import owe.map.Cell
 import owe.test.specs.unit.AkkaUnitSpec
 
 import scala.concurrent.duration._
@@ -22,6 +23,8 @@ class PassiveEntitySpec extends AkkaUnitSpec("PassiveEntitySpec") {
       override def `type`: Entity.Type = Entity.Type.Doodad
 
       override def `desirability`: Entity.Desirability = Entity.Desirability.Min
+
+      override def acceptsAvailability(availability: Cell.Availability): Boolean = true
     }
 
     val entityActor = system.actorOf(entity.props())

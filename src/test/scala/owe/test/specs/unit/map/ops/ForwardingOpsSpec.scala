@@ -9,6 +9,7 @@ import owe.entities.ActiveEntityActor.AddEntityMessage
 import owe.entities.Entity
 import owe.entities.Entity.{Desirability, EntityRef, ProcessLabourFound}
 import owe.entities.active.Walker.WalkerRef
+import owe.entities.passive.Road
 import owe.entities.passive.Road.RoadRef
 import owe.events.Event
 import owe.map.{Cell, MapEntity}
@@ -16,10 +17,11 @@ import owe.map.Cell.{AddEntity, CellActorRef}
 import owe.map.grid.{Grid, Point}
 import owe.map.ops.ForwardingOps
 import owe.test.specs.unit.AsyncUnitSpec
+
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
-
 import owe.events.Event.{CellEvent, SystemEvent}
+import owe.test.specs.unit.entities.definitions.active.walkers.Archer
 
 class ForwardingOpsSpec extends AsyncUnitSpec {
   private implicit val timeout: Timeout = 3.seconds
@@ -61,8 +63,7 @@ class ForwardingOpsSpec extends AsyncUnitSpec {
     val roadMapEntity = MapEntity(
       entityRef = roadEntityID,
       parentCell = roadCell,
-      size = Entity.Size(1, 1),
-      desirability = Desirability.Min
+      spec = new Road
     )
 
     val walkerTestProbe = TestProbe()
@@ -71,8 +72,7 @@ class ForwardingOpsSpec extends AsyncUnitSpec {
     val walkerMapEntity = MapEntity(
       entityRef = walkerEntityID,
       parentCell = walkerCell,
-      size = Entity.Size(1, 1),
-      desirability = Desirability.Min
+      spec = new Archer
     )
 
     val message = ProcessLabourFound()

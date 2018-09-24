@@ -201,6 +201,8 @@ class GridSpec extends UnitSpec {
   }
 
   it should "search for elements" in { fixture =>
+    fixture.grid.hasPoint(Point(1, 1)) should be(true)
+    fixture.grid.hasPoint(Point(3, 1)) should be(false)
     fixture.grid.forall(_ >= 0) should be(true)
     fixture.grid.exists(_ == 7) should be(true)
     fixture.grid.find(_ == 7) should be(Some(7))

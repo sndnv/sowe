@@ -112,6 +112,8 @@ class Grid[A: ClassTag](private val data: Array[Array[A]]) {
       }
     }
 
+  def hasPoint(point: Point): Boolean = get(point).isDefined
+
   def forall(p: A => Boolean): Boolean = data.forall(_.forall(p))
 
   def exists(p: A => Boolean): Boolean = data.exists(_.exists(p))

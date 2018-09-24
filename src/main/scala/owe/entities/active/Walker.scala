@@ -8,6 +8,7 @@ import owe.entities.active.Structure.StructureRef
 import owe.entities.active.Walker.{SpawnLocation, WalkerRef}
 import owe.entities.active.attributes._
 import owe.entities.active.behaviour.walker.BaseWalker
+import owe.map.Cell
 import owe.map.grid.Point
 import owe.production.Commodity
 
@@ -26,6 +27,7 @@ trait Walker
   final override def `type`: Entity.Type = Entity.Type.Walker
   final override def `desirability`: Desirability = Desirability.Neutral
   final override protected def actorToActiveEntityRef(ref: ActorRef) = WalkerRef(ref)
+  override def acceptsAvailability(availability: Cell.Availability): Boolean = availability.isPassable
 }
 
 object Walker {

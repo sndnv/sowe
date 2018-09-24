@@ -6,6 +6,7 @@ import owe.entities.Entity.Desirability
 import owe.entities._
 import owe.entities.active.Resource.ResourceRef
 import owe.entities.active.behaviour.resource.BaseResource
+import owe.map.Cell
 import owe.map.grid.Point
 import owe.production._
 
@@ -20,6 +21,7 @@ trait Resource
   final override def `type`: Entity.Type = Entity.Type.Resource
   final override def `desirability`: Desirability = Desirability.Neutral
   final override protected def actorToActiveEntityRef(ref: ActorRef) = ResourceRef(ref)
+  final override def acceptsAvailability(availability: Cell.Availability): Boolean = availability.isFree
 }
 
 object Resource {

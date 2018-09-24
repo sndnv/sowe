@@ -3,18 +3,19 @@ package owe.test.specs.unit.map.ops
 import scala.collection.immutable.Queue
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
-
 import akka.actor.{Actor, ActorRef, ActorSystem, Props}
 import akka.testkit.TestProbe
 import akka.util.Timeout
 import org.scalatest.FutureOutcome
 import owe.Tagging._
+import owe.effects
 import owe.entities.ActiveEntity.{StructureData, WalkerData}
 import owe.entities.ActiveEntityActor.GetData
 import owe.entities.Entity.{Desirability, EntityRef}
 import owe.entities.active.Structure._
 import owe.entities.active.Walker.{MovementMode, TraversalMode, WalkerRef}
 import owe.entities.active.attributes._
+import owe.entities.active.behaviour.structure.BaseStructure
 import owe.entities.active.{Structure, Walker}
 import owe.entities.{ActiveEntity, Entity}
 import owe.map.Cell.{AddEntity, CellActorRef, CellData}
@@ -41,13 +42,6 @@ class QueryOpsSpec extends AsyncUnitSpec {
 
   private implicit val system: ActorSystem = ActorSystem()
   private implicit val testProbe: ActorRef = Actor.noSender
-
-  private val existingStructureMapEntity = MapEntity(
-    entityRef = StructureRef(TestProbe().ref),
-    parentCell = Point(1, 1),
-    size = Entity.Size(2, 1),
-    desirability = Desirability.Min
-  )
 
   private val existingStructureData = StructureData(
     properties = Structure.Properties(
@@ -79,6 +73,23 @@ class QueryOpsSpec extends AsyncUnitSpec {
       production = NoProduction
     ),
     id = StructureRef(TestProbe().ref)
+  )
+
+  private val existingStructureEntity = new Structure {
+    override protected def createActiveEntityData(): ActiveEntity.ActiveEntityRef => ActiveEntity.Data = {
+      case ref: StructureRef => existingStructureData.copy(id = ref)
+    }
+
+    override protected def createEffects(): Seq[(ActiveEntity.Data => Boolean, effects.Effect)] = ???
+    override protected def createBehaviour(): BaseStructure = ???
+    override def `size`: Entity.Size = Entity.Size(2, 1)
+    override def `desirability`: Desirability = Desirability.Min
+  }
+
+  private val existingStructureMapEntity = MapEntity(
+    entityRef = StructureRef(TestProbe().ref),
+    parentCell = Point(1, 1),
+    spec = existingStructureEntity
   )
 
   private val walkerData = WalkerData(
@@ -170,7 +181,7 @@ class QueryOpsSpec extends AsyncUnitSpec {
       successfulResult <- fixture.ops.getRoamingPath(fixture.grid, entities, walkerEntityID, Distance(5))
     } yield {
       missingEntityResult should be(Queue.empty[Point])
-      successfulResult should be(Queue[Point]((0, 1), (0, 0), (1, 0), (2, 0), (2, 1)))
+      successfulResult should be(Queue[Point]((0, 0), (1, 0), (2, 0), (2, 1)))
     }
   }
 
@@ -256,14 +267,22 @@ class QueryOpsSpec extends AsyncUnitSpec {
           Point(0, 1) -> CellData.empty,
           Point(1, 1) -> CellData.empty.copy(
             entities = Map(
-              structureRef -> MapEntity(structureRef, (1, 1), Entity.Size(2, 1), Entity.Desirability.Min)
+              structureRef -> MapEntity(
+                structureRef,
+                (1, 1),
+                existingStructureEntity
+              )
             )
           ),
           Point(2, 1) -> CellData.empty,
           Point(0, 2) -> CellData.empty,
           Point(1, 2) -> CellData.empty.copy(
             entities = Map(
-              structureRef -> MapEntity(structureRef, (1, 1), Entity.Size(2, 1), Entity.Desirability.Min)
+              structureRef -> MapEntity(
+                structureRef,
+                (1, 1),
+                existingStructureEntity
+              )
             )
           ),
           Point(2, 2) -> CellData.empty

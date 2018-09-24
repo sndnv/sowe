@@ -34,10 +34,10 @@ trait EntityOps { _: AvailabilityOps =>
       case walker: Walker =>
         walker.spawnLocation match {
           case SpawnLocation.AdjacentPoint(entityID) =>
-            findFirstAdjacentPoint(grid, entities, entityID, Cell.Availability.Passable)
+            findFirstAdjacentPoint(grid, entities, entityID, _.isPassable)
 
           case SpawnLocation.AdjacentRoad(entityID) =>
-            findFirstAdjacentRoad(grid, entities, entityID)
+            findFirstAdjacentPoint(grid, entities, entityID, _.hasRoad)
 
           case SpawnLocation.AtPoint =>
             Future.successful(Some(defaultCell))
@@ -48,35 +48,21 @@ trait EntityOps { _: AvailabilityOps =>
     spawnPoint
       .flatMap {
         case Some(point) =>
-          grid.get(point) match {
-            case Some(mapCell) =>
-              val mapEntity = MapEntity(
-                actorRef,
-                point,
-                entity.`size`,
-                entity.`desirability`,
-                entity.`type`
-              )
+          val entityCells = Entity.cells(entity.`size`, point)
+          if (entityCells.forall(grid.hasPoint)) {
+            val mapEntity = MapEntity(actorRef, point, entity)
 
-              val targetAvailability = requiredAvailability(mapEntity.entityType)
-              cellAvailability(mapCell).flatMap { availability =>
-                if (availability >= targetAvailability) {
-                  Future
-                    .sequence(Entity.cells(mapEntity.`size`, point).map(cellAvailabilityForPoint(grid, _)))
-                    .map { cellsAvailability =>
-                      if (cellsAvailability.forall(_ >= targetAvailability)) {
-                        Right((mapEntity, EntityEvent(Event.Engine.EntityCreated, mapEntity, point)))
-                      } else {
-                        Left(CellEvent(Event.Engine.CellsUnavailable, point))
-                      }
-                    }
+            Future
+              .sequence(entityCells.flatMap(cellAvailability(grid, _)))
+              .map { cellsAvailability =>
+                if (cellsAvailability.forall(mapEntity.spec.acceptsAvailability)) {
+                  Right((mapEntity, EntityEvent(Event.Engine.EntityCreated, mapEntity, point)))
                 } else {
-                  Future.successful(Left(CellEvent(Event.Engine.CellsUnavailable, point)))
+                  Left(CellEvent(Event.Engine.CellsUnavailable, point))
                 }
               }
-
-            case None =>
-              Future.successful(Left(CellEvent(Event.Engine.CellOutOfBounds, point)))
+          } else {
+            Future.successful(Left(CellEvent(Event.Engine.CellOutOfBounds, point)))
           }
 
         case None =>
@@ -98,7 +84,7 @@ trait EntityOps { _: AvailabilityOps =>
       } match {
       case Some((cell, mapCell)) =>
         cellAvailability(mapCell).flatMap {
-          case Availability.Occupied | Availability.Passable =>
+          case availability if availability.entityTypes.nonEmpty =>
             (mapCell ? GetEntity(entityID)).mapTo[Option[MapEntity]].map {
               case Some(mapEntity) =>
                 Right(
@@ -134,33 +120,31 @@ trait EntityOps { _: AvailabilityOps =>
       currentMapCell <- grid
         .get(currentCell)
         .toRight(CellEvent(Event.Engine.CellOutOfBounds, currentCell)): Either[Event, CellActorRef]
-      newMapCell <- grid
+      _ <- grid
         .get(newCell)
         .toRight(CellEvent(Event.Engine.CellOutOfBounds, newCell)): Either[Event, CellActorRef]
     } yield {
       (currentMapCell ? GetEntity(entityID)).mapTo[Option[MapEntity]].flatMap {
         case Some(currentMapEntity) =>
-          val targetAvailability = requiredAvailability(currentMapEntity.entityType)
-          cellAvailability(newMapCell).flatMap { availability =>
-            if (availability >= targetAvailability) {
-              Future
-                .sequence(Entity.cells(currentMapEntity.size, newCell).map(cellAvailabilityForPoint(grid, _)))
-                .map { cellsAvailability =>
-                  if (cellsAvailability.forall(_ >= targetAvailability)) {
-                    Right(
-                      (
-                        EntityEvent(Event.Engine.EntityMoved, currentMapEntity, newCell),
-                        currentMapEntity,
-                        currentCell
-                      )
+          val entityCells = Entity.cells(currentMapEntity.spec.`size`, newCell)
+          if (entityCells.forall(grid.hasPoint)) {
+            Future
+              .sequence(Entity.cells(currentMapEntity.spec.`size`, newCell).flatMap(cellAvailability(grid, _)))
+              .map { cellsAvailability =>
+                if (cellsAvailability.forall(currentMapEntity.spec.acceptsAvailability)) {
+                  Right(
+                    (
+                      EntityEvent(Event.Engine.EntityMoved, currentMapEntity, newCell),
+                      currentMapEntity,
+                      currentCell
                     )
-                  } else {
-                    Left(CellEvent(Event.Engine.CellsUnavailable, newCell))
-                  }
+                  )
+                } else {
+                  Left(CellEvent(Event.Engine.CellsUnavailable, newCell))
                 }
-            } else {
-              Future.successful(Left(CellEvent(Event.Engine.CellsUnavailable, newCell)))
-            }
+              }
+          } else {
+            Future.successful(Left(CellEvent(Event.Engine.CellsUnavailable, newCell)))
           }
 
         case None =>
@@ -180,12 +164,12 @@ trait EntityOps { _: AvailabilityOps =>
     mapEntity: MapEntity,
     cell: Point
   )(implicit sender: ActorRef = Actor.noSender): Map[EntityRef, Point] = {
-    val cells = Entity.cells(mapEntity.size, mapEntity.parentCell)
+    val cells = Entity.cells(mapEntity.spec.size, mapEntity.parentCell)
     cells.flatMap(grid.get).foreach(_ ! AddEntity(mapEntity))
 
     mapEntity.entityRef match {
       case _: DoodadRef | _: RoadRef | _: StructureRef =>
-        addDesirability(grid, mapEntity.desirability, cells)
+        addDesirability(grid, mapEntity.spec.desirability, cells)
 
       case _ =>
         () //do nothing
@@ -200,12 +184,12 @@ trait EntityOps { _: AvailabilityOps =>
     mapEntity: MapEntity,
     cell: Point
   )(implicit sender: ActorRef = Actor.noSender): Map[EntityRef, Point] = {
-    val cells = Entity.cells(mapEntity.size, mapEntity.parentCell)
+    val cells = Entity.cells(mapEntity.spec.size, mapEntity.parentCell)
     cells.flatMap(grid.get).foreach(_ ! RemoveEntity(mapEntity.entityRef))
 
     mapEntity.entityRef match {
       case _: DoodadRef | _: RoadRef | _: StructureRef =>
-        removeDesirability(grid, mapEntity.desirability, cells)
+        removeDesirability(grid, mapEntity.spec.desirability, cells)
 
       case _ =>
         () //do nothing

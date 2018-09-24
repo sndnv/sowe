@@ -28,7 +28,7 @@ class Courier(parent: StructureRef, parentHome: Point, parameters: Parameters) e
           movementSpeed = Speed(1),
           maxRoamingDistance = Distance(100),
           attack = NoAttack,
-          traversalMode = TraversalMode.OnLand
+          traversalMode = TraversalMode.RoadPreferred
         ),
         state = State(
           currentPosition = Point(0, 0),

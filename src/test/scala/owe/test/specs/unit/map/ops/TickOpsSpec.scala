@@ -5,11 +5,15 @@ import akka.testkit.TestProbe
 import akka.util.Timeout
 import org.scalatest.FutureOutcome
 import owe.Tagging._
+import owe.effects
 import owe.effects.Effect
 import owe.entities.ActiveEntityActor.{GetActiveEffects, ProcessEntityTick}
-import owe.entities.Entity
+import owe.entities.{ActiveEntity, Entity}
 import owe.entities.Entity.Desirability
+import owe.entities.active.Structure
 import owe.entities.active.Structure.StructureRef
+import owe.entities.active.behaviour.structure.BaseStructure
+import owe.entities.passive.Road
 import owe.entities.passive.Road.RoadRef
 import owe.map.Cell.{AddEntity, CellActorRef}
 import owe.map.grid.{Grid, Point}
@@ -44,11 +48,18 @@ class TickOpsSpec extends AsyncUnitSpec {
 
   private implicit val system: ActorSystem = ActorSystem()
 
+  private def existingStructureEntity(withSize: Entity.Size): Structure = new Structure {
+    override protected def createActiveEntityData(): ActiveEntity.ActiveEntityRef => ActiveEntity.Data = ???
+    override protected def createEffects(): Seq[(ActiveEntity.Data => Boolean, effects.Effect)] = ???
+    override protected def createBehaviour(): BaseStructure = ???
+    override def `size`: Entity.Size = withSize
+    override def `desirability`: Desirability = Desirability.Min
+  }
+
   private val existingStructureMapEntity = MapEntity(
     entityRef = StructureRef(TestProbe().ref),
     parentCell = Point(0, 0),
-    size = Entity.Size(1, 1),
-    desirability = Desirability.Min
+    spec = existingStructureEntity(withSize = Entity.Size(1, 1))
   )
 
   case class FixtureParam(ops: TickOps, grid: Grid[CellActorRef])
@@ -72,8 +83,7 @@ class TickOpsSpec extends AsyncUnitSpec {
     val roadMapEntity = MapEntity(
       entityRef = RoadRef(TestProbe().ref),
       parentCell = Point(0, 1),
-      size = Entity.Size(1, 1),
-      desirability = Desirability.Min
+      spec = new Road
     )
 
     val structureRef = StructureRef(system.actorOf(Props(new TestEntity(effects))))
@@ -134,8 +144,7 @@ class TickOpsSpec extends AsyncUnitSpec {
     val roadMapEntity = MapEntity(
       entityRef = RoadRef(TestProbe().ref),
       parentCell = Point(0, 1),
-      size = Entity.Size(1, 1),
-      desirability = Desirability.Min
+      spec = new Road
     )
 
     val structureRef = StructureRef(system.actorOf(Props(new TestEntity(effects))))
@@ -158,8 +167,7 @@ class TickOpsSpec extends AsyncUnitSpec {
     val structureEntity = MapEntity(
       entityRef = structureRef,
       parentCell = Point(0, 0),
-      size = Entity.Size(2, 2),
-      desirability = Desirability.Min
+      spec = existingStructureEntity(withSize = Entity.Size(2, 2))
     )
 
     fixture.grid.getUnsafe((0, 0)) ! AddEntity(structureEntity)

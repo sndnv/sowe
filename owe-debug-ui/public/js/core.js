@@ -381,7 +381,7 @@ function render_entities_details(entity_refs) {
 
 function add_entity(targetCell, entity) {
     const parentCell = select_cell(targetCell);
-    const cells = get_entity_cells(parentCell, entity.size);
+    const cells = get_entity_cells(parentCell, entity.spec.size);
     $.each(cells.targets, function(i, cell) {
         add_entity_data(cell, entity);
     });
@@ -389,7 +389,7 @@ function add_entity(targetCell, entity) {
 
 function remove_entity(targetCell, entity) {
     const parentCell = select_cell(targetCell);
-    const cells = get_entity_cells(parentCell, entity.size);
+    const cells = get_entity_cells(parentCell, entity.spec.size);
     $.each(cells.targets, function(i, cell) {
         remove_entity_data(cell, entity);
     });
@@ -471,6 +471,7 @@ function render_entities_info(point, entities) {
     ];
 
     const content = $.map(entities, function (entity, ref) {
+        console.log(entity);
         return render_entity_info(entity);
     });
 
@@ -486,7 +487,7 @@ function render_entity_info(entity) {
         "<div class='uk-card uk-margin-small-top'>",
         "   <span class='uk-label uk-label-primary'>" + entity_ref_to_type(entity.entityRef) + "</span>",
         "   | ",
-        "   <span class='uk-label uk-label-primary'>" + entity.size.height + "x" + entity.size.width + "</span>",
+        "   <span class='uk-label uk-label-primary'>" + entity.spec.size.height + "x" + entity.spec.size.width + "</span>",
         "   @ ",
         "   <span class='uk-label uk-label-danger'>(" + entity.parentCell.x + "," + entity.parentCell.y + ")</span>",
         "   | ",

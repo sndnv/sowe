@@ -261,6 +261,17 @@ object JsonFormatters {
   implicit val walkerData: Format[ActiveEntity.WalkerData] = Json.format[ActiveEntity.WalkerData]
   implicit val activeEntityData: Format[ActiveEntity.Data] = Json.format[ActiveEntity.Data]
 
+  implicit val entityFormat: Format[Entity] = Format(
+    Reads[Entity](_ => ???),
+    Writes[Entity] { entity =>
+      Json.obj(
+        "size" -> Json.toJson(entity.`size`),
+        "type" -> Json.toJson(entity.`type`.toString),
+        "desirability" -> Json.toJson(entity.`desirability`)
+      )
+    }
+  )
+
   implicit val mapEntityFormat: Format[MapEntity] = Json.format[MapEntity]
 
   implicit val commoditiesFormat: Format[ExchangeCommodities] = Format(

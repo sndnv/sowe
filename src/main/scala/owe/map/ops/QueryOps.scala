@@ -1,6 +1,6 @@
 package owe.map.ops
 
-import akka.actor.{Actor, ActorRef}
+import akka.actor.ActorRef
 import akka.pattern.ask
 import akka.util.Timeout
 import owe.entities.ActiveEntity.{ActiveEntityRef, Data, WalkerData}
@@ -11,6 +11,7 @@ import owe.entities.active.attributes.Distance
 import owe.map.Cell.{CellActorRef, CellData, GetCellData, GetEntity}
 import owe.map._
 import owe.map.grid.{Grid, Point}
+
 import scala.collection.immutable.Queue
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
@@ -67,7 +68,7 @@ trait QueryOps { _: PathfindingOps =>
               .map { mapCell =>
                 (mapCell ? GetCellData()).mapTo[CellData].map { cellData =>
                   cellData.entities.values.collect {
-                    case MapEntity(entityRef: ActiveEntityRef, _, _, _) if entityID != entityRef =>
+                    case MapEntity(entityRef: ActiveEntityRef, _, _) if entityID != entityRef =>
                       entityRef
                   }
                 }
@@ -95,7 +96,7 @@ trait QueryOps { _: PathfindingOps =>
           .mapTo[CellData]
           .map { cellData =>
             cellData.entities.values.collect {
-              case mapEntity @ MapEntity(entityRef: ActiveEntityRef, _, _, _) =>
+              case mapEntity @ MapEntity(entityRef: ActiveEntityRef, _, _) =>
                 (mapEntity, entityRef)
             }
           }
@@ -123,7 +124,7 @@ trait QueryOps { _: PathfindingOps =>
         (cell ? GetEntity(entityID))
           .mapTo[Option[MapEntity]]
           .collect {
-            case Some(MapEntity(entity: ActiveEntityRef, _, _, _)) =>
+            case Some(MapEntity(entity: ActiveEntityRef, _, _)) =>
               (entity ? GetData()).mapTo[Data]
           }
           .flatten

@@ -2,7 +2,7 @@ package owe.map
 
 import akka.actor.ActorRef
 import owe.entities.Entity
-import owe.entities.Entity.{Desirability, EntityRef}
+import owe.entities.Entity.EntityRef
 import owe.entities.active.Resource.ResourceRef
 import owe.entities.active.Structure.StructureRef
 import owe.entities.active.Walker.WalkerRef
@@ -14,8 +14,7 @@ import owe.map.grid.Point
 case class MapEntity(
   entityRef: EntityRef,
   parentCell: Point,
-  size: Entity.Size,
-  desirability: Desirability
+  spec: Entity
 ) {
   def entityType: Entity.Type =
     entityRef match {
@@ -30,20 +29,11 @@ case class MapEntity(
 
 object MapEntity {
   def apply(
-    entityRef: EntityRef,
-    parentCell: Point,
-    size: Entity.Size,
-    desirability: Desirability
-  ): MapEntity = new MapEntity(entityRef, parentCell, size, desirability)
-
-  def apply(
     actorRef: ActorRef,
     parentCell: Point,
-    size: Entity.Size,
-    desirability: Desirability,
-    `type`: Entity.Type
+    spec: Entity
   ): MapEntity = new MapEntity(
-    `type` match {
+    spec.`type` match {
       case Entity.Type.Doodad    => DoodadRef(actorRef)
       case Entity.Type.Road      => RoadRef(actorRef)
       case Entity.Type.Roadblock => RoadblockRef(actorRef)
@@ -52,7 +42,6 @@ object MapEntity {
       case Entity.Type.Walker    => WalkerRef(actorRef)
     },
     parentCell,
-    size,
-    desirability
+    spec
   )
 }

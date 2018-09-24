@@ -19,6 +19,7 @@ trait Structure
     ] {
   final override def `type`: Entity.Type = Entity.Type.Structure
   final override protected def actorToActiveEntityRef(ref: ActorRef) = StructureRef(ref)
+  override def acceptsAvailability(availability: Cell.Availability): Boolean = availability.isFree
 }
 
 object Structure {

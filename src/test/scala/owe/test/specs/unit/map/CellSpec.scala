@@ -2,18 +2,22 @@ package owe.test.specs.unit.map
 
 import akka.actor.ActorRef
 import akka.testkit.TestProbe
+import akka.util.Timeout
 import org.scalatest.Outcome
 import owe.entities.Entity
 import owe.entities.active.Resource.ResourceRef
 import owe.entities.active.Structure.StructureRef
 import owe.entities.active.Walker.WalkerRef
+import owe.entities.passive.{Doodad, Road}
 import owe.entities.passive.Doodad.DoodadRef
 import owe.entities.passive.Road.RoadRef
 import owe.entities.passive.Roadblock.RoadblockRef
-import owe.map.Cell.{UpdateBuildAllowed, _}
+import owe.map.Cell._
 import owe.map.grid.Point
 import owe.map.{Cell, MapEntity}
 import owe.test.specs.unit.AkkaUnitSpec
+
+import scala.concurrent.duration._
 
 class CellSpec extends AkkaUnitSpec("CellSpec") {
   case class FixtureParam(cell: ActorRef)
@@ -21,12 +25,13 @@ class CellSpec extends AkkaUnitSpec("CellSpec") {
   def withFixture(test: OneArgTest): Outcome =
     withFixture(test.toNoArgTest(FixtureParam(system.actorOf(Cell.props()))))
 
+  protected implicit val timeout: Timeout = 3.seconds
+
   "A Cell" should "add and remove entities" in { fixture =>
     val mapEntity = MapEntity(
       entityRef = DoodadRef(TestProbe().ref),
       parentCell = Point(0, 0),
-      size = Entity.Size(1, 1),
-      desirability = Entity.Desirability.Min
+      spec = new Doodad
     )
 
     fixture.cell ! AddEntity(mapEntity)
@@ -43,8 +48,15 @@ class CellSpec extends AkkaUnitSpec("CellSpec") {
     fixture.cell ! GetCellData()
     expectMsg(defaultCellData)
 
-    val updatedDesirabilityData = defaultCellData.copy(
-      state = defaultCellData.state.copy(desirability = Cell.Desirability.Max)
+    val updatedTypeData = defaultCellData.copy(
+      `type` = Cell.Type.Floodplain
+    )
+    fixture.cell ! UpdateType(Cell.Type.Floodplain)
+    fixture.cell ! GetCellData()
+    expectMsg(updatedTypeData)
+
+    val updatedDesirabilityData = updatedTypeData.copy(
+      state = updatedTypeData.state.copy(desirability = Cell.Desirability.Max)
     )
     fixture.cell ! UpdateDesirability(Cell.Desirability.Max)
     fixture.cell ! GetCellData()
@@ -65,22 +77,21 @@ class CellSpec extends AkkaUnitSpec("CellSpec") {
     expectMsg(updatedWaterData)
 
     val updateBuildAllowedData = updatedWaterData.copy(
-      state = updatedWaterData.state.copy(buildingAllowed = false)
+      state = updatedWaterData.state.copy(restrictions = Cell.Restrictions.Unbuildable)
     )
-    fixture.cell ! UpdateBuildAllowed(buildingAllowed = false)
+    fixture.cell ! UpdateRestrictions(restrictions = Cell.Restrictions.Unbuildable)
     fixture.cell ! GetCellData()
     expectMsg(updateBuildAllowedData)
   }
 
   it should "return availability information" in { fixture =>
     fixture.cell ! GetCellAvailability()
-    expectMsg(Cell.Availability.Buildable)
+    receiveOne(timeout.duration).asInstanceOf[Availability].isFree should be(true)
 
     val roadEntity = MapEntity(
       entityRef = RoadRef(TestProbe().ref),
       parentCell = Point(0, 0),
-      size = Entity.Size(1, 1),
-      desirability = Entity.Desirability.Min
+      spec = new Road
     )
     val roadblockEntity = roadEntity.copy(entityRef = RoadblockRef(TestProbe().ref))
     val walkerEntity = roadEntity.copy(entityRef = WalkerRef(TestProbe().ref))
@@ -93,131 +104,102 @@ class CellSpec extends AkkaUnitSpec("CellSpec") {
     fixture.cell ! AddEntity(walkerEntity)
 
     fixture.cell ! GetCellAvailability()
-    expectMsg(Cell.Availability.Passable)
 
-    fixture.cell ! HasRoad()
-    expectMsg(true)
+    {
+      val availability = receiveOne(timeout.duration).asInstanceOf[Availability]
+      availability.isPassable should be(true)
+      availability.hasRoad should be(true)
+    }
 
     fixture.cell ! RemoveEntity(roadEntity.entityRef)
-    fixture.cell ! HasRoad()
-    expectMsg(false)
+    fixture.cell ! GetCellAvailability()
 
-    fixture.cell ! HasRoadblock()
-    expectMsg(true)
+    {
+      val availability = receiveOne(timeout.duration).asInstanceOf[Availability]
+      availability.hasRoad should be(false)
+      availability.hasRoadblock should be(true)
+    }
 
     fixture.cell ! RemoveEntity(roadblockEntity.entityRef)
-    fixture.cell ! HasRoadblock()
-    expectMsg(false)
+    fixture.cell ! GetCellAvailability()
+    receiveOne(timeout.duration).asInstanceOf[Availability].hasRoadblock should be(false)
 
     fixture.cell ! AddEntity(doodadEntity)
     fixture.cell ! GetCellAvailability()
-    expectMsg(Cell.Availability.Occupied)
+    receiveOne(timeout.duration).asInstanceOf[Availability].isPassable should be(false)
+
     fixture.cell ! RemoveEntity(doodadEntity.entityRef)
     fixture.cell ! GetCellAvailability()
-    expectMsg(Cell.Availability.Passable)
+    receiveOne(timeout.duration).asInstanceOf[Availability].isPassable should be(true)
 
     fixture.cell ! AddEntity(structureEntity)
     fixture.cell ! GetCellAvailability()
-    expectMsg(Cell.Availability.Occupied)
+    receiveOne(timeout.duration).asInstanceOf[Availability].isPassable should be(false)
+
     fixture.cell ! RemoveEntity(structureEntity.entityRef)
     fixture.cell ! GetCellAvailability()
-    expectMsg(Cell.Availability.Passable)
+    receiveOne(timeout.duration).asInstanceOf[Availability].isPassable should be(true)
 
     fixture.cell ! AddEntity(resourceEntity)
     fixture.cell ! GetCellAvailability()
-    expectMsg(Cell.Availability.Occupied)
+    receiveOne(timeout.duration).asInstanceOf[Availability].isPassable should be(true)
+
     fixture.cell ! RemoveEntity(resourceEntity.entityRef)
     fixture.cell ! GetCellAvailability()
-    expectMsg(Cell.Availability.Passable)
-
-    Cell.requiredAvailability(Entity.Type.Doodad) should be(Availability.Buildable)
-    Cell.requiredAvailability(Entity.Type.Road) should be(Availability.Buildable)
-    Cell.requiredAvailability(Entity.Type.Roadblock) should be(Availability.Passable)
-    Cell.requiredAvailability(Entity.Type.Resource) should be(Availability.Buildable)
-    Cell.requiredAvailability(Entity.Type.Structure) should be(Availability.Buildable)
-    Cell.requiredAvailability(Entity.Type.Walker) should be(Availability.Passable)
+    receiveOne(timeout.duration).asInstanceOf[Availability].isPassable should be(true)
   }
 
-  it should "allow availability comparisons" in { _ =>
-    (Availability.Buildable > Availability.Buildable) should be(false)
-    (Availability.Buildable > Availability.Passable) should be(true)
-    (Availability.Buildable > Availability.Occupied) should be(true)
-    (Availability.Buildable > Availability.OutOfBounds) should be(true)
+  "Cell Availability" should "correctly calculate its state" in { _ =>
+    val defaultCellData = CellData.empty
+    val emptyData = Availability(
+      cellType = defaultCellData.`type`,
+      cellState = defaultCellData.state,
+      entityTypes = Set.empty
+    )
 
-    (Availability.Passable > Availability.Buildable) should be(false)
-    (Availability.Passable > Availability.Passable) should be(false)
-    (Availability.Passable > Availability.Occupied) should be(true)
-    (Availability.Passable > Availability.OutOfBounds) should be(true)
+    emptyData.isFree should be(true)
+    emptyData.isPassable should be(true)
+    emptyData.hasRoad should be(false)
+    emptyData.hasRoadblock should be(false)
 
-    (Availability.Occupied > Availability.Buildable) should be(false)
-    (Availability.Occupied > Availability.Passable) should be(false)
-    (Availability.Occupied > Availability.Occupied) should be(false)
-    (Availability.Occupied > Availability.OutOfBounds) should be(true)
+    val dataWithRoad = emptyData.copy(entityTypes = Set(Entity.Type.Road))
 
-    (Availability.OutOfBounds > Availability.Buildable) should be(false)
-    (Availability.OutOfBounds > Availability.Passable) should be(false)
-    (Availability.OutOfBounds > Availability.Occupied) should be(false)
-    (Availability.OutOfBounds > Availability.OutOfBounds) should be(false)
+    dataWithRoad.isFree should be(false)
+    dataWithRoad.isPassable should be(true)
+    dataWithRoad.hasRoad should be(true)
+    dataWithRoad.hasRoadblock should be(false)
 
-    (Availability.Buildable < Availability.Buildable) should be(false)
-    (Availability.Buildable < Availability.Passable) should be(false)
-    (Availability.Buildable < Availability.Occupied) should be(false)
-    (Availability.Buildable < Availability.OutOfBounds) should be(false)
+    val dataWithRoadblock = emptyData.copy(entityTypes = Set(Entity.Type.Roadblock))
 
-    (Availability.Passable < Availability.Buildable) should be(true)
-    (Availability.Passable < Availability.Passable) should be(false)
-    (Availability.Passable < Availability.Occupied) should be(false)
-    (Availability.Passable < Availability.OutOfBounds) should be(false)
+    dataWithRoadblock.isFree should be(false)
+    dataWithRoadblock.isPassable should be(true)
+    dataWithRoadblock.hasRoad should be(false)
+    dataWithRoadblock.hasRoadblock should be(true)
 
-    (Availability.Occupied < Availability.Buildable) should be(true)
-    (Availability.Occupied < Availability.Passable) should be(true)
-    (Availability.Occupied < Availability.Occupied) should be(false)
-    (Availability.Occupied < Availability.OutOfBounds) should be(false)
+    val dataWithStructure = emptyData.copy(entityTypes = Set(Entity.Type.Structure))
 
-    (Availability.OutOfBounds < Availability.Buildable) should be(true)
-    (Availability.OutOfBounds < Availability.Passable) should be(true)
-    (Availability.OutOfBounds < Availability.Occupied) should be(true)
-    (Availability.OutOfBounds < Availability.OutOfBounds) should be(false)
+    dataWithStructure.isFree should be(false)
+    dataWithStructure.isPassable should be(false)
+    dataWithStructure.hasRoad should be(false)
+    dataWithStructure.hasRoadblock should be(false)
 
-    (Availability.Buildable >= Availability.Buildable) should be(true)
-    (Availability.Buildable >= Availability.Passable) should be(true)
-    (Availability.Buildable >= Availability.Occupied) should be(true)
-    (Availability.Buildable >= Availability.OutOfBounds) should be(true)
+    val dataWithPassableEntities = emptyData.copy(
+      entityTypes = Set(Entity.Type.Walker, Entity.Type.Road, Entity.Type.Roadblock)
+    )
 
-    (Availability.Passable >= Availability.Buildable) should be(false)
-    (Availability.Passable >= Availability.Passable) should be(true)
-    (Availability.Passable >= Availability.Occupied) should be(true)
-    (Availability.Passable >= Availability.OutOfBounds) should be(true)
+    dataWithPassableEntities.isFree should be(false)
+    dataWithPassableEntities.isPassable should be(true)
+    dataWithPassableEntities.hasRoad should be(true)
+    dataWithPassableEntities.hasRoadblock should be(true)
 
-    (Availability.Occupied >= Availability.Buildable) should be(false)
-    (Availability.Occupied >= Availability.Passable) should be(false)
-    (Availability.Occupied >= Availability.Occupied) should be(true)
-    (Availability.Occupied >= Availability.OutOfBounds) should be(true)
+    val dataInImpassibleState = emptyData.copy(
+      cellState = emptyData.cellState.copy(restrictions = Cell.Restrictions.Impassable)
+    )
 
-    (Availability.OutOfBounds >= Availability.Buildable) should be(false)
-    (Availability.OutOfBounds >= Availability.Passable) should be(false)
-    (Availability.OutOfBounds >= Availability.Occupied) should be(false)
-    (Availability.OutOfBounds >= Availability.OutOfBounds) should be(true)
-
-    (Availability.Buildable <= Availability.Buildable) should be(true)
-    (Availability.Buildable <= Availability.Passable) should be(false)
-    (Availability.Buildable <= Availability.Occupied) should be(false)
-    (Availability.Buildable <= Availability.OutOfBounds) should be(false)
-
-    (Availability.Passable <= Availability.Buildable) should be(true)
-    (Availability.Passable <= Availability.Passable) should be(true)
-    (Availability.Passable <= Availability.Occupied) should be(false)
-    (Availability.Passable <= Availability.OutOfBounds) should be(false)
-
-    (Availability.Occupied <= Availability.Buildable) should be(true)
-    (Availability.Occupied <= Availability.Passable) should be(true)
-    (Availability.Occupied <= Availability.Occupied) should be(true)
-    (Availability.Occupied <= Availability.OutOfBounds) should be(false)
-
-    (Availability.OutOfBounds <= Availability.Buildable) should be(true)
-    (Availability.OutOfBounds <= Availability.Passable) should be(true)
-    (Availability.OutOfBounds <= Availability.Occupied) should be(true)
-    (Availability.OutOfBounds <= Availability.OutOfBounds) should be(true)
+    dataInImpassibleState.isFree should be(true)
+    dataInImpassibleState.isPassable should be(false)
+    dataInImpassibleState.hasRoad should be(false)
+    dataInImpassibleState.hasRoadblock should be(false)
   }
 
   "Cell Desirability" should "support math ops" in { _ =>

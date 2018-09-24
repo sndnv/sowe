@@ -1,31 +1,58 @@
 package owe.map.ops
 
-import scala.collection.immutable.Queue
-import scala.concurrent.{ExecutionContext, Future}
 import akka.actor.{Actor, ActorRef}
 import owe.entities.active.Walker.TraversalMode
 import owe.entities.active.attributes.Distance
-import owe.map.Cell.{Availability, CellActorRef}
+import owe.map.Cell.CellActorRef
 import owe.map.grid.{Grid, Point}
 import owe.map.pathfinding.Search
+
+import scala.collection.immutable.Queue
+import scala.concurrent.{ExecutionContext, Future}
 
 trait PathfindingOps { _: AvailabilityOps =>
 
   protected val search: Search
   protected implicit val ec: ExecutionContext
 
-  //TODO - check if path should follow roads
   def generateAdvancePath(
     grid: Grid[CellActorRef],
     start: Point,
     end: Point,
     traversalMode: TraversalMode
-  )(implicit sender: ActorRef = Actor.noSender): Future[Queue[Point]] =
-    search
-      .calculate(start, end, passableNeighboursOf(grid, _, traversalMode, roadblockRestricted = false))
-      .map(_.drop(1))
+  )(implicit sender: ActorRef = Actor.noSender): Future[Queue[Point]] = {
+    val path = traversalMode match {
+      case TraversalMode.RoadPreferred =>
+        search
+          .calculate(
+            start,
+            end,
+            passableNeighboursOf(grid, _, TraversalMode.RoadRequired, roadblockRestricted = false)
+          )
+          .flatMap { path =>
+            if (path.isEmpty) {
+              search.calculate(
+                start,
+                end,
+                passableNeighboursOf(grid, _, TraversalMode.OnLand, roadblockRestricted = false)
+              )
+            } else {
+              Future.successful(path)
+            }
+          }
 
-  //TODO - check if path should follow roads
+      case _ =>
+        search
+          .calculate(
+            start,
+            end,
+            passableNeighboursOf(grid, _, traversalMode, roadblockRestricted = false)
+          )
+    }
+
+    path.map(_.drop(1))
+  }
+
   def generateRoamPath(
     grid: Grid[CellActorRef],
     start: Point,
@@ -72,7 +99,12 @@ trait PathfindingOps { _: AvailabilityOps =>
       }
     }
 
-    extendPath(start, currentPath = Seq.empty, examined = Seq.empty, backtracked = Seq.empty).map(_.to[Queue])
+    extendPath(
+      start,
+      currentPath = Seq.empty,
+      examined = Seq.empty,
+      backtracked = Seq.empty
+    ).map(_.drop(1).to[Queue])
   }
 
   def passableNeighboursOf(
@@ -85,22 +117,14 @@ trait PathfindingOps { _: AvailabilityOps =>
       .sequence(
         cell
           .neighbours(withCornerNeighbours = diagonalMovementAllowed(traversalMode))
-          .map { point =>
-            cellAvailabilityForPoint(grid, point).flatMap { availability =>
-              if (availability >= Availability.Passable) {
-                if (roadblockRestricted) {
-                  cellHasRoadblock(grid, point).map { hasRoadblock =>
-                    if (hasRoadblock) {
-                      None
-                    } else {
-                      Some(point)
-                    }
-                  }
+          .flatMap { point =>
+            cellAvailability(grid, point).map { availability =>
+              availability.map { availability =>
+                if (availability.isPassable && isTraversable(traversalMode, roadblockRestricted, availability)) {
+                  Some(point)
                 } else {
-                  Future.successful(Some(point))
+                  None
                 }
-              } else {
-                Future.successful(None)
               }
             }
           }
@@ -110,7 +134,7 @@ trait PathfindingOps { _: AvailabilityOps =>
   def diagonalMovementAllowed(traversalMode: TraversalMode): Boolean =
     traversalMode match {
       case TraversalMode.RoadRequired  => false
-      case TraversalMode.RoadPreferred => true // TODO - should follow road (no diagonal movement), if available
+      case TraversalMode.RoadPreferred => false
       case TraversalMode.OnLand        => true
       case TraversalMode.OnWater       => true
     }

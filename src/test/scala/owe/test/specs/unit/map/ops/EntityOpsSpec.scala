@@ -21,10 +21,11 @@ import owe.map.grid.{Grid, Point}
 import owe.map.ops.{AvailabilityOps, EntityOps}
 import owe.map.{Cell, MapEntity}
 import owe.test.specs.unit.AsyncUnitSpec
+
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
-
 import owe.events.Event.{CellEvent, EntityEvent, SystemEvent}
+import owe.test.specs.unit.entities.definitions.active.walkers.Archer
 
 class EntityOpsSpec extends AsyncUnitSpec {
   private implicit val timeout: Timeout = 3.seconds
@@ -35,6 +36,14 @@ class EntityOpsSpec extends AsyncUnitSpec {
   }
 
   private implicit val system: ActorSystem = ActorSystem()
+
+  private def existingStructureEntity(withSize: Entity.Size): Structure = new Structure {
+    override protected def createActiveEntityData(): ActiveEntity.ActiveEntityRef => ActiveEntity.Data = ???
+    override protected def createEffects(): Seq[(ActiveEntity.Data => Boolean, effects.Effect)] = ???
+    override protected def createBehaviour(): BaseStructure = ???
+    override def `size`: Entity.Size = withSize
+    override def `desirability`: Desirability = Desirability.Min
+  }
 
   case class FixtureParam(ops: EntityOps, grid: Grid[CellActorRef])
 
@@ -59,8 +68,7 @@ class EntityOpsSpec extends AsyncUnitSpec {
     val existingStructureMapEntity = MapEntity(
       entityRef = existingStructureEntityID,
       parentCell = unavailableMainCell,
-      size = Entity.Size(1, 1),
-      desirability = Desirability.Min
+      spec = existingStructureEntity(withSize = Entity.Size(1, 1))
     )
 
     val unavailableEntityCell = Point(1, 0)
@@ -160,8 +168,7 @@ class EntityOpsSpec extends AsyncUnitSpec {
     val mapEntity = MapEntity(
       entityRef = entityID,
       parentCell = entityCell,
-      size = Entity.Size(2, 2),
-      desirability = Desirability.Min
+      spec = new Archer
     )
 
     val existingStructureCell = expectedEntityCell
@@ -169,8 +176,7 @@ class EntityOpsSpec extends AsyncUnitSpec {
     val existingStructureMapEntity = MapEntity(
       entityRef = existingStructureEntityID,
       parentCell = existingStructureCell,
-      size = Entity.Size(2, 2),
-      desirability = Desirability.Min
+      spec = existingStructureEntity(withSize = Entity.Size(2, 2))
     )
 
     val entities = Map[EntityRef, Point](
@@ -214,8 +220,7 @@ class EntityOpsSpec extends AsyncUnitSpec {
     val existingStructureMapEntity = MapEntity(
       entityRef = existingStructureEntityID,
       parentCell = unavailableNewCell,
-      size = Entity.Size(2, 2),
-      desirability = Desirability.Min
+      spec = existingStructureEntity(withSize = Entity.Size(2, 2))
     )
 
     val walkerCell = Point(0, 0)
@@ -223,8 +228,7 @@ class EntityOpsSpec extends AsyncUnitSpec {
     val multicellWalkerMapEntity = MapEntity(
       entityRef = multicellWalkerEntityID,
       parentCell = walkerCell,
-      size = Entity.Size(2, 2),
-      desirability = Desirability.Min
+      spec = existingStructureEntity(withSize = Entity.Size(2, 2))
     )
 
     val newCell = Point(0, 1)
@@ -232,8 +236,7 @@ class EntityOpsSpec extends AsyncUnitSpec {
     val walkerMapEntity = MapEntity(
       entityRef = walkerEntityID,
       parentCell = walkerCell,
-      size = Entity.Size(1, 1),
-      desirability = Desirability.Min
+      spec = new Archer
     )
 
     val entities = Map[EntityRef, Point](
@@ -311,16 +314,14 @@ class EntityOpsSpec extends AsyncUnitSpec {
     val roadMapEntity = MapEntity(
       entityRef = roadEntityID,
       parentCell = roadCell,
-      size = Entity.Size(1, 1),
-      desirability = Desirability.Min
+      spec = new Road
     )
 
     val walkerEntityID = WalkerRef(TestProbe().ref)
     val walkerMapEntity = MapEntity(
       entityRef = walkerEntityID,
       parentCell = Point(0, 1),
-      size = Entity.Size(1, 1),
-      desirability = Desirability.Min
+      spec = new Archer
     )
     val walkerCell = Point(0, 1)
 
@@ -346,16 +347,14 @@ class EntityOpsSpec extends AsyncUnitSpec {
     val roadMapEntity = MapEntity(
       entityRef = roadEntityID,
       parentCell = Point(0, 0),
-      size = Entity.Size(1, 1),
-      desirability = Desirability.Min
+      spec = new Road
     )
     val roadCell = Point(0, 0)
 
     val walkerMapEntity = MapEntity(
       entityRef = walkerEntityID,
       parentCell = Point(0, 1),
-      size = Entity.Size(1, 1),
-      desirability = Desirability.Min
+      spec = new Archer
     )
     val walkerCell = Point(0, 1)
 

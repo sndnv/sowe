@@ -15,20 +15,20 @@ import owe.entities.active.behaviour.resource.producing.ProducingResource
 import owe.entities.passive.Road
 import owe.entities.passive.Road.RoadRef
 import owe.events.Event
+import owe.events.Event.{CellEvent, SystemEvent}
+import owe.map.Cell.CellData
 import owe.map.GameMap._
 import owe.map.grid.{Grid, Point}
 import owe.production.Commodity
 import owe.production.Exchange.GetExchangeStats
 import owe.test.specs.unit.AkkaUnitSpec
+import owe.test.specs.unit.entities.EntityTestHelpers
 import owe.test.specs.unit.entities.definitions.active.resources.Tree
 import owe.test.specs.unit.entities.definitions.active.structures.CoalMine
 import owe.test.specs.unit.map.TestGameMap.StartBehaviour
+
 import scala.collection.immutable.Queue
 import scala.concurrent.duration._
-
-import owe.events.Event.{CellEvent, EntityEvent, SystemEvent}
-import owe.map.Cell.{Availability, CellData}
-import owe.test.specs.unit.entities.EntityTestHelpers
 
 class GameMapSpec extends AkkaUnitSpec("GameMapSpec") with EntityTestHelpers {
 
@@ -133,21 +133,12 @@ class GameMapSpec extends AkkaUnitSpec("GameMapSpec") with EntityTestHelpers {
     expectMsgType[Status.Failure]
   }
 
-  it should "respond with adjacent entity roads when waiting" in { _ =>
-    val map = system.actorOf(Props(new TestGameMap(testActor, StartBehaviour.Waiting)))
-
-    val entityRef = WalkerRef(TestProbe().ref)
-
-    map ! GetAdjacentRoad(entityRef)
-    expectMsg(None)
-  }
-
   it should "respond with adjacent entity points when waiting" in { _ =>
     val map = system.actorOf(Props(new TestGameMap(testActor, StartBehaviour.Waiting)))
 
     val entityRef = WalkerRef(TestProbe().ref)
 
-    map ! GetAdjacentPoint(entityRef, Availability.Buildable)
+    map ! GetAdjacentPoint(entityRef, _.isFree)
     expectMsg(None)
   }
 
