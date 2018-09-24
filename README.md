@@ -1,5 +1,7 @@
 # owe
 
+City-building game engine
+
 ## Versioning
 We use [SemVer](http://semver.org/) for versioning.
 
