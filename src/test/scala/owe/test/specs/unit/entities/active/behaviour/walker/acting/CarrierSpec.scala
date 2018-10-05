@@ -18,14 +18,14 @@ import owe.events.Event
 import owe.map.GameMap.CreateEntity
 import owe.map.grid.Point
 import owe.production.Commodity
-import owe.production.Exchange.CommodityInTransit
+import owe.production.Exchange.{AddConsumer, AddProducer, CommodityInTransit}
 import owe.test.specs.unit.AkkaUnitSpec
 import owe.test.specs.unit.entities.active.behaviour.Fixtures
 import owe.test.specs.unit.map.TestGameMap
 import owe.test.specs.unit.map.TestGameMap.StartBehaviour
+
 import scala.collection.immutable.Queue
 import scala.concurrent.duration._
-
 import owe.events.Event.{CellEvent, EntityEvent, SystemEvent}
 import owe.test.specs.unit.entities.EntityTestHelpers
 
@@ -60,6 +60,10 @@ class CarrierSpec extends AkkaUnitSpec("CarrierSpec") with EntityTestHelpers {
 
   "A Carrier walker" should "retrieve commodities and wait at home until free space is available" in { _ =>
     val testProbe = TestProbe()
+    testProbe.ignoreMsg {
+      case _: AddProducer => true
+      case _: AddConsumer => true
+    }
 
     val result = setupGameMapAndCollectEvents(
       testProbe,
@@ -89,6 +93,10 @@ class CarrierSpec extends AkkaUnitSpec("CarrierSpec") with EntityTestHelpers {
 
   it should "retrieve commodities and return remaining to source" in { _ =>
     val testProbe = TestProbe()
+    testProbe.ignoreMsg {
+      case _: AddProducer => true
+      case _: AddConsumer => true
+    }
 
     val result = setupGameMapAndCollectEvents(
       testProbe,
@@ -118,6 +126,10 @@ class CarrierSpec extends AkkaUnitSpec("CarrierSpec") with EntityTestHelpers {
 
   it should "deliver commodities and wait until free space is available" in { _ =>
     val testProbe = TestProbe()
+    testProbe.ignoreMsg {
+      case _: AddProducer => true
+      case _: AddConsumer => true
+    }
 
     val result = setupGameMapAndCollectEvents(
       testProbe,
@@ -147,6 +159,10 @@ class CarrierSpec extends AkkaUnitSpec("CarrierSpec") with EntityTestHelpers {
 
   it should "deliver commodities and return remaining home" in { _ =>
     val testProbe = TestProbe()
+    testProbe.ignoreMsg {
+      case _: AddProducer => true
+      case _: AddConsumer => true
+    }
 
     val result = setupGameMapAndCollectEvents(
       testProbe,

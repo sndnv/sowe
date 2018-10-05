@@ -38,6 +38,8 @@ class ActiveEntityActor[
     )
   }
 
+  behaviourHandler ! CreateBehaviour(initialEntityData)
+
   private val parentMap: ActorRef = context.parent
 
   def active(tick: Int, processingData: ProcessingData): Receive = {
@@ -89,6 +91,19 @@ class ActiveEntityActor[
         tick
       )
       stash()
+  }
+
+  def destroying(): Receive = {
+    case BehaviourDestroyed() =>
+      log.debug("Received destroy confirmation from behaviour handler; stopping")
+      context.stop(self)
+
+    case ForwardMessage(message) =>
+      log.debug("Forwarding message [{}] to parent map while destroying", message)
+      (parentMap ? message).pipeTo(sender)
+
+    case message =>
+      log.debug("Entity [{}] waiting to be destroyed; message [{}] ignored", self, message)
   }
 
   def idle(processingData: ProcessingData): Receive = {
@@ -160,6 +175,11 @@ class ActiveEntityActor[
     case AddEntityInstruction(instruction) =>
       log.debug("Received entity instruction [{}]", instruction)
       context.become(idle(processingData.copy(instructions = processingData.instructions :+ instruction)))
+
+    case DestroySelf() =>
+      log.debug("Destroy requested; forwarding to behaviour handler")
+      behaviourHandler ! DestroyBehaviour(processingData.entityData)
+      context.become(destroying())
   }
 
   override def receive: Receive = idle(ProcessingData(initialEntityData, Seq.empty, Seq.empty))
@@ -174,6 +194,9 @@ object ActiveEntityActor {
   )
 
   sealed trait ProcessingMessage extends owe.Message
+  private[owe] case class CreateBehaviour(entityData: Data) extends ProcessingMessage
+  private[owe] case class DestroyBehaviour(entityData: Data) extends ProcessingMessage
+  private[owe] case class BehaviourDestroyed() extends ProcessingMessage
   private[owe] case class ApplyInstructions(entity: Data, instructions: Seq[Instruction]) extends ProcessingMessage
   private[owe] case class InstructionsApplied() extends ProcessingMessage
   private[owe] case class ApplyMessages(entity: Data, messages: Seq[Entity.Message]) extends ProcessingMessage
@@ -187,4 +210,5 @@ object ActiveEntityActor {
   case class ProcessEntityTick(tick: Int, map: MapData) extends ProcessingMessage
   case class ProcessBehaviourTick(map: MapData, entity: Data) extends ProcessingMessage
   case class BehaviourTickProcessed[S <: Entity.State: ClassTag](state: S)
+  case class DestroySelf() extends ProcessingMessage
 }

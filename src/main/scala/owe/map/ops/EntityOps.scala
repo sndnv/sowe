@@ -1,10 +1,9 @@
 package owe.map.ops
 
-import scala.concurrent.{ExecutionContext, Future}
-
 import akka.actor.{Actor, ActorRef}
 import akka.pattern.ask
 import akka.util.Timeout
+import owe.entities.ActiveEntityActor.DestroySelf
 import owe.entities.Entity
 import owe.entities.Entity.{Desirability, EntityRef}
 import owe.entities.active.Structure.StructureRef
@@ -17,6 +16,8 @@ import owe.events.Event.{CellEvent, EntityEvent, SystemEvent}
 import owe.map.Cell._
 import owe.map._
 import owe.map.grid.{Grid, Point}
+
+import scala.concurrent.{ExecutionContext, Future}
 
 trait EntityOps { _: AvailabilityOps =>
 
@@ -87,6 +88,8 @@ trait EntityOps { _: AvailabilityOps =>
           case availability if availability.entityTypes.nonEmpty =>
             (mapCell ? GetEntity(entityID)).mapTo[Option[MapEntity]].map {
               case Some(mapEntity) =>
+                mapEntity.entityRef ! DestroySelf()
+
                 Right(
                   (
                     EntityEvent(Event.Engine.EntityDestroyed, mapEntity, cell),

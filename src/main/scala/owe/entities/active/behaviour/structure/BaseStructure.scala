@@ -17,6 +17,62 @@ trait BaseStructure extends BaseBehaviour {
     StructureRef(context.parent)
 
   override protected def base: Behaviour = {
+    case CreateBehaviour(structure: StructureData) =>
+      structure.state.production match {
+        case ProductionState(_, _, rates) =>
+          rates.foreach {
+            case (commodity, _) => UpdateExchange.Producers.add(parentEntity, commodity)
+          }
+
+        case _ => //do nothing
+      }
+
+      structure.modifiers.commodities match {
+        case CommoditiesModifier(usageRates) =>
+          usageRates.foreach {
+            case (commodity, _) => UpdateExchange.Consumers.add(parentEntity, commodity)
+          }
+
+        case _ => //do nothing
+      }
+
+    case DestroyBehaviour(structure: StructureData) =>
+      structure.state.production match {
+        case ProductionState(_, _, rates) =>
+          rates.foreach {
+            case (commodity, _) => UpdateExchange.Producers.remove(parentEntity, commodity)
+          }
+
+        case _ => //do nothing
+      }
+
+      structure.modifiers.commodities match {
+        case CommoditiesModifier(usageRates) =>
+          usageRates.foreach {
+            case (commodity, _) => UpdateExchange.Consumers.remove(parentEntity, commodity)
+          }
+
+        case _ => //do nothing
+      }
+
+      structure.state.commodities match {
+        case CommoditiesState(available, _) =>
+          UpdateExchange.State(available.filter(_._2 > Commodity.Amount(0)), Commodity.State.Lost)
+          UpdateExchange.Stats.availableCommodities(parentEntity, available.mapValues(_ => Commodity.Amount(0)))
+
+        case _ => //do nothing
+      }
+
+      structure.modifiers.commodities match {
+        case CommoditiesModifier(usageRates) =>
+          UpdateExchange.Stats.requiredCommodities(parentEntity, usageRates.mapValues(_ => Commodity.Amount(0)))
+
+        case _ => //do nothing
+      }
+
+      parentEntity ! BehaviourDestroyed()
+      context.become(destroying())
+
     case Become(behaviour, structure) =>
       parentEntity ! BehaviourTickProcessed(structure.state)
       become(behaviour, structure)
@@ -36,20 +92,13 @@ trait BaseStructure extends BaseBehaviour {
       parentEntity ! BehaviourTickProcessed(entity.state)
   }
 
-  private def become(behaviour: () => Behaviour, structure: StructureData): Unit =
-    if (structure.state.currentLife.isSufficient) {
-      context.become(base.orElse(behaviour()))
-    } else {
-      structure.state.commodities match {
-        case CommoditiesState(available, _) =>
-          UpdateExchange.State(available.filter(_._2 > Commodity.Amount(0)), Commodity.State.Lost)
-
-        case _ => //do nothing
-      }
-
+  private def become(behaviour: () => Behaviour, structure: StructureData): Unit = {
+    if (!structure.state.currentLife.isSufficient) {
       parentEntity ! ForwardMessage(DestroyEntity(structure.id))
-      context.become(destroying())
     }
+
+    context.become(base.orElse(behaviour()))
+  }
 }
 
 object BaseStructure {

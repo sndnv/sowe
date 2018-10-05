@@ -23,9 +23,10 @@ import owe.test.specs.unit.entities.active.behaviour.walker.WalkerBehaviour
 import owe.test.specs.unit.entities.definitions.active.structures.StorageBuilding
 import owe.test.specs.unit.map.TestGameMap
 import owe.test.specs.unit.map.TestGameMap.StartBehaviour
-import scala.concurrent.duration._
 
+import scala.concurrent.duration._
 import owe.events.Event.{CellEvent, EntityEvent, SystemEvent}
+import owe.production.Exchange.{AddConsumer, AddProducer}
 
 class RecruiterSpec extends AkkaUnitSpec("RecruiterSpec") with WalkerBehaviour {
   private class TestRecruiter(
@@ -102,6 +103,11 @@ class RecruiterSpec extends AkkaUnitSpec("RecruiterSpec") with WalkerBehaviour {
 
   "A Recruiter walker" should "roam around until labour is found" in { _ =>
     val testProbe = TestProbe()
+    testProbe.ignoreMsg {
+      case _: AddProducer => true
+      case _: AddConsumer => true
+    }
+
     val map = system.actorOf(
       Props(
         new TestGameMap(

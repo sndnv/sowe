@@ -3,7 +3,7 @@ package owe.entities.active.behaviour
 import owe.entities.ActiveEntity.ActiveEntityRef
 import owe.entities.ActiveEntityActor.ForwardMessage
 import owe.map.GameMap.ForwardExchangeMessage
-import owe.production.Exchange.{CommodityAvailable, CommodityInTransit, CommodityRequired, UpdateCommodityState}
+import owe.production.Exchange._
 import owe.production.{Commodity, Exchange}
 
 object UpdateExchange {
@@ -68,6 +68,32 @@ object UpdateExchange {
           case (commodity, amount) => CommodityInTransit(commodity, amount, source, destination)
         }.toSeq
       )
+
+    def notInTransitCommodities(
+      source: ActiveEntityRef,
+      notInTransitCommodities: Seq[Commodity]
+    )(implicit parentEntity: ActiveEntityRef): Unit =
+      forwardMessages(
+        notInTransitCommodities.map { commodity =>
+          CommodityNotInTransit(commodity, source)
+        }
+      )
+  }
+
+  object Producers {
+    def add(entityID: ActiveEntityRef, commodity: Commodity)(implicit parentEntity: ActiveEntityRef): Unit =
+      forwardMessages(Seq(AddProducer(entityID, commodity)))
+
+    def remove(entityID: ActiveEntityRef, commodity: Commodity)(implicit parentEntity: ActiveEntityRef): Unit =
+      forwardMessages(Seq(RemoveProducer(entityID, commodity)))
+  }
+
+  object Consumers {
+    def add(entityID: ActiveEntityRef, commodity: Commodity)(implicit parentEntity: ActiveEntityRef): Unit =
+      forwardMessages(Seq(AddConsumer(entityID, commodity)))
+
+    def remove(entityID: ActiveEntityRef, commodity: Commodity)(implicit parentEntity: ActiveEntityRef): Unit =
+      forwardMessages(Seq(RemoveConsumer(entityID, commodity)))
   }
 
   private def forwardMessages(

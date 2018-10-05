@@ -3,7 +3,7 @@ package owe.test.specs.unit.entities.active.behaviour
 import akka.actor.{Actor, ActorRef, Props}
 import akka.testkit.TestProbe
 import owe.entities.ActiveEntity._
-import owe.entities.ActiveEntityActor.{ApplyInstructions, ApplyMessages, ForwardMessage, ProcessBehaviourTick}
+import owe.entities.ActiveEntityActor._
 import owe.entities.active.Resource.ResourceRef
 import owe.entities.active.Structure.{CommoditiesState, StructureRef}
 import owe.entities.active.Walker.WalkerRef
@@ -14,7 +14,7 @@ import owe.map.GameMap._
 import owe.map.MapEntity
 import owe.map.grid.Point
 import owe.production.Commodity
-import owe.test.specs.unit.entities.active.behaviour.WalkerParentEntity.ForwardToChild
+import owe.test.specs.unit.entities.active.behaviour.WalkerParentEntity.{ForwardToChild, MockDestroySelf}
 import owe.test.specs.unit.entities.definitions.active.walkers.Archer
 
 import scala.collection.immutable.Queue
@@ -31,6 +31,8 @@ class WalkerParentEntity(
     case apply: ApplyInstructions   => child ! apply
     case apply: ApplyMessages       => child ! apply
     case tick: ProcessBehaviourTick => child ! tick
+    case create: CreateBehaviour    => child ! create
+    case MockDestroySelf(data)      => child ! DestroyBehaviour(data)
     case ForwardToChild(message)    => child ! message
 
     case ForwardMessage(GetAdjacentPoint(_, _)) =>
@@ -165,6 +167,7 @@ class WalkerParentEntity(
 
 object WalkerParentEntity {
   case class ForwardToChild(message: Any)
+  case class MockDestroySelf(data: WalkerData)
 
   def props(ref: ActorRef, childProps: Props) = Props(classOf[WalkerParentEntity], ref, childProps)
 }

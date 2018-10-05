@@ -22,14 +22,14 @@ import owe.events.Event
 import owe.map.GameMap.CreateEntity
 import owe.map.grid.Point
 import owe.production.Commodity
-import owe.production.Exchange.{CommodityInTransit, UpdateCommodityState}
+import owe.production.Exchange.{AddConsumer, AddProducer, CommodityInTransit, UpdateCommodityState}
 import owe.test.specs.unit.AkkaUnitSpec
 import owe.test.specs.unit.entities.active.behaviour.Fixtures
 import owe.test.specs.unit.map.TestGameMap
 import owe.test.specs.unit.map.TestGameMap.StartBehaviour
+
 import scala.collection.immutable.Queue
 import scala.concurrent.duration._
-
 import owe.events.Event.{CellEvent, EntityEvent, SystemEvent}
 import owe.test.specs.unit.entities.EntityTestHelpers
 
@@ -63,6 +63,11 @@ class LabourerSpec extends AkkaUnitSpec("LabourerSpec") with EntityTestHelpers {
 
   "A Labourer walker" should "go to resources, gather commodities and return them home" in { _ =>
     val testProbe = TestProbe()
+    testProbe.ignoreMsg {
+      case _: AddProducer => true
+      case _: AddConsumer => true
+    }
+
     val map = system.actorOf(
       Props(new TestGameMap(testProbe.ref, StartBehaviour.Idle, interval = 300.millis))
     )
@@ -128,6 +133,11 @@ class LabourerSpec extends AkkaUnitSpec("LabourerSpec") with EntityTestHelpers {
 
   it should "go to a destination and perform action" in { _ =>
     val testProbe = TestProbe()
+    testProbe.ignoreMsg {
+      case _: AddProducer => true
+      case _: AddConsumer => true
+    }
+
     val map = system.actorOf(
       Props(new TestGameMap(testProbe.ref, StartBehaviour.Idle, interval = 500.millis))
     )

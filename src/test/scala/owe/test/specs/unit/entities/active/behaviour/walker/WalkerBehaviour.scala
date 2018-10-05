@@ -13,10 +13,11 @@ import owe.map.grid.Point
 import owe.test.specs.unit.AkkaUnitSpec
 import owe.test.specs.unit.map.TestGameMap
 import owe.test.specs.unit.map.TestGameMap.StartBehaviour
+
 import scala.collection.immutable.Queue
 import scala.concurrent.duration._
-
 import owe.events.Event.{EntityEvent, SystemEvent}
+import owe.production.Exchange.{AddConsumer, AddProducer}
 import owe.test.specs.unit.entities.EntityTestHelpers
 
 trait WalkerBehaviour extends EntityTestHelpers { _: AkkaUnitSpec =>
@@ -25,6 +26,11 @@ trait WalkerBehaviour extends EntityTestHelpers { _: AkkaUnitSpec =>
   def roamingWalker(walker: Walker): Unit =
     it should "roam around" in { _ =>
       val testProbe = TestProbe()
+      testProbe.ignoreMsg {
+        case _: AddProducer => true
+        case _: AddConsumer => true
+      }
+
       val map = system.actorOf(
         Props(new TestGameMap(testProbe.ref, StartBehaviour.Idle, interval = 500.millis))
       )
@@ -51,6 +57,11 @@ trait WalkerBehaviour extends EntityTestHelpers { _: AkkaUnitSpec =>
   def attackingWalker(walker: Walker, enemy: Walker): Unit =
     it should "attack if any enemies are in range" in { _ =>
       val testProbe = TestProbe()
+      testProbe.ignoreMsg {
+        case _: AddProducer => true
+        case _: AddConsumer => true
+      }
+
       val map = system.actorOf(
         Props(new TestGameMap(testProbe.ref, StartBehaviour.Idle, interval = 500.millis))
       )
@@ -84,6 +95,11 @@ trait WalkerBehaviour extends EntityTestHelpers { _: AkkaUnitSpec =>
   def returningWalker(walker: Walker, homePosition: Point): Unit =
     it should "return home when max distance is covered" in { _ =>
       val testProbe = TestProbe()
+      testProbe.ignoreMsg {
+        case _: AddProducer => true
+        case _: AddConsumer => true
+      }
+
       val map = system.actorOf(
         Props(new TestGameMap(testProbe.ref, StartBehaviour.Idle, interval = 500.millis))
       )
@@ -141,6 +157,11 @@ trait WalkerBehaviour extends EntityTestHelpers { _: AkkaUnitSpec =>
   ): Unit =
     it should behave in { _ =>
       val testProbe = TestProbe()
+      testProbe.ignoreMsg {
+        case _: AddProducer => true
+        case _: AddConsumer => true
+      }
+
       val map = system.actorOf(
         Props(new TestGameMap(testProbe.ref, StartBehaviour.Idle, interval = 500.millis))
       )
@@ -190,6 +211,11 @@ trait WalkerBehaviour extends EntityTestHelpers { _: AkkaUnitSpec =>
   def advancingWalker(walker: Walker, destination: Point, action: Action): Unit =
     it should "go to a destination and perform action" in { _ =>
       val testProbe = TestProbe()
+      testProbe.ignoreMsg {
+        case _: AddProducer => true
+        case _: AddConsumer => true
+      }
+
       val map = system.actorOf(
         Props(new TestGameMap(testProbe.ref, StartBehaviour.Idle, interval = 500.millis))
       )

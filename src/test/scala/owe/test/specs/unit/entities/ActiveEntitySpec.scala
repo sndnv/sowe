@@ -68,7 +68,15 @@ class ActiveEntitySpec extends AkkaUnitSpec("ActiveEntitySpec") {
       )
 
     override protected def createBehaviour(): BaseResource = new BaseResource {
-      override protected def behaviour: Receive = {
+      private def forwardDestroy: Behaviour = {
+        case destroy: DestroyBehaviour =>
+          ref.forward(destroy)
+          context.become(destroying())
+      }
+
+      override protected def base: Behaviour = forwardDestroy.orElse(behaviour)
+
+      override protected def behaviour: Behaviour = {
         case message => ref.forward(message)
       }
     }
@@ -86,6 +94,8 @@ class ActiveEntitySpec extends AkkaUnitSpec("ActiveEntitySpec") {
   }
 
   "An Active Entity" should "update entity state when active" in { fixture =>
+    fixture.testProbe.expectMsgType[CreateBehaviour]
+
     fixture.entityActor.tell(ProcessEntityTick(tick = 0, mapData), fixture.testProbe.ref)
     fixture.testProbe.expectMsgType[ApplyMessages]
 
@@ -103,6 +113,8 @@ class ActiveEntitySpec extends AkkaUnitSpec("ActiveEntitySpec") {
   }
 
   it should "forward messages to parent when active" in { fixture =>
+    fixture.testProbe.expectMsgType[CreateBehaviour]
+
     fixture.entityActor.tell(ProcessEntityTick(tick = 0, mapData), fixture.testProbe.ref)
     fixture.testProbe.expectMsgType[ApplyMessages]
 
@@ -115,6 +127,8 @@ class ActiveEntitySpec extends AkkaUnitSpec("ActiveEntitySpec") {
   }
 
   it should "respond with entity data when active" in { fixture =>
+    fixture.testProbe.expectMsgType[CreateBehaviour]
+
     fixture.entityActor.tell(ProcessEntityTick(tick = 0, mapData), fixture.testProbe.ref)
     fixture.testProbe.expectMsgType[ApplyMessages]
 
@@ -126,6 +140,8 @@ class ActiveEntitySpec extends AkkaUnitSpec("ActiveEntitySpec") {
   }
 
   it should "stash unsupported messages when active" in { fixture =>
+    fixture.testProbe.expectMsgType[CreateBehaviour]
+
     fixture.entityActor.tell(ProcessEntityTick(tick = 0, mapData), fixture.testProbe.ref)
     fixture.testProbe.expectMsgType[ApplyMessages]
 
@@ -146,6 +162,8 @@ class ActiveEntitySpec extends AkkaUnitSpec("ActiveEntitySpec") {
   }
 
   it should "stash unsupported messages when processing messages" in { fixture =>
+    fixture.testProbe.expectMsgType[CreateBehaviour]
+
     fixture.entityActor.tell(ProcessEntityTick(tick = 0, mapData), fixture.testProbe.ref)
     fixture.testProbe.expectMsgType[ApplyMessages]
 
@@ -167,6 +185,8 @@ class ActiveEntitySpec extends AkkaUnitSpec("ActiveEntitySpec") {
   }
 
   it should "apply entity effects when idle" in { fixture =>
+    fixture.testProbe.expectMsgType[CreateBehaviour]
+
     val testEffect1 = new ActiveEntity.Effect[Resource.Properties, Resource.State, Resource.StateModifiers] {
       override def apply(entityData: ActiveEntity.Data): StateModifiers =
         entityData match {
@@ -218,11 +238,15 @@ class ActiveEntitySpec extends AkkaUnitSpec("ActiveEntitySpec") {
   }
 
   it should "become active to process game ticks when idle" in { fixture =>
+    fixture.testProbe.expectMsgType[CreateBehaviour]
+
     fixture.entityActor.tell(ProcessEntityTick(tick = 0, mapData), fixture.testProbe.ref)
     fixture.testProbe.expectMsgType[ApplyMessages]
   }
 
   it should "respond with active entity effects when idle" in { fixture =>
+    fixture.testProbe.expectMsgType[CreateBehaviour]
+
     fixture.entityActor.tell(GetActiveEffects(), fixture.testProbe.ref)
     val effects = fixture.testProbe.receiveOne(timeout.duration).asInstanceOf[Seq[Effect]]
     (effects should have).size(2)
@@ -231,17 +255,23 @@ class ActiveEntitySpec extends AkkaUnitSpec("ActiveEntitySpec") {
   }
 
   it should "respond with entity data when idle" in { fixture =>
+    fixture.testProbe.expectMsgType[CreateBehaviour]
+
     fixture.entityActor.tell(GetData(), fixture.testProbe.ref)
     fixture.testProbe.receiveOne(timeout.duration).asInstanceOf[ResourceData].state should be(entityState)
   }
 
   it should "forward messages to parent when idle" in { fixture =>
+    fixture.testProbe.expectMsgType[CreateBehaviour]
+
     val parentMapMessage = LabourFound(StructureRef(TestProbe().ref))
     fixture.entityActor.tell(ForwardMessage(parentMapMessage), fixture.testProbe.ref)
     fixture.testProbe.expectMsg(ParentMapMessage(parentMapMessage))
   }
 
   it should "add entity messages when idle" in { fixture =>
+    fixture.testProbe.expectMsgType[CreateBehaviour]
+
     val messages = Seq(
       ProcessAttack(damage = AttackDamage(42)),
       ProcessLabourFound(),
@@ -254,6 +284,8 @@ class ActiveEntitySpec extends AkkaUnitSpec("ActiveEntitySpec") {
   }
 
   it should "add entity instructions when idle" in { fixture =>
+    fixture.testProbe.expectMsgType[CreateBehaviour]
+
     val instructions = Seq(
       new ActiveEntity.Instruction {},
       new ActiveEntity.Instruction {},
@@ -267,6 +299,51 @@ class ActiveEntitySpec extends AkkaUnitSpec("ActiveEntitySpec") {
     fixture.entityActor.tell(ProcessEntityTick(tick = 0, mapData), fixture.testProbe.ref)
     fixture.testProbe.receiveOne(timeout.duration).asInstanceOf[ApplyInstructions].instructions should be(instructions)
     fixture.testProbe.expectMsgType[ApplyMessages]
+  }
+
+  it should "process destroy requests when idle" in { fixture =>
+    fixture.testProbe.expectMsgType[CreateBehaviour]
+
+    fixture.entityActor.tell(DestroySelf(), fixture.testProbe.ref)
+
+    val testEntityData = fixture.testProbe.receiveOne(timeout.duration).asInstanceOf[DestroyBehaviour].entityData
+    testEntityData.properties should be(entityProperties)
+    testEntityData.state should be(entityState)
+    testEntityData.modifiers should be(entityModifiers)
+  }
+
+  it should "accept destroy confirmation and stop itself and child behaviour when destroying" in { fixture =>
+    fixture.testProbe.expectMsgType[CreateBehaviour]
+
+    val observer = TestProbe()
+    observer.watch(fixture.entityActor)
+
+    fixture.entityActor.tell(DestroySelf(), fixture.testProbe.ref)
+    fixture.testProbe.expectMsgType[DestroyBehaviour]
+
+    fixture.entityActor.tell(BehaviourDestroyed(), fixture.testProbe.ref)
+    observer.expectTerminated(fixture.entityActor, timeout.duration)
+  }
+
+  it should "forward messages to parent when destroying" in { fixture =>
+    fixture.testProbe.expectMsgType[CreateBehaviour]
+
+    fixture.entityActor.tell(DestroySelf(), fixture.testProbe.ref)
+    fixture.testProbe.expectMsgType[DestroyBehaviour]
+
+    val parentMapMessage = LabourFound(StructureRef(TestProbe().ref))
+    fixture.entityActor.tell(ForwardMessage(parentMapMessage), fixture.testProbe.ref)
+    fixture.testProbe.expectMsg(ParentMapMessage(parentMapMessage))
+  }
+
+  it should "ignore messages when destroying" in { fixture =>
+    fixture.testProbe.expectMsgType[CreateBehaviour]
+
+    fixture.entityActor.tell(DestroySelf(), fixture.testProbe.ref)
+    fixture.testProbe.expectMsgType[DestroyBehaviour]
+
+    fixture.entityActor.tell(ProcessEntityTick(tick = 0, mapData), fixture.testProbe.ref)
+    fixture.testProbe.expectNoMessage(timeout.duration)
   }
 
   "Active Entity Resource Data" should "update its state and modifiers" in { _ =>

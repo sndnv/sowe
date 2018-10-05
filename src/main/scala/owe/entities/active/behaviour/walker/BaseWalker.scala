@@ -354,14 +354,9 @@ trait BaseWalker
           }
 
         case _ =>
-          walker.state.commodities match {
-            case CommoditiesState(available, _) => UpdateExchange.State(available, Commodity.State.Lost)
-            case _                              => //do nothing
-          }
-
           parentEntity ! ForwardMessage(DestroyEntity(walker.id))
 
-          self ! Become(() => destroying(), walker)
+          self ! Become(() => idling(), walker)
       }
   }
 
@@ -443,23 +438,32 @@ trait BaseWalker
   }
 
   override protected def base: Behaviour = {
+    case _: CreateBehaviour => () // does nothing
+
+    case DestroyBehaviour(walker: WalkerData) =>
+      walker.state.commodities match {
+        case CommoditiesState(available, _) =>
+          UpdateExchange.State(available, Commodity.State.Lost)
+          UpdateExchange.Stats.notInTransitCommodities(walker.id, available.keys.toSeq)
+
+        case _ => //do nothing
+      }
+
+      parentEntity ! BehaviourDestroyed()
+      context.become(destroying())
+
     case Become(behaviour, walker) =>
       parentEntity ! BehaviourTickProcessed(walker.state)
       become(behaviour, walker)
   }
 
-  private def become(behaviour: () => Behaviour, walker: WalkerData): Unit =
-    if (walker.state.currentLife.isSufficient) {
-      context.become(base.orElse(behaviour()))
-    } else {
-      walker.state.commodities match {
-        case CommoditiesState(available, _) => UpdateExchange.State(available, Commodity.State.Lost)
-        case _                              => //do nothing
-      }
-
+  private def become(behaviour: () => Behaviour, walker: WalkerData): Unit = {
+    if (!walker.state.currentLife.isSufficient) {
       parentEntity ! ForwardMessage(DestroyEntity(walker.id))
-      context.become(destroying())
     }
+
+    context.become(base.orElse(behaviour()))
+  }
 
   @tailrec
   private def applyInstructions(walker: WalkerData, instructions: Seq[Instruction]): Unit =

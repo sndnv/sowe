@@ -1,7 +1,10 @@
 package owe.test.specs.unit.production
 
+import scala.concurrent.duration._
+
 import akka.actor.ActorRef
 import akka.testkit.TestProbe
+import akka.util.Timeout
 import org.scalatest.Outcome
 import owe.entities.active.Structure.StructureRef
 import owe.entities.active.Walker.WalkerRef
@@ -10,6 +13,9 @@ import owe.production.{Commodity, Exchange}
 import owe.test.specs.unit.AkkaUnitSpec
 
 class ExchangeSpec extends AkkaUnitSpec("ExchangeSpec") {
+
+  private implicit val timeout: Timeout = 3.seconds
+
   case class FixtureParam()
 
   def withFixture(test: OneArgTest): Outcome =
@@ -21,7 +27,8 @@ class ExchangeSpec extends AkkaUnitSpec("ExchangeSpec") {
   private val testConsumer1 = (StructureRef(TestProbe().ref), Commodity("TestCommodity#1"))
   private val testConsumer2 = (StructureRef(TestProbe().ref), Commodity("TestCommodity#3"))
   private val testConsumer3 = (StructureRef(TestProbe().ref), Commodity("TestCommodity#3"))
-  private val testCarrier = (WalkerRef(TestProbe().ref), Commodity("TestCommodity#3"))
+  private val testCarrier1 = (WalkerRef(TestProbe().ref), Commodity("TestCommodity#3"))
+  private val testCarrier2 = (WalkerRef(TestProbe().ref), Commodity("TestCommodity#4"))
 
   "An Exchange" should "add and remove producers and consumers" in { _ =>
     exchange ! AddProducer(testProducer1._1, testProducer1._2)
@@ -31,7 +38,7 @@ class ExchangeSpec extends AkkaUnitSpec("ExchangeSpec") {
     exchange ! AddConsumer(testConsumer3._1, testConsumer3._2)
     exchange ! GetExchangeEntities()
 
-    expectMsg(
+    receiveOne(timeout.duration).asInstanceOf[ExchangeEntities] should be(
       ExchangeEntities.empty.copy(
         producers = Map(
           testProducer1._2 -> Seq(testProducer1._1, testProducer2._1)
@@ -49,7 +56,7 @@ class ExchangeSpec extends AkkaUnitSpec("ExchangeSpec") {
     exchange ! RemoveConsumer(testConsumer3._1, testConsumer3._2)
     exchange ! GetExchangeEntities()
 
-    expectMsg(
+    receiveOne(timeout.duration).asInstanceOf[ExchangeEntities] should be(
       ExchangeEntities.empty.copy(
         consumers = Map(
           testConsumer2._2 -> Seq(testConsumer2._1)
@@ -58,10 +65,9 @@ class ExchangeSpec extends AkkaUnitSpec("ExchangeSpec") {
     )
   }
 
-  it should "accept commodity updates" in { _ =>
+  it should "accept commodity state updates" in { _ =>
     exchange ! CommodityRequired(Commodity("TestCommodity#2"), Commodity.Amount(10), testProducer1._1)
     exchange ! CommodityRequired(Commodity("TestCommodity#3"), Commodity.Amount(15), testProducer1._1)
-    exchange ! GetExchangeCommodities()
 
     val stateWithRequiredCommodities = ExchangeCommodities.empty.copy(
       required = Map(
@@ -70,11 +76,11 @@ class ExchangeSpec extends AkkaUnitSpec("ExchangeSpec") {
       )
     )
 
-    expectMsg(stateWithRequiredCommodities)
+    exchange ! GetExchangeCommodities()
+    receiveOne(timeout.duration).asInstanceOf[ExchangeCommodities] should be(stateWithRequiredCommodities)
 
     exchange ! CommodityAvailable(Commodity("TestCommodity#1"), Commodity.Amount(25), testProducer1._1)
     exchange ! CommodityAvailable(Commodity("TestCommodity#1"), Commodity.Amount(50), testProducer1._1)
-    exchange ! GetExchangeCommodities()
 
     val stateWithAvailableCommodities = stateWithRequiredCommodities.copy(
       available = Map(
@@ -82,18 +88,82 @@ class ExchangeSpec extends AkkaUnitSpec("ExchangeSpec") {
       )
     )
 
-    expectMsg(stateWithAvailableCommodities)
-
-    exchange ! CommodityInTransit(testCarrier._2, Commodity.Amount(5), testCarrier._1, testProducer1._1)
     exchange ! GetExchangeCommodities()
+    receiveOne(timeout.duration).asInstanceOf[ExchangeCommodities] should be(stateWithAvailableCommodities)
+
+    exchange ! CommodityInTransit(testCarrier1._2, Commodity.Amount(5), testCarrier1._1, testProducer1._1)
 
     val stateWithInTransitCommodities = stateWithAvailableCommodities.copy(
       inTransit = Map(
-        (testCarrier._2, testCarrier._1) -> (Commodity.Amount(5), testProducer1._1)
+        (testCarrier1._2, testCarrier1._1) -> (Commodity.Amount(5), testProducer1._1)
       )
     )
 
-    expectMsg(stateWithInTransitCommodities)
+    exchange ! GetExchangeCommodities()
+    receiveOne(timeout.duration).asInstanceOf[ExchangeCommodities] should be(stateWithInTransitCommodities)
+  }
+
+  it should "be able to reset commodity stats" in { _ =>
+    exchange ! CommodityRequired(Commodity("TestCommodity#2"), Commodity.Amount(10), testProducer1._1)
+    exchange ! CommodityRequired(Commodity("TestCommodity#3"), Commodity.Amount(15), testProducer1._1)
+    exchange ! CommodityAvailable(Commodity("TestCommodity#1"), Commodity.Amount(25), testProducer1._1)
+    exchange ! CommodityAvailable(Commodity("TestCommodity#1"), Commodity.Amount(50), testProducer1._1)
+    exchange ! CommodityInTransit(testCarrier1._2, Commodity.Amount(5), testCarrier1._1, testProducer1._1)
+    exchange ! CommodityInTransit(testCarrier2._2, Commodity.Amount(5), testCarrier2._1, testProducer2._1)
+
+    val expectedCommodities = ExchangeCommodities.empty.copy(
+      required = Map(
+        (Commodity("TestCommodity#2"), testProducer1._1) -> Commodity.Amount(10),
+        (Commodity("TestCommodity#3"), testProducer1._1) -> Commodity.Amount(15)
+      ),
+      available = Map(
+        (Commodity("TestCommodity#1"), testProducer1._1) -> Commodity.Amount(50)
+      ),
+      inTransit = Map(
+        (testCarrier1._2, testCarrier1._1) -> (Commodity.Amount(5), testProducer1._1),
+        (testCarrier2._2, testCarrier2._1) -> (Commodity.Amount(5), testProducer2._1)
+      )
+    )
+
+    exchange ! GetExchangeCommodities()
+    val actualCommodities = receiveOne(timeout.duration).asInstanceOf[ExchangeCommodities]
+    actualCommodities should be(expectedCommodities)
+
+    exchange ! CommodityRequired(Commodity("TestCommodity#2"), Commodity.Amount(0), testProducer1._1)
+    val expectedCommoditiesWithRequiredReset = expectedCommodities.copy(
+      required = Map(
+        (Commodity("TestCommodity#3"), testProducer1._1) -> Commodity.Amount(15)
+      )
+    )
+    exchange ! GetExchangeCommodities()
+    val actualCommoditiesWithRequiredReset = receiveOne(timeout.duration).asInstanceOf[ExchangeCommodities]
+    actualCommoditiesWithRequiredReset should be(expectedCommoditiesWithRequiredReset)
+
+    exchange ! CommodityAvailable(Commodity("TestCommodity#1"), Commodity.Amount(0), testProducer1._1)
+    val expectedCommoditiesWithAvailableReset = expectedCommoditiesWithRequiredReset.copy(
+      available = Map.empty
+    )
+    exchange ! GetExchangeCommodities()
+    val actualCommoditiesWithAvailableReset = receiveOne(timeout.duration).asInstanceOf[ExchangeCommodities]
+    actualCommoditiesWithAvailableReset should be(expectedCommoditiesWithAvailableReset)
+
+    exchange ! CommodityInTransit(testCarrier1._2, Commodity.Amount(0), testCarrier1._1, testProducer1._1)
+    val expectedCommoditiesWithInTransitReset = expectedCommoditiesWithAvailableReset.copy(
+      inTransit = Map(
+        (testCarrier2._2, testCarrier2._1) -> (Commodity.Amount(5), testProducer2._1)
+      )
+    )
+    exchange ! GetExchangeCommodities()
+    val actualCommoditiesWithInTransitReset = receiveOne(timeout.duration).asInstanceOf[ExchangeCommodities]
+    actualCommoditiesWithInTransitReset should be(expectedCommoditiesWithInTransitReset)
+
+    exchange ! CommodityNotInTransit(testCarrier2._2, testCarrier2._1)
+    val expectedCommoditiesWithNotInTransit = expectedCommoditiesWithInTransitReset.copy(
+      inTransit = Map.empty
+    )
+    exchange ! GetExchangeCommodities()
+    val actualCommoditiesWithNotInTransit = receiveOne(timeout.duration).asInstanceOf[ExchangeCommodities]
+    actualCommoditiesWithNotInTransit should be(expectedCommoditiesWithNotInTransit)
   }
 
   it should "accept stats updates" in { _ =>
@@ -117,6 +187,7 @@ class ExchangeSpec extends AkkaUnitSpec("ExchangeSpec") {
       )
     )
 
-    expectMsg(stateWithUpdates)
+    val actualStateWithUpdates = receiveOne(timeout.duration).asInstanceOf[ExchangeStats]
+    actualStateWithUpdates should be(stateWithUpdates)
   }
 }

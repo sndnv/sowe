@@ -19,14 +19,14 @@ import owe.map.GameMap.CreateEntity
 import owe.map.grid.Point
 import owe.production.Commodity
 import owe.production.Commodity.State.Lost
-import owe.production.Exchange.UpdateCommodityState
+import owe.production.Exchange.{AddConsumer, AddProducer, UpdateCommodityState}
 import owe.test.specs.unit.AkkaUnitSpec
 import owe.test.specs.unit.entities.active.behaviour.Fixtures
 import owe.test.specs.unit.map.TestGameMap
 import owe.test.specs.unit.map.TestGameMap.StartBehaviour
+
 import scala.collection.immutable.Queue
 import scala.concurrent.duration._
-
 import owe.events.Event.{CellEvent, EntityEvent, SystemEvent}
 import owe.test.specs.unit.entities.EntityTestHelpers
 
@@ -67,6 +67,11 @@ class TraderSpec extends AkkaUnitSpec("TraderSpec") with EntityTestHelpers {
 
   "A Trader walker" should "go to destination and load/unload commodities" in { _ =>
     val testProbe = TestProbe()
+    testProbe.ignoreMsg {
+      case _: AddProducer => true
+      case _: AddConsumer => true
+    }
+
     val map = system.actorOf(
       Props(new TestGameMap(testProbe.ref, StartBehaviour.Idle, interval = 300.millis))
     )

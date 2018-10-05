@@ -19,8 +19,9 @@ import owe.entities.active.behaviour.walker.BaseWalker._
 import owe.map.GameMap._
 import owe.map.grid.Point
 import owe.production.Commodity
-import owe.production.Exchange.UpdateCommodityState
+import owe.production.Exchange.{CommodityNotInTransit, UpdateCommodityState}
 import owe.test.specs.unit.AkkaUnitSpec
+import owe.test.specs.unit.entities.active.behaviour.WalkerParentEntity.MockDestroySelf
 import owe.test.specs.unit.entities.active.behaviour.{Fixtures, WalkerParentEntity}
 
 class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
@@ -1176,6 +1177,12 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
     )
 
     expectMsg(
+      ForwardMessage(DestroyEntity(idlingWalkerData.id))
+    )
+
+    parentEntity ! MockDestroySelf(idlingWalkerData)
+
+    expectMsg(
       ForwardMessage(
         ForwardExchangeMessage(
           UpdateCommodityState(
@@ -1188,7 +1195,13 @@ class BaseWalkerSpec extends AkkaUnitSpec("BaseWalkerSpec") {
     )
 
     expectMsg(
-      ForwardMessage(DestroyEntity(idlingWalkerData.id))
+      ForwardMessage(
+        ForwardExchangeMessage(CommodityNotInTransit(Commodity("TestCommodity"), idlingWalkerData.id))
+      )
+    )
+
+    expectMsg(
+      BehaviourDestroyed()
     )
 
     val walkerData = WalkerData(

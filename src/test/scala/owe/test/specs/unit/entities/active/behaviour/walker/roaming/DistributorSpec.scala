@@ -1,7 +1,5 @@
 package owe.test.specs.unit.entities.active.behaviour.walker.roaming
 
-import scala.concurrent.duration._
-
 import akka.actor.Props
 import akka.testkit.TestProbe
 import org.scalatest.Outcome
@@ -21,12 +19,15 @@ import owe.events.Event.{CellEvent, EntityEvent, SystemEvent}
 import owe.map.GameMap.CreateEntity
 import owe.map.grid.Point
 import owe.production.Commodity
+import owe.production.Exchange.{AddConsumer, AddProducer}
 import owe.test.specs.unit.AkkaUnitSpec
 import owe.test.specs.unit.entities.active.behaviour.Fixtures
 import owe.test.specs.unit.entities.active.behaviour.walker.WalkerBehaviour
 import owe.test.specs.unit.entities.definitions.active.structures.StorageBuilding
 import owe.test.specs.unit.map.TestGameMap
 import owe.test.specs.unit.map.TestGameMap.StartBehaviour
+
+import scala.concurrent.duration._
 
 class DistributorSpec extends AkkaUnitSpec("DistributorSpec") with WalkerBehaviour {
   private class TestDistributor(
@@ -68,7 +69,10 @@ class DistributorSpec extends AkkaUnitSpec("DistributorSpec") with WalkerBehavio
               civilService = Map.empty
             )
           ),
-          modifiers = Fixtures.Structure.Housing.modifiers,
+          modifiers = Fixtures.Structure.Housing.modifiers.copy(
+            production = Structure.NoProduction,
+            commodities = Structure.NoCommodities
+          ),
           id
         )
     }
@@ -105,6 +109,11 @@ class DistributorSpec extends AkkaUnitSpec("DistributorSpec") with WalkerBehavio
 
   "A Distributor walker" should "roam around and distribute commodities" in { _ =>
     val testProbe = TestProbe()
+    testProbe.ignoreMsg {
+      case _: AddProducer => true
+      case _: AddConsumer => true
+    }
+
     val map = system.actorOf(
       Props(
         new TestGameMap(
@@ -172,6 +181,11 @@ class DistributorSpec extends AkkaUnitSpec("DistributorSpec") with WalkerBehavio
 
   it should "go to parent structure when out of commodities" in { _ =>
     val testProbe = TestProbe()
+    testProbe.ignoreMsg {
+      case _: AddProducer => true
+      case _: AddConsumer => true
+    }
+
     val map = system.actorOf(
       Props(
         new TestGameMap(

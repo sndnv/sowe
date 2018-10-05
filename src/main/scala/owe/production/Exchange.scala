@@ -12,21 +12,34 @@ class Exchange() extends Actor {
   ): Receive = {
     case CommodityRequired(commodity, amount, source) =>
       val updatedCommodities = commodities.copy(
-        required = commodities.required + ((commodity, source) -> amount)
+        required = (
+          commodities.required + ((commodity, source) -> amount)
+        ).filter(_._2 > Commodity.Amount(0))
       )
 
       context.become(handler(entities, updatedCommodities, stats))
 
     case CommodityAvailable(commodity, amount, source) =>
       val updatedCommodities = commodities.copy(
-        available = commodities.available + ((commodity, source) -> amount)
+        available = (
+          commodities.available + ((commodity, source) -> amount)
+        ).filter(_._2 > Commodity.Amount(0))
       )
 
       context.become(handler(entities, updatedCommodities, stats))
 
     case CommodityInTransit(commodity, amount, source, destination) =>
       val updatedCommodities = commodities.copy(
-        inTransit = commodities.inTransit + ((commodity, source) -> (amount, destination))
+        inTransit = (
+          commodities.inTransit + ((commodity, source) -> (amount, destination))
+        ).filter(_._2._1 > Commodity.Amount(0))
+      )
+
+      context.become(handler(entities, updatedCommodities, stats))
+
+    case CommodityNotInTransit(commodity, source) =>
+      val updatedCommodities = commodities.copy(
+        inTransit = commodities.inTransit - ((commodity, source))
       )
 
       context.become(handler(entities, updatedCommodities, stats))
@@ -172,6 +185,11 @@ object Exchange {
     amount: Commodity.Amount,
     source: ActiveEntityRef,
     destination: ActiveEntityRef
+  ) extends Message
+
+  case class CommodityNotInTransit(
+    commodity: Commodity,
+    source: ActiveEntityRef
   ) extends Message
 
   case class UpdateCommodityState(

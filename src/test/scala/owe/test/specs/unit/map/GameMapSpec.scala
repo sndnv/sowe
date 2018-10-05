@@ -15,12 +15,12 @@ import owe.entities.active.behaviour.resource.producing.ProducingResource
 import owe.entities.passive.Road
 import owe.entities.passive.Road.RoadRef
 import owe.events.Event
-import owe.events.Event.{CellEvent, SystemEvent}
+import owe.events.Event.{CellEvent, EntityEvent, SystemEvent}
 import owe.map.Cell.CellData
 import owe.map.GameMap._
 import owe.map.grid.{Grid, Point}
 import owe.production.Commodity
-import owe.production.Exchange.GetExchangeStats
+import owe.production.Exchange.{AddProducer, GetExchangeStats}
 import owe.test.specs.unit.AkkaUnitSpec
 import owe.test.specs.unit.entities.EntityTestHelpers
 import owe.test.specs.unit.entities.definitions.active.resources.Tree
@@ -34,16 +34,16 @@ class GameMapSpec extends AkkaUnitSpec("GameMapSpec") with EntityTestHelpers {
 
   protected implicit val timeout: Timeout = 3.seconds
 
-  case class FixtureParam()
+  case class FixtureParam(testProbe: TestProbe)
 
   def withFixture(test: OneArgTest): Outcome =
-    withFixture(test.toNoArgTest(FixtureParam()))
+    withFixture(test.toNoArgTest(FixtureParam(TestProbe())))
 
-  "A GameMap" should "process, complete and expire game ticks when active" in { _ =>
+  "A GameMap" should "process, complete and expire game ticks when active" in { fixture =>
     val map = system.actorOf(
       Props(
         new TestGameMap(
-          testActor,
+          fixture.testProbe.ref,
           StartBehaviour.Idle,
           interval = 1.second,
           expiration = 1.second
@@ -51,7 +51,7 @@ class GameMapSpec extends AkkaUnitSpec("GameMapSpec") with EntityTestHelpers {
       )
     )
 
-    expectMsg(SystemEvent(Event.Engine.TickProcessed))
+    fixture.testProbe.expectMsg(SystemEvent(Event.Engine.TickProcessed))
 
     class NonResponsiveEntity extends Resource {
       override protected def createActiveEntityData(): ActiveEntityRef => Data = {
@@ -83,197 +83,236 @@ class GameMapSpec extends AkkaUnitSpec("GameMapSpec") with EntityTestHelpers {
       override protected def createEffects(): Seq[(Data => Boolean, Effect)] = Seq.empty
     }
 
-    map ! CreateEntity(new NonResponsiveEntity, (0, 0))
-    this.expectEntityCreatedAt((0, 0))
-    expectMsgType[ResourceRef]
+    map.tell(CreateEntity(new NonResponsiveEntity, (0, 0)), fixture.testProbe.ref)
 
-    expectMsg(SystemEvent(Event.Engine.TickExpired))
+    fixture.testProbe.receiveWhile(timeout.duration) {
+      case EntityEvent(Event.Engine.EntityCreated, _, Point(0, 0)) => ()
+      case _: ResourceRef                                          => ()
+      case SystemEvent(Event.Engine.TickExpired)                   => ()
+      case _: AddProducer                                          => ()
+      case message                                                 => fail(s"Unexpected message encountere: [$message]")
+    }
   }
 
-  it should "respond with advance paths when waiting" in { _ =>
-    val map = system.actorOf(Props(new TestGameMap(testActor, StartBehaviour.Waiting)))
+  it should "respond with advance paths when waiting" in { fixture =>
+    val map = system.actorOf(Props(new TestGameMap(fixture.testProbe.ref, StartBehaviour.Waiting)))
 
     val entityRef = WalkerRef(TestProbe().ref)
 
-    map ! GetAdvancePath(entityRef, (2, 2))
-    expectMsg(Queue.empty)
+    map.tell(GetAdvancePath(entityRef, (2, 2)), fixture.testProbe.ref)
+    fixture.testProbe.expectMsg(Queue.empty)
   }
 
-  it should "respond with roaming paths when waiting" in { _ =>
-    val map = system.actorOf(Props(new TestGameMap(testActor, StartBehaviour.Waiting)))
+  it should "respond with roaming paths when waiting" in { fixture =>
+    val map = system.actorOf(Props(new TestGameMap(fixture.testProbe.ref, StartBehaviour.Waiting)))
 
     val entityRef = WalkerRef(TestProbe().ref)
 
-    map ! GetRoamingPath(entityRef, Distance(10))
-    expectMsg(Queue.empty)
+    map.tell(GetRoamingPath(entityRef, Distance(10)), fixture.testProbe.ref)
+    fixture.testProbe.expectMsg(Queue.empty)
   }
 
-  it should "respond with neighbours when waiting" in { _ =>
-    val map = system.actorOf(Props(new TestGameMap(testActor, StartBehaviour.Waiting)))
+  it should "respond with neighbours when waiting" in { fixture =>
+    val map = system.actorOf(Props(new TestGameMap(fixture.testProbe.ref, StartBehaviour.Waiting)))
 
     val entityRef = WalkerRef(TestProbe().ref)
 
-    map ! GetNeighbours(entityRef, Distance(10))
-    expectMsg(Seq.empty)
+    map.tell(GetNeighbours(entityRef, Distance(10)), fixture.testProbe.ref)
+    fixture.testProbe.expectMsg(Seq.empty)
   }
 
-  it should "respond with multiple entities when waiting" in { _ =>
-    val map = system.actorOf(Props(new TestGameMap(testActor, StartBehaviour.Waiting)))
+  it should "respond with multiple entities when waiting" in { fixture =>
+    val map = system.actorOf(Props(new TestGameMap(fixture.testProbe.ref, StartBehaviour.Waiting)))
 
-    map ! GetEntities((0, 1))
-    expectMsg(Seq.empty)
+    map.tell(GetEntities((0, 1)), fixture.testProbe.ref)
+    fixture.testProbe.expectMsg(Seq.empty)
   }
 
-  it should "respond with single entities when waiting" in { _ =>
-    val map = system.actorOf(Props(new TestGameMap(testActor, StartBehaviour.Waiting)))
+  it should "respond with single entities when waiting" in { fixture =>
+    val map = system.actorOf(Props(new TestGameMap(fixture.testProbe.ref, StartBehaviour.Waiting)))
 
     val entityRef = WalkerRef(TestProbe().ref)
 
-    map ! GetEntity(entityRef)
-    expectMsgType[Status.Failure]
+    map.tell(GetEntity(entityRef), fixture.testProbe.ref)
+    fixture.testProbe.expectMsgType[Status.Failure]
   }
 
-  it should "respond with adjacent entity points when waiting" in { _ =>
-    val map = system.actorOf(Props(new TestGameMap(testActor, StartBehaviour.Waiting)))
+  it should "respond with adjacent entity points when waiting" in { fixture =>
+    val map = system.actorOf(Props(new TestGameMap(fixture.testProbe.ref, StartBehaviour.Waiting)))
 
     val entityRef = WalkerRef(TestProbe().ref)
 
-    map ! GetAdjacentPoint(entityRef, _.isFree)
-    expectMsg(None)
+    map.tell(GetAdjacentPoint(entityRef, _.isFree), fixture.testProbe.ref)
+    fixture.testProbe.expectMsg(None)
   }
 
-  it should "log unexpected entity tick responses when waiting" in { _ =>
-    val map = system.actorOf(Props(new TestGameMap(testActor, StartBehaviour.Waiting)))
-    map ! EntityTickProcessed(tick = 42)
-    expectMsg(SystemEvent(Event.Engine.UnexpectedEntityResponseReceived))
+  it should "log unexpected entity tick responses when waiting" in { fixture =>
+    val map = system.actorOf(Props(new TestGameMap(fixture.testProbe.ref, StartBehaviour.Waiting)))
+    map.tell(EntityTickProcessed(tick = 42), fixture.testProbe.ref)
+    fixture.testProbe.expectMsg(SystemEvent(Event.Engine.UnexpectedEntityResponseReceived))
   }
 
-  it should "create entities when idle" in { _ =>
-    val map = system.actorOf(Props(new TestGameMap(testActor, StartBehaviour.Idle)))
+  it should "create entities when idle" in { fixture =>
+    val map = system.actorOf(Props(new TestGameMap(fixture.testProbe.ref, StartBehaviour.Idle)))
     val entity = new Road()
 
-    map ! CreateEntity(entity, (0, 0))
-    this.expectEntityCreatedAt(0, 0)
-    expectMsgType[RoadRef]
+    map.tell(CreateEntity(entity, (0, 0)), fixture.testProbe.ref)
+    fixture.testProbe.expectEntityCreatedAt(0, 0)
+    fixture.testProbe.expectMsgType[RoadRef]
 
-    map ! CreateEntity(entity, (13, 5))
-    expectMsg(CellEvent(Event.Engine.CellOutOfBounds, (13, 5)))
+    map.tell(CreateEntity(entity, (13, 5)), fixture.testProbe.ref)
+    fixture.testProbe.expectMsg(CellEvent(Event.Engine.CellOutOfBounds, (13, 5)))
   }
 
-  it should "destroy entities when idle" in { _ =>
-    val map = system.actorOf(Props(new TestGameMap(testActor, StartBehaviour.Idle)))
+  it should "destroy entities when idle" in { fixture =>
+    val map = system.actorOf(Props(new TestGameMap(fixture.testProbe.ref, StartBehaviour.Idle)))
     val entity = new Road()
 
-    map ! CreateEntity(entity, (0, 0))
-    this.expectEntityCreatedAt(0, 0)
+    map.tell(CreateEntity(entity, (0, 0)), fixture.testProbe.ref)
+    fixture.testProbe.expectEntityCreatedAt(0, 0)
 
-    val entityRef = receiveOne(timeout.duration).asInstanceOf[RoadRef]
+    val entityRef = fixture.testProbe.receiveOne(timeout.duration).asInstanceOf[RoadRef]
 
-    map ! DestroyEntity(entityRef)
-    this.expectEntityDestroyedAt((0, 0))
+    map.tell(DestroyEntity(entityRef), fixture.testProbe.ref)
+    fixture.testProbe.expectEntityDestroyedAt((0, 0))
 
-    map ! DestroyEntity(WalkerRef(TestProbe().ref))
-    expectMsg(SystemEvent(Event.Engine.CellOutOfBounds))
+    map.tell(DestroyEntity(WalkerRef(TestProbe().ref)), fixture.testProbe.ref)
+    fixture.testProbe.expectMsg(SystemEvent(Event.Engine.CellOutOfBounds))
   }
 
-  it should "move entities when idle" in { _ =>
-    val map = system.actorOf(Props(new TestGameMap(testActor, StartBehaviour.Idle)))
+  it should "move entities when idle" in { fixture =>
+    val map = system.actorOf(Props(new TestGameMap(fixture.testProbe.ref, StartBehaviour.Idle)))
     val entity = new Road()
 
-    map ! CreateEntity(entity, (0, 0))
-    this.expectEntityCreatedAt(0, 0)
+    map.tell(CreateEntity(entity, (0, 0)), fixture.testProbe.ref)
+    fixture.testProbe.expectEntityCreatedAt(0, 0)
 
-    val entityRef = receiveOne(timeout.duration).asInstanceOf[RoadRef]
+    val entityRef = fixture.testProbe.receiveOne(timeout.duration).asInstanceOf[RoadRef]
 
-    map ! MoveEntity(entityRef, (0, 1))
-    this.expectEntityMovedTo((0, 1))
+    map.tell(MoveEntity(entityRef, (0, 1)), fixture.testProbe.ref)
+    fixture.testProbe.expectEntityMovedTo((0, 1))
 
-    map ! MoveEntity(entityRef, (13, 5))
-    expectMsg(CellEvent(Event.Engine.CellOutOfBounds, (13, 5)))
+    map.tell(MoveEntity(entityRef, (13, 5)), fixture.testProbe.ref)
+    fixture.testProbe.expectMsg(CellEvent(Event.Engine.CellOutOfBounds, (13, 5)))
   }
 
-  it should "process commodity distribution when idle" in { _ =>
-    val map = system.actorOf(Props(new TestGameMap(testActor, StartBehaviour.Idle)))
+  it should "process commodity distribution when idle" in { fixture =>
+    val map = system.actorOf(Props(new TestGameMap(fixture.testProbe.ref, StartBehaviour.Idle)))
     val entity = new Tree()
 
-    map ! CreateEntity(entity, (0, 0))
-    this.expectEntityCreatedAt(0, 0)
+    map.tell(CreateEntity(entity, (0, 0)), fixture.testProbe.ref)
 
-    val entityRef = receiveOne(timeout.duration).asInstanceOf[ResourceRef]
+    val entityRef = fixture.testProbe
+      .receiveWhile(timeout.duration) {
+        case ref: ResourceRef                                        => Some(ref)
+        case EntityEvent(Event.Engine.EntityCreated, _, Point(0, 0)) => None
+        case _: AddProducer                                          => None
+        case message                                                 => fail(s"Unexpected message encountered: [$message]")
+      }
+      .flatten
+      .head
 
-    map ! DistributeCommodities(entityRef, Seq.empty)
-    expectMsgAllOf(CellEvent(Event.Engine.MessageForwarded, (0, 0)))
+    map.tell(DistributeCommodities(entityRef, Seq.empty), fixture.testProbe.ref)
+    fixture.testProbe.expectMsgAllOf(CellEvent(Event.Engine.MessageForwarded, (0, 0)))
   }
 
-  it should "process entity attacks when idle" in { _ =>
-    val map = system.actorOf(Props(new TestGameMap(testActor, StartBehaviour.Idle)))
+  it should "process entity attacks when idle" in { fixture =>
+    val map = system.actorOf(Props(new TestGameMap(fixture.testProbe.ref, StartBehaviour.Idle)))
     val entity = new Tree()
 
-    map ! CreateEntity(entity, (0, 0))
-    this.expectEntityCreatedAt(0, 0)
+    map.tell(CreateEntity(entity, (0, 0)), fixture.testProbe.ref)
 
-    val entityRef = receiveOne(timeout.duration).asInstanceOf[ResourceRef]
+    val entityRef = fixture.testProbe
+      .receiveWhile(timeout.duration) {
+        case ref: ResourceRef                                        => Some(ref)
+        case EntityEvent(Event.Engine.EntityCreated, _, Point(0, 0)) => None
+        case _: AddProducer                                          => None
+        case message                                                 => fail(s"Unexpected message encountered: [$message]")
+      }
+      .flatten
+      .head
 
-    map ! AttackEntity(entityRef, AttackDamage(0))
-    expectMsgAllOf(CellEvent(Event.Engine.MessageForwarded, (0, 0)))
+    map.tell(AttackEntity(entityRef, AttackDamage(0)), fixture.testProbe.ref)
+    fixture.testProbe.expectMsgAllOf(CellEvent(Event.Engine.MessageForwarded, (0, 0)))
   }
 
-  it should "process labour found updates when idle" in { _ =>
-    val map = system.actorOf(Props(new TestGameMap(testActor, StartBehaviour.Idle)))
+  it should "process labour found updates when idle" in { fixture =>
+    val map = system.actorOf(Props(new TestGameMap(fixture.testProbe.ref, StartBehaviour.Idle)))
     val entity = new CoalMine()
 
-    map ! CreateEntity(entity, (0, 0))
-    this.expectEntityCreatedAt(0, 0)
+    map.tell(CreateEntity(entity, (0, 0)), fixture.testProbe.ref)
 
-    val entityRef = receiveOne(timeout.duration).asInstanceOf[StructureRef]
+    val entityRef = fixture.testProbe
+      .receiveWhile(timeout.duration) {
+        case ref: StructureRef                                       => Some(ref)
+        case EntityEvent(Event.Engine.EntityCreated, _, Point(0, 0)) => None
+        case _: AddProducer                                          => None
+        case message                                                 => fail(s"Unexpected message encountered: [$message]")
+      }
+      .flatten
+      .head
 
-    map ! LabourFound(entityRef)
-    expectMsgAllOf(CellEvent(Event.Engine.MessageForwarded, (0, 0)))
+    map.tell(LabourFound(entityRef), fixture.testProbe.ref)
+    fixture.testProbe.expectMsgAllOf(CellEvent(Event.Engine.MessageForwarded, (0, 0)))
   }
 
-  it should "process occupants updates when idle" in { _ =>
-    val map = system.actorOf(Props(new TestGameMap(testActor, StartBehaviour.Idle)))
+  it should "process occupants updates when idle" in { fixture =>
+    val map = system.actorOf(Props(new TestGameMap(fixture.testProbe.ref, StartBehaviour.Idle)))
     val entity = new CoalMine()
 
-    map ! CreateEntity(entity, (0, 0))
-    this.expectEntityCreatedAt(0, 0)
+    map.tell(CreateEntity(entity, (0, 0)), fixture.testProbe.ref)
 
-    val entityRef = receiveOne(timeout.duration).asInstanceOf[StructureRef]
+    val entityRef = fixture.testProbe
+      .receiveWhile(timeout.duration) {
+        case ref: StructureRef                                       => Some(ref)
+        case EntityEvent(Event.Engine.EntityCreated, _, Point(0, 0)) => None
+        case _: AddProducer                                          => None
+        case message                                                 => fail(s"Unexpected message encountered: [$message]")
+      }
+      .flatten
+      .head
 
-    map ! OccupantsUpdate(entityRef, occupants = 10)
-    expectMsgAllOf(CellEvent(Event.Engine.MessageForwarded, (0, 0)))
+    map.tell(OccupantsUpdate(entityRef, occupants = 10), fixture.testProbe.ref)
+    fixture.testProbe.expectMsgAllOf(CellEvent(Event.Engine.MessageForwarded, (0, 0)))
   }
 
-  it should "process labour updates when idle" in { _ =>
-    val map = system.actorOf(Props(new TestGameMap(testActor, StartBehaviour.Idle)))
+  it should "process labour updates when idle" in { fixture =>
+    val map = system.actorOf(Props(new TestGameMap(fixture.testProbe.ref, StartBehaviour.Idle)))
     val entity = new CoalMine()
 
-    map ! CreateEntity(entity, (0, 0))
-    this.expectEntityCreatedAt(0, 0)
+    map.tell(CreateEntity(entity, (0, 0)), fixture.testProbe.ref)
 
-    val entityRef = receiveOne(timeout.duration).asInstanceOf[StructureRef]
+    val entityRef = fixture.testProbe
+      .receiveWhile(timeout.duration) {
+        case ref: StructureRef                                       => Some(ref)
+        case EntityEvent(Event.Engine.EntityCreated, _, Point(0, 0)) => None
+        case _: AddProducer                                          => None
+        case message                                                 => fail(s"Unexpected message encountered: [$message]")
+      }
+      .flatten
+      .head
 
-    map ! LabourUpdate(entityRef, employees = 10)
-    expectMsgAllOf(CellEvent(Event.Engine.MessageForwarded, (0, 0)))
+    map.tell(LabourUpdate(entityRef, employees = 10), fixture.testProbe.ref)
+    fixture.testProbe.expectMsgAllOf(CellEvent(Event.Engine.MessageForwarded, (0, 0)))
   }
 
-  it should "forward messages to commodity exchange when idle" in { _ =>
-    val map = system.actorOf(Props(new TestGameMap(testActor, StartBehaviour.Idle)))
-    map ! ForwardExchangeMessage(GetExchangeStats())
-    expectMsg(GetExchangeStats())
+  it should "forward messages to commodity exchange when idle" in { fixture =>
+    val map = system.actorOf(Props(new TestGameMap(fixture.testProbe.ref, StartBehaviour.Idle)))
+    map.tell(ForwardExchangeMessage(GetExchangeStats()), fixture.testProbe.ref)
+    fixture.testProbe.expectMsg(GetExchangeStats())
   }
 
-  it should "log entity tick responses when idle" in { _ =>
-    val map = system.actorOf(Props(new TestGameMap(testActor, StartBehaviour.Idle)))
-    map ! EntityTickProcessed(tick = 0)
-    expectMsg(SystemEvent(Event.Engine.UnexpectedEntityResponseReceived))
+  it should "log entity tick responses when idle" in { fixture =>
+    val map = system.actorOf(Props(new TestGameMap(fixture.testProbe.ref, StartBehaviour.Idle)))
+    map.tell(EntityTickProcessed(tick = 0), fixture.testProbe.ref)
+    fixture.testProbe.expectMsg(SystemEvent(Event.Engine.UnexpectedEntityResponseReceived))
   }
 
-  it should "respond with grid data when idle" in { _ =>
-    val map = system.actorOf(Props(new TestGameMap(testActor, StartBehaviour.Idle)))
-    map ! GetGrid()
+  it should "respond with grid data when idle" in { fixture =>
+    val map = system.actorOf(Props(new TestGameMap(fixture.testProbe.ref, StartBehaviour.Idle)))
+    map.tell(GetGrid(), fixture.testProbe.ref)
 
-    val grid = receiveOne(timeout.duration).asInstanceOf[Grid[CellData]]
+    val grid = fixture.testProbe.receiveOne(timeout.duration).asInstanceOf[Grid[CellData]]
     grid.toMap should be(
       Map(
         Point(0, 0) -> CellData.empty,
@@ -289,19 +328,19 @@ class GameMapSpec extends AkkaUnitSpec("GameMapSpec") with EntityTestHelpers {
     )
   }
 
-  it should "respond with multiple entities when idle" in { _ =>
-    val map = system.actorOf(Props(new TestGameMap(testActor, StartBehaviour.Idle)))
+  it should "respond with multiple entities when idle" in { fixture =>
+    val map = system.actorOf(Props(new TestGameMap(fixture.testProbe.ref, StartBehaviour.Idle)))
 
-    map ! GetEntities((0, 1))
-    expectMsg(Seq.empty)
+    map.tell(GetEntities((0, 1)), fixture.testProbe.ref)
+    fixture.testProbe.expectMsg(Seq.empty)
   }
 
-  it should "respond with single entities when idle" in { _ =>
-    val map = system.actorOf(Props(new TestGameMap(testActor, StartBehaviour.Idle)))
+  it should "respond with single entities when idle" in { fixture =>
+    val map = system.actorOf(Props(new TestGameMap(fixture.testProbe.ref, StartBehaviour.Idle)))
 
     val entityRef = WalkerRef(TestProbe().ref)
 
-    map ! GetEntity(entityRef)
-    expectMsgType[Status.Failure]
+    map.tell(GetEntity(entityRef), fixture.testProbe.ref)
+    fixture.testProbe.expectMsgType[Status.Failure]
   }
 }

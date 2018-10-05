@@ -7,7 +7,7 @@ import owe.entities.active.Walker.WalkerRef
 import owe.entities.active.behaviour.UpdateExchange
 import owe.map.GameMap.ForwardExchangeMessage
 import owe.production.Commodity
-import owe.production.Exchange.{CommodityAvailable, CommodityInTransit, CommodityRequired, UpdateCommodityState}
+import owe.production.Exchange._
 import owe.test.specs.unit.AkkaUnitSpec
 
 class UpdateExchangeSpec extends AkkaUnitSpec("UpdateExchangeSpec") {
@@ -228,6 +228,103 @@ class UpdateExchangeSpec extends AkkaUnitSpec("UpdateExchangeSpec") {
       ForwardMessage(
         ForwardExchangeMessage(
           CommodityInTransit(Commodity("TestCommodity#3"), Commodity.Amount(3), parentEntity, parentEntity)
+        )
+      )
+    )
+
+    UpdateExchange.Stats.notInTransitCommodities(
+      source = parentEntity,
+      notInTransitCommodities = Seq(Commodity("TestCommodity#1"), Commodity("TestCommodity#3"))
+    )
+
+    expectMsg(
+      ForwardMessage(
+        ForwardExchangeMessage(
+          CommodityNotInTransit(Commodity("TestCommodity#1"), parentEntity)
+        )
+      )
+    )
+
+    expectMsg(
+      ForwardMessage(
+        ForwardExchangeMessage(
+          CommodityNotInTransit(Commodity("TestCommodity#3"), parentEntity)
+        )
+      )
+    )
+  }
+
+  it should "add producers" in { _ =>
+    implicit val parentEntity: ActiveEntityRef = WalkerRef(testActor)
+
+    UpdateExchange.Producers.add(parentEntity, Commodity("TestCommodity#1"))
+
+    expectMsg(
+      ForwardMessage(
+        ForwardExchangeMessage(
+          AddProducer(parentEntity, Commodity("TestCommodity#1"))
+        )
+      )
+    )
+  }
+
+  it should "remove producers" in { _ =>
+    implicit val parentEntity: ActiveEntityRef = WalkerRef(testActor)
+
+    UpdateExchange.Producers.add(parentEntity, Commodity("TestCommodity#1"))
+
+    expectMsg(
+      ForwardMessage(
+        ForwardExchangeMessage(
+          AddProducer(parentEntity, Commodity("TestCommodity#1"))
+        )
+      )
+    )
+
+    UpdateExchange.Producers.remove(parentEntity, Commodity("TestCommodity#1"))
+
+    expectMsg(
+      ForwardMessage(
+        ForwardExchangeMessage(
+          RemoveProducer(parentEntity, Commodity("TestCommodity#1"))
+        )
+      )
+    )
+  }
+
+  it should "add consumers" in { _ =>
+    implicit val parentEntity: ActiveEntityRef = WalkerRef(testActor)
+
+    UpdateExchange.Consumers.add(parentEntity, Commodity("TestCommodity#1"))
+
+    expectMsg(
+      ForwardMessage(
+        ForwardExchangeMessage(
+          AddConsumer(parentEntity, Commodity("TestCommodity#1"))
+        )
+      )
+    )
+  }
+
+  it should "remove consumers" in { _ =>
+    implicit val parentEntity: ActiveEntityRef = WalkerRef(testActor)
+
+    UpdateExchange.Consumers.add(parentEntity, Commodity("TestCommodity#1"))
+
+    expectMsg(
+      ForwardMessage(
+        ForwardExchangeMessage(
+          AddConsumer(parentEntity, Commodity("TestCommodity#1"))
+        )
+      )
+    )
+
+    UpdateExchange.Consumers.remove(parentEntity, Commodity("TestCommodity#1"))
+
+    expectMsg(
+      ForwardMessage(
+        ForwardExchangeMessage(
+          RemoveConsumer(parentEntity, Commodity("TestCommodity#1"))
         )
       )
     )

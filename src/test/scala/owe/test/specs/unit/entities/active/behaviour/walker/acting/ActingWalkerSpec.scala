@@ -2,6 +2,7 @@ package owe.test.specs.unit.entities.active.behaviour.walker.acting
 
 import akka.actor.Props
 import akka.pattern.pipe
+import akka.testkit.TestProbe
 import akka.util.Timeout
 import org.scalatest.Outcome
 import owe.entities.ActiveEntity.WalkerData
@@ -14,7 +15,7 @@ import owe.entities.active.behaviour.walker.acting.ActingWalker
 import owe.map.GameMap.{DistributeCommodities, ForwardExchangeMessage}
 import owe.map.grid.Point
 import owe.production.Commodity
-import owe.production.Exchange.CommodityInTransit
+import owe.production.Exchange.{AddConsumer, AddProducer, CommodityInTransit}
 import owe.test.specs.unit.AkkaUnitSpec
 import owe.test.specs.unit.entities.active.behaviour.WalkerParentEntity.ForwardToChild
 import owe.test.specs.unit.entities.active.behaviour.{Fixtures, WalkerParentEntity}
@@ -62,9 +63,15 @@ class ActingWalkerSpec extends AkkaUnitSpec("ActingWalkerSpec") {
     withFixture(test.toNoArgTest(FixtureParam()))
 
   "An Acting walker" should "gather resources" in { _ =>
+    val testProbe = TestProbe()
+    testProbe.ignoreMsg {
+      case _: AddProducer => true
+      case _: AddConsumer => true
+    }
+
     val parentEntity = system.actorOf(
       WalkerParentEntity.props(
-        testActor,
+        testProbe.ref,
         Props(new TestWalker)
       )
     )
@@ -76,15 +83,18 @@ class ActingWalkerSpec extends AkkaUnitSpec("ActingWalkerSpec") {
       Fixtures.MockRefs.walker
     )
 
-    parentEntity ! ForwardToChild(
-      Gather(
-        walker,
-        Fixtures.MockRefs.resource,
-        Fixtures.MockRefs.structure
-      )
+    parentEntity.tell(
+      ForwardToChild(
+        Gather(
+          walker,
+          Fixtures.MockRefs.resource,
+          Fixtures.MockRefs.structure
+        )
+      ),
+      testProbe.ref
     )
 
-    val successfulResult = receiveWhile(timeout.duration) {
+    val successfulResult = testProbe.receiveWhile(timeout.duration) {
       case ForwardMessage(DistributeCommodities(_, commodities)) =>
         commodities should be(Seq((Commodity("TestCommodity"), Commodity.Amount(-100))))
         true
@@ -116,24 +126,33 @@ class ActingWalkerSpec extends AkkaUnitSpec("ActingWalkerSpec") {
 
     val stateWithoutCommodities = walker.state.copy(commodities = NoCommodities)
 
-    parentEntity ! ForwardToChild(
-      Gather(
-        walker.copy(state = stateWithoutCommodities),
-        Fixtures.MockRefs.resource,
-        Fixtures.MockRefs.structure
-      )
+    parentEntity.tell(
+      ForwardToChild(
+        Gather(
+          walker.copy(state = stateWithoutCommodities),
+          Fixtures.MockRefs.resource,
+          Fixtures.MockRefs.structure
+        )
+      ),
+      testProbe.ref
     )
 
-    receiveOne(timeout.duration) match {
+    testProbe.receiveOne(timeout.duration) match {
       case state: State => state should be(stateWithoutCommodities)
       case message      => fail(s"Unexpected message received: [$message]")
     }
   }
 
   it should "load commodities" in { _ =>
+    val testProbe = TestProbe()
+    testProbe.ignoreMsg {
+      case _: AddProducer => true
+      case _: AddConsumer => true
+    }
+
     val parentEntity = system.actorOf(
       WalkerParentEntity.props(
-        testActor,
+        testProbe.ref,
         Props(new TestWalker)
       )
     )
@@ -145,15 +164,18 @@ class ActingWalkerSpec extends AkkaUnitSpec("ActingWalkerSpec") {
       Fixtures.MockRefs.walker
     )
 
-    parentEntity ! ForwardToChild(
-      Load(
-        walker,
-        Fixtures.MockRefs.structure,
-        Fixtures.MockRefs.structure
-      )
+    parentEntity.tell(
+      ForwardToChild(
+        Load(
+          walker,
+          Fixtures.MockRefs.structure,
+          Fixtures.MockRefs.structure
+        )
+      ),
+      testProbe.ref
     )
 
-    val successfulResult = receiveWhile(timeout.duration) {
+    val successfulResult = testProbe.receiveWhile(timeout.duration) {
       case ForwardMessage(DistributeCommodities(_, commodities)) =>
         commodities should be(Seq((Commodity("TestCommodity"), Commodity.Amount(-100))))
         true
@@ -185,24 +207,33 @@ class ActingWalkerSpec extends AkkaUnitSpec("ActingWalkerSpec") {
 
     val stateWithoutCommodities = walker.state.copy(commodities = NoCommodities)
 
-    parentEntity ! ForwardToChild(
-      Load(
-        walker.copy(state = stateWithoutCommodities),
-        Fixtures.MockRefs.structure,
-        Fixtures.MockRefs.structure
-      )
+    parentEntity.tell(
+      ForwardToChild(
+        Load(
+          walker.copy(state = stateWithoutCommodities),
+          Fixtures.MockRefs.structure,
+          Fixtures.MockRefs.structure
+        )
+      ),
+      testProbe.ref
     )
 
-    receiveOne(timeout.duration) match {
+    testProbe.receiveOne(timeout.duration) match {
       case state: State => state should be(stateWithoutCommodities)
       case message      => fail(s"Unexpected message received: [$message]")
     }
   }
 
   it should "unload commodities" in { _ =>
+    val testProbe = TestProbe()
+    testProbe.ignoreMsg {
+      case _: AddProducer => true
+      case _: AddConsumer => true
+    }
+
     val parentEntity = system.actorOf(
       WalkerParentEntity.props(
-        testActor,
+        testProbe.ref,
         Props(new TestWalker)
       )
     )
@@ -219,14 +250,17 @@ class ActingWalkerSpec extends AkkaUnitSpec("ActingWalkerSpec") {
       Fixtures.MockRefs.walker
     )
 
-    parentEntity ! ForwardToChild(
-      Unload(
-        walker,
-        Fixtures.MockRefs.structure
-      )
+    parentEntity.tell(
+      ForwardToChild(
+        Unload(
+          walker,
+          Fixtures.MockRefs.structure
+        )
+      ),
+      testProbe.ref
     )
 
-    val successfulResult = receiveWhile(timeout.duration) {
+    val successfulResult = testProbe.receiveWhile(timeout.duration) {
       case ForwardMessage(DistributeCommodities(_, commodities)) =>
         commodities should be(Seq((Commodity("TestCommodity"), Commodity.Amount(75))))
         true
@@ -258,14 +292,17 @@ class ActingWalkerSpec extends AkkaUnitSpec("ActingWalkerSpec") {
 
     val stateWithoutCommodities = walker.state.copy(commodities = NoCommodities)
 
-    parentEntity ! ForwardToChild(
-      Unload(
-        walker.copy(state = stateWithoutCommodities),
-        Fixtures.MockRefs.structure
-      )
+    parentEntity.tell(
+      ForwardToChild(
+        Unload(
+          walker.copy(state = stateWithoutCommodities),
+          Fixtures.MockRefs.structure
+        )
+      ),
+      testProbe.ref
     )
 
-    receiveOne(timeout.duration) match {
+    testProbe.receiveOne(timeout.duration) match {
       case state: State => state should be(stateWithoutCommodities)
       case message      => fail(s"Unexpected message received: [$message]")
     }
