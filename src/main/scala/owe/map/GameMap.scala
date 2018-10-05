@@ -44,7 +44,8 @@ trait GameMap extends Actor with ActorLogging with Stash with Timers with Ops {
   protected val tracker: ActorRef
   protected val search: Search
 
-  private val grid = Grid[CellActorRef](height, width, context.actorOf(Cell.props()).tag[Cell.ActorRefTag])
+  protected val grid: Grid[CellActorRef] =
+    Grid[CellActorRef](height, width, context.actorOf(Cell.props()).tag[Cell.ActorRefTag])
 
   protected def waiting(entities: Map[EntityRef, Point], currentTick: Int, pendingEntityResponses: Int): Receive = {
     case GetAdvancePath(entityID, destination) =>

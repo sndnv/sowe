@@ -1,9 +1,10 @@
 @import owe.map.grid.Point
 @import owe.map.MapEntity
+@import owe.map.Cell
 @import play.api.libs.json._
 @import helper.CSRF
 
-@(structureSizes: JsValue, rows: Seq[Seq[(Point, JsObject)]])(implicit request: RequestHeader, assetsFinder: AssetsFinder)
+@(structureSizes: JsValue, rows: Seq[Seq[(Point, (JsValue, Cell.Type, JsObject))]])(implicit request: RequestHeader, assetsFinder: AssetsFinder)
 
 <!DOCTYPE html>
 <html lang='en'>
@@ -18,6 +19,7 @@
     <script src='@assetsFinder.path("lib/jquery/jquery.min.js")'></script>
     <script src='@assetsFinder.path("lib/jquery-json-presenter/jquery.jsonPresenter.js")'></script>
     <script src='@assetsFinder.path("js/core.js")'></script>
+    <script src='@assetsFinder.path("js/index.js")'></script>
 </head>
     <body>
         <div class="uk-container uk-container-expand">
@@ -33,7 +35,7 @@
                             <ul class="uk-switcher uk-margin uk-text-left">
                                 <li>
                                     <div id="cell-details"></div>
-                                    <table class="game-grid">
+                                    <table id="main-game-grid" class="game-grid">
                                         <colgroup></colgroup>
                                         @for(_ <- rows.head) {
                                         <colgroup></colgroup>
@@ -50,8 +52,9 @@
                                         @for(row <- rows){
                                         <tr>
                                             <th>@{"%02d".format(row.head._1.y)}</th>
-                                            @for((point, entities) <- row){
-                                            <td class="entity-cell"
+                                            @for((point, (cellState, cellType, entities)) <- row){
+                                            <td class="entity-cell cell-type-@{cellType.toString.toLowerCase}"
+                                                data-state=@{cellState.toString}
                                                 data-entities=@{entities.toString}
                                                 data-point="(@{point.x},@{point.y})">
                                             </td>

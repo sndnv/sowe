@@ -1,5 +1,10 @@
 package controllers
 
+import javax.inject._
+
+import scala.concurrent.Future
+import scala.concurrent.duration._
+
 import akka.actor.ActorSystem
 import akka.stream.Materializer
 import akka.util.Timeout
@@ -9,7 +14,6 @@ import game.entities.resources.TeaPlant
 import game.entities.structures.{Firehouse, House, StorageBuilding}
 import game.entities.walkers.Courier
 import game.map.{EntityObserver, EventObserver, ExchangeObserver}
-import javax.inject._
 import owe.entities.ActiveEntity.{ActiveEntityRef, StructureData}
 import owe.entities.Entity.EntityRef
 import owe.entities.active.Resource.ResourceRef
@@ -26,9 +30,6 @@ import play.api.libs.json._
 import play.api.libs.streams.ActorFlow
 import play.api.mvc.WebSocket.MessageFlowTransformer
 import play.api.mvc._
-
-import scala.concurrent.Future
-import scala.concurrent.duration._
 
 @Singleton
 class Root @Inject()(
@@ -95,10 +96,19 @@ class Root @Inject()(
 
   game.map.createEntity(new TeaPlant((16, 16)), cell = (16, 16))
 
+  Root.roadCells.foreach { cell =>
+    game.map.createEntity(new Road, cell)
+  }
+
   def index = Action { implicit request =>
     val grid = game.map.grid.map { cell =>
       val entities = cell.entities.values.toSeq
-      Json.toJsObject(entities.map(e => (e.entityRef.toString, e)).toMap)
+
+      (
+        Json.toJson(cell.state),
+        cell.`type`,
+        Json.toJsObject(entities.map(e => (e.entityRef.toString, e)).toMap)
+      )
     }
 
     val structureSizes: JsValue = Json.toJson(
@@ -110,6 +120,10 @@ class Root @Inject()(
     )
 
     Ok(views.html.index(structureSizes, grid.indexed().rows))
+  }
+
+  def generator = Action { implicit request =>
+    Ok(views.html.generator(game.map.grid.map(_.`type`).indexed().rows))
   }
 
   def constructEntity = Action { implicit request =>
@@ -213,5 +227,47 @@ object Root {
       "y" -> number,
       "entityType" -> text
     )(NewEntity.apply)(NewEntity.unapply)
+  )
+
+  private val roadCells = Seq(
+    Point(0, 0),
+    Point(1, 0),
+    Point(2, 0),
+    Point(3, 0),
+    Point(4, 0),
+    Point(5, 0),
+    Point(5, 1),
+    Point(5, 2),
+    Point(5, 3),
+    Point(6, 3),
+    Point(7, 3),
+    Point(8, 3),
+    Point(9, 3),
+    Point(9, 4),
+    Point(9, 5),
+    Point(9, 6),
+    Point(9, 7),
+    Point(9, 8),
+    Point(9, 9),
+    Point(9, 10),
+    Point(9, 11),
+    Point(9, 12),
+    Point(9, 15),
+    Point(9, 16),
+    Point(9, 14),
+    Point(9, 13),
+    Point(9, 17),
+    Point(9, 18),
+    Point(9, 19),
+    Point(0, 20),
+    Point(1, 20),
+    Point(2, 20),
+    Point(3, 20),
+    Point(4, 20),
+    Point(5, 20),
+    Point(6, 20),
+    Point(7, 20),
+    Point(8, 20),
+    Point(9, 20)
   )
 }

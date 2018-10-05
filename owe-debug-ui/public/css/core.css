@@ -10,35 +10,59 @@ html {
 }
 
 .cell-entity-doodad {
-    background-color: gray
+    background-color: #8e097f;
 }
 
 .cell-entity-road {
-    background-color: blue
+    background-color: #7c7c7c;
 }
 
 .cell-entity-roadblock {
-    background-color: red
+    background-color: #680f0f;
 }
 
 .cell-entity-resource {
-    background-color: green
+    background-color: #68f442;
 }
 
 .cell-entity-structure {
-    background-color: orange
+    background-color: #ff8c00;
 }
 
 .cell-entity-walker {
-    background-color: black
+    background-color: #000;
 }
 
 .cell-new-entity-available {
-    background-color: #ccffcc
+    background-color: #ccffcc;
 }
 
 .cell-new-entity-unavailable {
-    background-color: #ffd6cc
+    background-color: #ffd6cc;
 }
 
-.grid-hover { background-color: #eee; }
+.grid-hover {
+    background-color: #eee;
+}
+
+.ui-selecting {
+    background: #FECA40 !important;
+}
+
+.ui-selected {
+    background-color: #a6c9e2 !important;
+}
+
+.cell-type-land {}
+
+.cell-type-water {
+    background-color: #28c7e0;
+}
+
+.cell-type-beach {
+    background-color: #f4c92e;
+}
+
+.cell-type-floodplain {
+    background-color: #375929;
+}

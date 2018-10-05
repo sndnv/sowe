@@ -1,6 +1,7 @@
 # Routes
 
 GET     /                           controllers.Root.index
+GET     /gen                        controllers.Root.generator
 GET     /entity                     controllers.Root.getEntity(entityId: String)
 POST    /entity                     controllers.Root.constructEntity
 DELETE  /entity                     controllers.Root.destroyEntity(entityId: String)

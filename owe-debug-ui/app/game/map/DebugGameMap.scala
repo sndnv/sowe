@@ -8,11 +8,10 @@ import owe.entities.ActiveEntity.ActiveEntityRef
 import owe.entities.Entity.EntityRef
 import owe.entities.{ActiveEntity, Entity}
 import owe.map.Cell.CellData
-import owe.map.GameMap
+import owe.map.{Cell, GameMap}
 import owe.map.GameMap._
 import owe.map.grid.{Grid, Point}
 import owe.map.pathfinding.{AStarSearch, Search}
-
 import scala.concurrent.duration.{FiniteDuration, _}
 import scala.concurrent.{Await, Future}
 
@@ -21,7 +20,8 @@ class DebugGameMap(
   exchangeRef: ActorRef,
   trackerRef: ActorRef,
   interval: FiniteDuration,
-  expiration: FiniteDuration
+  expiration: FiniteDuration,
+  gridUpdates: Map[Point, Seq[Cell.Message]]
 ) extends GameMap {
   override lazy protected implicit val actionTimeout: Timeout = 3.seconds
   override lazy protected val height: Int = size
@@ -31,6 +31,11 @@ class DebugGameMap(
   override lazy protected val exchange: ActorRef = exchangeRef
   override lazy protected val tracker: ActorRef = trackerRef
   override lazy protected val search: Search = AStarSearch
+
+  grid.foreachIndexed {
+    case (point, ref) =>
+      gridUpdates.getOrElse(point, Seq.empty).foreach(m => ref ! m)
+  }
 }
 
 object DebugGameMap {
@@ -41,14 +46,16 @@ object DebugGameMap {
     exchangeRef: ActorRef,
     trackerRef: ActorRef,
     interval: FiniteDuration,
-    expiration: FiniteDuration
+    expiration: FiniteDuration,
+    gridUpdates: Map[Point, Seq[Cell.Message]]
   ): Props = Props(
     classOf[DebugGameMap],
     size,
     exchangeRef,
     trackerRef,
     interval,
-    expiration
+    expiration,
+    gridUpdates
   )
 
   def apply(
@@ -56,11 +63,12 @@ object DebugGameMap {
     exchangeRef: ActorRef,
     trackerRef: ActorRef,
     interval: FiniteDuration = 0.seconds,
-    expiration: FiniteDuration = 500.millis
+    expiration: FiniteDuration = 500.millis,
+    gridUpdates: Map[Point, Seq[Cell.Message]] = Map.empty
   )(implicit system: ActorSystem): ActorRef @@ DebugGameMapRef =
     system
       .actorOf(
-        DebugGameMap.props(size, exchangeRef, trackerRef, interval, expiration)
+        DebugGameMap.props(size, exchangeRef, trackerRef, interval, expiration, gridUpdates)
       )
       .tag[DebugGameMapRef]
 

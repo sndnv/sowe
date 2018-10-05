@@ -37,7 +37,13 @@ object JsonFormatters {
   )
 
   implicit val sizeFormat: Format[Entity.Size] = Json.format[Entity.Size]
+
   implicit val cellDesirabilityFormat: Format[Cell.Desirability] = Json.format[Cell.Desirability]
+  implicit val cellFertilityFormat: Format[Cell.Fertility] = Json.format[Cell.Fertility]
+  implicit val cellWaterFormat: Format[Cell.Water] = Json.format[Cell.Water]
+  implicit val cellRestrictionsFormat: Format[Cell.Restrictions] = writesString[Cell.Restrictions]
+  implicit val cellState: Format[Cell.State] = Json.format[Cell.State]
+
   implicit val entityDesirabilityFormat: Format[Entity.Desirability] = Json.format[Entity.Desirability]
 
   implicit val attackRate: Format[AttackRate] = Json.format[AttackRate]
