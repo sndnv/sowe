@@ -19,7 +19,9 @@ lazy val commonSettings = Seq(
   logBuffered in Test := false,
   parallelExecution in Test := false,
   wartremoverWarnings in (Compile, compile) ++= Warts.unsafe,
-  scalacOptions := Seq("-unchecked", "-deprecation")
+  scalacOptions := Seq("-unchecked", "-deprecation"),
+  ScalamuKeys.targetOwners := Seq("owe.map.grid.*".r),
+  ScalamuKeys.targetTests := Seq("owe.test.specs.unit.map.grid.*".r)
 )
 
 lazy val owe = (project in file("."))
